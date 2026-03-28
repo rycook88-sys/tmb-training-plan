@@ -448,6 +448,53 @@ function ElevationChart() {
   );
 }
 
+// ── Itinerary Section (Collapsible) ──────────────────────
+function ItinerarySection() {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full h-48 overflow-hidden relative cursor-pointer group"
+      >
+        <img src={MASS} alt="Mont Blanc Massif" className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
+        <div className="absolute inset-0 flex items-center justify-center gap-3">
+          <h2 className="text-xs uppercase tracking-[0.4em] text-white font-mono flex items-center gap-2">
+            <Mountain className="w-4 h-4" /> 10-Day Itinerary — July 26 to August 4, 2026
+          </h2>
+          <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3 }}>
+            <ChevronDown className="w-4 h-4 text-white" />
+          </motion.div>
+        </div>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="container py-4">
+              <ElevationChart />
+              <div className="mt-4 border border-border bg-card">
+                <div className="hidden sm:grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_6rem] gap-2 p-3 border-b border-border text-[10px] uppercase tracking-wider font-mono text-[var(--muted-foreground)]">
+                  <span>Day</span><span>Route</span><span className="text-right">Dist</span>
+                  <span className="text-right">Ascent</span><span className="text-right">Descent</span>
+                  <span className="text-right">Time</span><span className="text-right">Rating</span>
+                </div>
+                {TMB_ITINERARY.map((day) => <ItineraryRow key={day.day} day={day} />)}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────
 export default function Home() {
   const wt = useWeightTracker();
@@ -545,28 +592,7 @@ export default function Home() {
       </section>
 
       {/* TMB ITINERARY */}
-      <section className="relative">
-        <div className="h-48 overflow-hidden relative">
-          <img src={MASS} alt="Mont Blanc Massif" className="w-full h-full object-cover object-center" />
-          <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <h2 className="text-xs uppercase tracking-[0.4em] text-white font-mono flex items-center gap-2">
-              <Mountain className="w-4 h-4" /> 10-Day Itinerary — July 26 to August 4, 2026
-            </h2>
-          </div>
-        </div>
-        <div className="container py-4">
-          <ElevationChart />
-          <div className="mt-4 border border-border bg-card">
-            <div className="hidden sm:grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_6rem] gap-2 p-3 border-b border-border text-[10px] uppercase tracking-wider font-mono text-[var(--muted-foreground)]">
-              <span>Day</span><span>Route</span><span className="text-right">Dist</span>
-              <span className="text-right">Ascent</span><span className="text-right">Descent</span>
-              <span className="text-right">Time</span><span className="text-right">Rating</span>
-            </div>
-            {TMB_ITINERARY.map((day) => <ItineraryRow key={day.day} day={day} />)}
-          </div>
-        </div>
-      </section>
+      <ItinerarySection />
 
       {/* FOOT MOBILITY */}
       <section className="container py-8">
