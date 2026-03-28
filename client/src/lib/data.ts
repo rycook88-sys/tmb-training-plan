@@ -70,10 +70,10 @@ export const WORKOUT_PLAN: WorkoutDay[] = [
     subtitle: "LOWER / DESCENT ARMOR",
     icon: "⬇",
     exercises: [
-      { name: "Trap Bar Deadlift", sets: "2", reps: "8", current: "335 lb", goal: "335 lb (maintain)", goalValue: 335, unit: "lb", notes: "Slow eccentric, stop ½\" from ground. No bouncing." },
-      { name: "Lateral Step-Down", sets: "3", reps: "8/leg", current: "BW", goal: "BW+25 lb vest", goalValue: 25, unit: "lb", notes: "THE money exercise. 3-sec lowering. Control the wobble." },
+      { name: "Lateral Step-Down", sets: "3", reps: "8/leg", current: "BW", goal: "BW+25 lb vest", goalValue: 25, unit: "lb", notes: "THE money exercise. Do it fresh. 3-sec lowering. Control the wobble." },
       { name: "Bulgarian Split Squat", sets: "3", reps: "10/leg", current: "50 lb DBs", goal: "60 lb DBs", goalValue: 60, unit: "lb", notes: "Rear foot elevated. Drive through heel." },
       { name: "Single-Leg RDL", sets: "3", reps: "10/leg", current: "40 lb DB", goal: "55 lb DB", goalValue: 55, unit: "lb", notes: "Hinge at hip. Feel the glute stretch.", videoUrl: "https://www.youtube.com/watch?v=Zfr6wizR8rs" },
+      { name: "Trap Bar Deadlift", sets: "2", reps: "8", current: "335 lb", goal: "335 lb (maintain)", goalValue: 335, unit: "lb", notes: "Maintain lift. Slow eccentric, stop ½\" from ground. No bouncing." },
       { name: "Calf Raise (Eccentric)", sets: "3", reps: "15", current: "BW", goal: "BW+25 lb", goalValue: 25, unit: "lb", notes: "2-sec up, 4-sec lowering. Full range." },
       { name: "Copenhagen Plank", sets: "3", reps: "20 sec/side", current: "20 sec", goal: "30 sec", goalValue: 30, unit: "sec", notes: "Adductor strength for uneven terrain.", videoUrl: "https://www.youtube.com/watch?v=YRRnnZsRs9U" },
     ],
@@ -84,12 +84,12 @@ export const WORKOUT_PLAN: WorkoutDay[] = [
     subtitle: "UPPER / PACK ENDURANCE",
     icon: "🎒",
     exercises: [
+      { name: "Farmer Carry", sets: "3", reps: "60 sec", current: "80 lb/hand", goal: "100 lb/hand", goalValue: 100, unit: "lb", notes: "Most TMB-specific upper move. Shoulders packed. Core braced. Walk tall." },
       { name: "Assisted Pull-Up", sets: "3", reps: "8", current: "90 lb assist", goal: "50 lb assist", goalValue: 50, unit: "assist", notes: "Full dead hang. Squeeze shoulder blades." },
-      { name: "Farmer Carry", sets: "3", reps: "60 sec", current: "80 lb/hand", goal: "100 lb/hand", goalValue: 100, unit: "lb", notes: "Shoulders packed. Core braced. Walk tall." },
-      { name: "Face Pull", sets: "3", reps: "15", current: "30 lb", goal: "45 lb", goalValue: 45, unit: "lb", notes: "External rotation at top. Posture correction." },
       { name: "Dumbbell Row", sets: "3", reps: "10/arm", current: "65 lb", goal: "80 lb", goalValue: 80, unit: "lb", notes: "Elbow drives back. No torso rotation." },
       { name: "Overhead Press", sets: "3", reps: "8", current: "45 lb DBs", goal: "55 lb DBs", goalValue: 55, unit: "lb", notes: "Strict. No leg drive." },
-      { name: "Dead Hang", sets: "3", reps: "30 sec", current: "30 sec", goal: "60 sec", goalValue: 60, unit: "sec", notes: "Grip endurance. Relax shoulders.", videoUrl: "https://www.youtube.com/watch?v=2vspW4N4BMs" },
+      { name: "Face Pull", sets: "3", reps: "15", current: "30 lb", goal: "45 lb", goalValue: 45, unit: "lb", notes: "External rotation at top. Posture correction." },
+      { name: "Dead Hang", sets: "3", reps: "30 sec", current: "30 sec", goal: "60 sec", goalValue: 60, unit: "sec", notes: "Grip endurance finisher. Relax shoulders.", videoUrl: "https://www.youtube.com/watch?v=2vspW4N4BMs" },
     ],
   },
   {
