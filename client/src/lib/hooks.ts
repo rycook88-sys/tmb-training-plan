@@ -1,0 +1,186 @@
+import { useState, useEffect } from "react";
+import { ATHLETE, WORKOUT_PLAN, getWeightProgress } from "./data";
+import type { WorkoutDay } from "./data";
+
+export interface ExerciseLog {
+  name: string;
+  weight: string;
+  reps: string;
+  done: boolean;
+}
+
+export interface WorkoutSession {
+  date: string;
+  dayId: string;
+  dayTitle: string;
+  exercises: ExerciseLog[];
+}
+
+export function useWeightTracker() {
+  const [entries, setEntries] = useState<{ date: string; weight: number }[]>(() => {
+    try {
+      const saved = localStorage.getItem("tmb-weight-log");
+      return saved ? JSON.parse(saved) : [{ date: "2026-03-14", weight: 232 }, { date: "2026-03-28", weight: 226 }];
+    } catch {
+      return [{ date: "2026-03-14", weight: 232 }, { date: "2026-03-28", weight: 226 }];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem("tmb-weight-log", JSON.stringify(entries));
+  }, [entries]);
+
+  const addEntry = (weight: number) => {
+    const today = new Date().toISOString().split("T")[0];
+    setEntries((prev) => {
+      const filtered = prev.filter((e) => e.date !== today);
+      return [...filtered, { date: today, weight }].sort((a, b) => a.date.localeCompare(b.date));
+    });
+  };
+
+  const currentWeight = entries.length > 0 ? entries[entries.length - 1].weight : ATHLETE.currentWeight;
+  const progress = getWeightProgress(currentWeight);
+
+  return { entries, addEntry, currentWeight, progress };
+}
+
+export function useWorkoutLog() {
+  const [sessions, setSessions] = useState<WorkoutSession[]>(() => {
+    try {
+      const saved = localStorage.getItem("tmb-workout-sessions");
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [activeSession, setActiveSession] = useState<{
+    dayId: string;
+    exercises: ExerciseLog[];
+  } | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem("tmb-workout-sessions", JSON.stringify(sessions));
+  }, [sessions]);
+
+  const startSession = (day: WorkoutDay) => {
+    setActiveSession({
+      dayId: day.id,
+      exercises: day.exercises.map((ex) => ({
+        name: ex.name,
+        weight: "",
+        reps: "",
+        done: false,
+      })),
+    });
+  };
+
+  const updateExercise = (index: number, field: keyof ExerciseLog, value: string | boolean) => {
+    if (!activeSession) return;
+    setActiveSession((prev) => {
+      if (!prev) return prev;
+      const updated = [...prev.exercises];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, exercises: updated };
+    });
+  };
+
+  const toggleDone = (index: number) => {
+    if (!activeSession) return;
+    setActiveSession((prev) => {
+      if (!prev) return prev;
+      const updated = [...prev.exercises];
+      updated[index] = { ...updated[index], done: !updated[index].done };
+      return { ...prev, exercises: updated };
+    });
+  };
+
+  const saveSession = (): WorkoutSession | undefined => {
+    if (!activeSession) return undefined;
+    const day = WORKOUT_PLAN.find((d) => d.id === activeSession.dayId);
+    const today = new Date().toISOString().split("T")[0];
+    const session: WorkoutSession = {
+      date: today,
+      dayId: activeSession.dayId,
+      dayTitle: day ? `${day.title} - ${day.subtitle}` : activeSession.dayId,
+      exercises: activeSession.exercises,
+    };
+    setSessions((prev) => [...prev, session]);
+    setActiveSession(null);
+    return session;
+  };
+
+  const cancelSession = () => setActiveSession(null);
+
+  const hasHitGoal = (exerciseName: string, goalValue?: number, unit?: string): boolean => {
+    if (!goalValue || !unit) return false;
+    for (const session of sessions) {
+      for (const ex of session.exercises) {
+        if (ex.name === exerciseName && ex.done && ex.weight) {
+          const val = parseFloat(ex.weight);
+          if (unit === "assist") {
+            if (val <= goalValue) return true;
+          } else {
+            if (val >= goalValue) return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+
+  return { sessions, activeSession, startSession, updateExercise, toggleDone, saveSession, cancelSession, hasHitGoal };
+}
+
+export function generateSummary(session: WorkoutSession, allSessions: WorkoutSession[]): string {
+  const completed = session.exercises.filter((e) => e.done).length;
+  const total = session.exercises.length;
+  const pct = Math.round((completed / total) * 100);
+
+  const dayType = session.dayId;
+  const prevSame = allSessions.filter((s) => s.dayId === dayType && s.date !== session.date);
+  const sessionCount = prevSame.length + 1;
+
+  let summary = "";
+
+  if (pct === 100) {
+    summary += "Full session completed. That is the standard. ";
+  } else if (pct >= 70) {
+    summary += `${completed}/${total} exercises done (${pct}%). Acceptable, but the skipped ones matter. `;
+  } else {
+    summary += `${completed}/${total} exercises done (${pct}%). Not enough volume. If you are too fatigued, check sleep and nutrition. `;
+  }
+
+  summary += `This is session #${sessionCount} of ${session.dayTitle}. `;
+
+  const goalsHit = session.exercises.filter((ex) => {
+    const planDay = WORKOUT_PLAN.find((d) => d.id === session.dayId);
+    const planEx = planDay?.exercises.find((e) => e.name === ex.name);
+    if (!planEx?.goalValue || !ex.weight || !ex.done) return false;
+    const val = parseFloat(ex.weight);
+    return planEx.unit === "assist" ? val <= planEx.goalValue : val >= planEx.goalValue;
+  });
+
+  if (goalsHit.length > 0) {
+    summary += `GOAL WEIGHT HIT on: ${goalsHit.map((e) => e.name).join(", ")}. `;
+  }
+
+  // Comparison context
+  if (dayType === "day-a" || dayType === "day-b") {
+    summary += "\n\nFor reference: The average recreational hiker does zero structured strength training. ";
+    summary += "TMB finishers who train typically do 2-3 sessions per week. ";
+    summary += "You are doing targeted descent-specific and pack-endurance work. That puts you ahead of most people on the trail. ";
+    summary += "But ahead of most is not the goal. The goal is pain-free descents at 205 lbs.";
+  } else if (dayType === "day-c") {
+    summary += "\n\nFor reference: Most TMB hikers average 8-10 hours of walking per day. ";
+    summary += "Your stairmill sessions are building the cardiac base for that. ";
+    summary += "The average person cannot hold Zone 2 on a stairmill for 60 minutes. You can. ";
+    summary += "But the TMB demands 90+ minutes of sustained climbing. Keep pushing duration.";
+  } else if (dayType === "day-d") {
+    summary += "\n\nMobility is not optional. Your high transverse arch and quad-dominant pattern ";
+    summary += "are the two biggest risk factors for knee pain on descent days. ";
+    summary += "Every mobility session is an investment in pain-free hiking on Days 5-9.";
+  }
+
+  return summary;
+}
