@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ATHLETE, WORKOUT_PLAN, getWeightProgress } from "./data";
 import type { WorkoutDay } from "./data";
 
@@ -112,6 +112,21 @@ export function useWorkoutLog() {
 
   const cancelSession = () => setActiveSession(null);
 
+  const deleteSession = (date: string, dayId: string, sessionIndex: number) => {
+    setSessions((prev) => {
+      // Find all sessions matching this date+dayId, then remove the one at sessionIndex
+      let matchCount = 0;
+      return prev.filter((s) => {
+        if (s.date === date && s.dayId === dayId) {
+          const isTarget = matchCount === sessionIndex;
+          matchCount++;
+          return !isTarget;
+        }
+        return true;
+      });
+    });
+  };
+
   const hasHitGoal = (exerciseName: string, goalValue?: number, unit?: string): boolean => {
     if (!goalValue || !unit) return false;
     for (const session of sessions) {
@@ -129,7 +144,56 @@ export function useWorkoutLog() {
     return false;
   };
 
-  return { sessions, activeSession, startSession, updateExercise, toggleDone, saveSession, cancelSession, hasHitGoal };
+  /**
+   * Get the best logged performance for a given exercise.
+   * For "assist" exercises (like pull-ups), lower is better.
+   * For everything else, higher is better.
+   * Returns { weight, reps } or null if never logged.
+   */
+  const getBestPerformance = useCallback(
+    (exerciseName: string, unit?: string): { weight: string; reps: string } | null => {
+      let best: { weight: string; reps: string; val: number } | null = null;
+
+      for (const session of sessions) {
+        for (const ex of session.exercises) {
+          if (ex.name === exerciseName && ex.done && ex.weight) {
+            const val = parseFloat(ex.weight);
+            if (isNaN(val)) continue;
+
+            if (!best) {
+              best = { weight: ex.weight, reps: ex.reps, val };
+            } else if (unit === "assist") {
+              // Lower assist weight = stronger
+              if (val < best.val) {
+                best = { weight: ex.weight, reps: ex.reps, val };
+              }
+            } else {
+              // Higher weight = stronger
+              if (val > best.val) {
+                best = { weight: ex.weight, reps: ex.reps, val };
+              }
+            }
+          }
+        }
+      }
+
+      return best ? { weight: best.weight, reps: best.reps } : null;
+    },
+    [sessions]
+  );
+
+  return {
+    sessions,
+    activeSession,
+    startSession,
+    updateExercise,
+    toggleDone,
+    saveSession,
+    cancelSession,
+    deleteSession,
+    hasHitGoal,
+    getBestPerformance,
+  };
 }
 
 export function generateSummary(session: WorkoutSession, allSessions: WorkoutSession[]): string {

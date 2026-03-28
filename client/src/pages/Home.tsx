@@ -9,7 +9,7 @@ import { useWeightTracker, useWorkoutLog, generateSummary } from "@/lib/hooks";
 import type { ExerciseLog, WorkoutSession } from "@/lib/hooks";
 import {
   Mountain, ChevronDown, ChevronUp, ExternalLink, Footprints,
-  Target, ArrowDown, ArrowUp, Play, Calendar, Trophy, Save, X,
+  Target, ArrowDown, ArrowUp, Play, Calendar, Trophy, Save, X, Trash2,
 } from "lucide-react";
 import TrainingAnalytics from "@/components/TrainingAnalytics";
 
@@ -212,10 +212,11 @@ function ActiveWorkoutPanel({ dayId, exercises, onUpdate, onToggle, onSave, onCa
 }
 
 // ── Workout Card (Browse Mode) ────────────────────────────
-function WorkoutCard({ day, onStart, hasHitGoal }: {
+function WorkoutCard({ day, onStart, hasHitGoal, getBestPerformance }: {
   day: WorkoutDay;
   onStart: (d: WorkoutDay) => void;
   hasHitGoal: (name: string, gv?: number, u?: string) => boolean;
+  getBestPerformance: (name: string, unit?: string) => { weight: string; reps: string } | null;
 }) {
   const [expanded, setExpanded] = useState(false);
   return (
@@ -264,7 +265,11 @@ function WorkoutCard({ day, onStart, hasHitGoal }: {
                       </div>
                       <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">
                         <span className="text-xs font-mono text-[var(--muted-foreground)]">{ex.sets}×{ex.reps}</span>
-                        <span className="text-xs font-mono text-[var(--muted-foreground)]">Now: <span className="text-foreground">{ex.current}</span></span>
+                        {(() => {
+                          const best = getBestPerformance(ex.name, ex.unit);
+                          const nowVal = best ? `${best.weight}${ex.unit === 'assist' ? ' assist' : ex.unit === 'sec' ? ' sec' : ex.unit === 'min' ? ' min' : ex.unit === 'lb' ? ' lb' : ''}` : ex.current;
+                          return <span className="text-xs font-mono text-[var(--muted-foreground)]">Now: <span className={best ? 'text-[var(--primary)]' : 'text-foreground'}>{nowVal}</span></span>;
+                        })()}
                         <span className="text-xs font-mono text-[var(--primary)]">Goal: {ex.goal}</span>
                       </div>
                       <div className="text-xs text-[var(--muted-foreground)] mt-1 italic">{ex.notes}</div>
@@ -315,7 +320,7 @@ function SummaryModal({ session, allSessions, onClose }: {
 }
 
 // ── Workout History Calendar ──────────────────────────────
-function WorkoutCalendar({ sessions }: { sessions: WorkoutSession[] }) {
+function WorkoutCalendar({ sessions, onDelete }: { sessions: WorkoutSession[]; onDelete: (date: string, dayId: string, sessionIndex: number) => void }) {
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   if (sessions.length === 0) return null;
 
@@ -359,7 +364,16 @@ function WorkoutCalendar({ sessions }: { sessions: WorkoutSession[] }) {
                     exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
                     {daySessions.map((s, si) => (
                       <div key={si} className="px-4 pb-3">
-                        <div className="text-[10px] font-mono text-[var(--primary)] uppercase tracking-wider mb-1">{s.dayTitle}</div>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="text-[10px] font-mono text-[var(--primary)] uppercase tracking-wider">{s.dayTitle}</div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onDelete(s.date, s.dayId, si); }}
+                            className="text-[var(--muted-foreground)] hover:text-red-400 transition-colors p-1"
+                            title="Delete this session"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                         {s.exercises.filter((e) => e.done).map((ex) => (
                           <div key={ex.name} className="flex justify-between text-xs font-mono text-[var(--muted-foreground)] py-0.5">
                             <span className="text-foreground">{ex.name}</span>
@@ -648,14 +662,14 @@ export default function Home() {
         ) : (
           <div className="space-y-2">
             {WORKOUT_PLAN.map((day) => (
-              <WorkoutCard key={day.id} day={day} onStart={wl.startSession} hasHitGoal={wl.hasHitGoal} />
+              <WorkoutCard key={day.id} day={day} onStart={wl.startSession} hasHitGoal={wl.hasHitGoal} getBestPerformance={wl.getBestPerformance} />
             ))}
           </div>
         )}
 
         {/* Workout History */}
         <div className="mt-6">
-          <WorkoutCalendar sessions={wl.sessions} />
+          <WorkoutCalendar sessions={wl.sessions} onDelete={wl.deleteSession} />
         </div>
       </section>
 
