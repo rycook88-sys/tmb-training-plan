@@ -495,6 +495,73 @@ function ItinerarySection() {
   );
 }
 
+// ── Foot Mobility Section (Collapsible) ──────────────
+function FootMobilitySection() {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="container py-8">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between group cursor-pointer"
+      >
+        <h2 className="text-xs uppercase tracking-[0.3em] text-[var(--muted-foreground)] font-mono flex items-center gap-2">
+          <Footprints className="w-3.5 h-3.5 text-[var(--primary)]" /> Foot Mobility — High Transverse Arch Protocol
+        </h2>
+        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3 }}>
+          <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-colors" />
+        </motion.div>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
+              <div>
+                <div className="border border-border bg-card p-4 mb-4">
+                  <div className="text-[10px] uppercase tracking-[0.3em] text-[var(--primary)] font-mono font-bold mb-2">Your Diagnosis</div>
+                  <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
+                    You have an <span className="text-foreground font-medium">excessively high/rigid transverse arch</span> (pes cavus pattern).
+                    The middle metatarsal heads (toes 2–4) are elevated — only the big toe pad and pinky toe pad contact the ground,
+                    creating a &quot;bipod&quot; instead of full forefoot contact. This concentrates force on two points,
+                    causes the foot to roll off the outside of the big toe, and sends shear force up into your knees on descents.
+                    The fix is daily mobilization to allow those middle metatarsals to drop and share the load.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  {FOOT_VIDEOS.map((video) => (
+                    <a key={video.url} href={video.url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-start gap-3 border border-border bg-card p-3 hover:border-[var(--primary)]/40 transition-colors group">
+                      <div className="w-10 h-10 flex-shrink-0 bg-red-600/20 flex items-center justify-center">
+                        <Play className="w-4 h-4 text-red-400" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-mono text-xs font-medium text-foreground group-hover:text-[var(--primary)] transition-colors truncate">{video.title}</div>
+                        <div className="text-[10px] text-[var(--muted-foreground)]">{video.channel}</div>
+                        <div className="text-[10px] text-[var(--muted-foreground)] mt-1 italic">{video.why}</div>
+                      </div>
+                      <ExternalLink className="w-3.5 h-3.5 text-[var(--muted-foreground)] flex-shrink-0 mt-0.5" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+              <div className="hidden lg:block">
+                <div className="border border-border overflow-hidden h-full">
+                  <img src={DESC} alt="Alpine descent" className="w-full h-full object-cover" />
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </section>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────
 export default function Home() {
   const wt = useWeightTracker();
@@ -594,47 +661,8 @@ export default function Home() {
       {/* TMB ITINERARY */}
       <ItinerarySection />
 
-      {/* FOOT MOBILITY */}
-      <section className="container py-8">
-        <h2 className="text-xs uppercase tracking-[0.3em] text-[var(--muted-foreground)] font-mono mb-4 flex items-center gap-2">
-          <Footprints className="w-3.5 h-3.5 text-[var(--primary)]" /> Foot Mobility — High Transverse Arch Protocol
-        </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-          <div>
-            <div className="border border-border bg-card p-4 mb-4">
-              <div className="text-[10px] uppercase tracking-[0.3em] text-[var(--primary)] font-mono font-bold mb-2">Your Diagnosis</div>
-              <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
-                You have an <span className="text-foreground font-medium">excessively high/rigid transverse arch</span> (pes cavus pattern).
-                The middle metatarsal heads (toes 2–4) are elevated — only the big toe pad and pinky toe pad contact the ground,
-                creating a "bipod" instead of full forefoot contact. This concentrates force on two points,
-                causes the foot to roll off the outside of the big toe, and sends shear force up into your knees on descents.
-                The fix is daily mobilization to allow those middle metatarsals to drop and share the load.
-              </p>
-            </div>
-            <div className="space-y-2">
-              {FOOT_VIDEOS.map((video) => (
-                <a key={video.url} href={video.url} target="_blank" rel="noopener noreferrer"
-                  className="flex items-start gap-3 border border-border bg-card p-3 hover:border-[var(--primary)]/40 transition-colors group">
-                  <div className="w-10 h-10 flex-shrink-0 bg-red-600/20 flex items-center justify-center">
-                    <Play className="w-4 h-4 text-red-400" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-mono text-xs font-medium text-foreground group-hover:text-[var(--primary)] transition-colors truncate">{video.title}</div>
-                    <div className="text-[10px] text-[var(--muted-foreground)]">{video.channel}</div>
-                    <div className="text-[10px] text-[var(--muted-foreground)] mt-1 italic">{video.why}</div>
-                  </div>
-                  <ExternalLink className="w-3.5 h-3.5 text-[var(--muted-foreground)] flex-shrink-0 mt-0.5" />
-                </a>
-              ))}
-            </div>
-          </div>
-          <div className="hidden lg:block">
-            <div className="border border-border overflow-hidden h-full">
-              <img src={DESC} alt="Alpine descent" className="w-full h-full object-cover" />
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* FOOT MOBILITY (Collapsible) */}
+      <FootMobilitySection />
 
       {/* FOOTER */}
       <footer className="border-t border-border py-6">
