@@ -64,14 +64,21 @@ export function useWorkoutLog() {
   }, [sessions]);
 
   const startSession = (day: WorkoutDay) => {
+    // Auto-fill from most recent session of this day type
+    const prevSessions = [...sessions].reverse();
+    const lastSame = prevSessions.find((s) => s.dayId === day.id);
+
     setActiveSession({
       dayId: day.id,
-      exercises: day.exercises.map((ex) => ({
-        name: ex.name,
-        weight: "",
-        reps: "",
-        done: false,
-      })),
+      exercises: day.exercises.map((ex) => {
+        const lastLog = lastSame?.exercises.find((e) => e.name === ex.name && e.done);
+        return {
+          name: ex.name,
+          weight: lastLog?.weight || "",
+          reps: lastLog?.reps || "",
+          done: false,
+        };
+      }),
     });
   };
 

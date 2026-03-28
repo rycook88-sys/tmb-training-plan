@@ -70,7 +70,7 @@ export const WORKOUT_PLAN: WorkoutDay[] = [
     subtitle: "LOWER / DESCENT ARMOR",
     icon: "⬇",
     exercises: [
-      { name: "Lateral Step-Down", sets: "2", reps: "8/leg", current: "BW", goal: "BW+25 lb vest", goalValue: 25, unit: "lb", notes: "THE money exercise. Do it fresh. 3-sec lowering. Control the wobble." },
+      { name: "Lateral Step-Down", sets: "2", reps: "8/leg", current: "20 lb DBs", goal: "35 lb DBs", goalValue: 35, unit: "lb", notes: "THE money exercise. Do it fresh. 3-sec lowering. Control the wobble. Hold DBs at sides." },
       { name: "Bulgarian Split Squat", sets: "2", reps: "10/leg", current: "50 lb DBs", goal: "60 lb DBs", goalValue: 60, unit: "lb", notes: "Rear foot elevated. Drive through heel." },
       { name: "Single-Leg RDL", sets: "2", reps: "10/leg", current: "40 lb DB", goal: "55 lb DB", goalValue: 55, unit: "lb", notes: "Hinge at hip. Feel the glute stretch.", videoUrl: "https://www.youtube.com/watch?v=Zfr6wizR8rs" },
       { name: "Trap Bar Deadlift", sets: "2", reps: "8", current: "335 lb", goal: "335 lb (maintain)", goalValue: 335, unit: "lb", notes: "Maintain lift. Slow eccentric, stop ½\" from ground. No bouncing." },

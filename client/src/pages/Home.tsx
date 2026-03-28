@@ -9,7 +9,7 @@ import { useWeightTracker, useWorkoutLog, generateSummary } from "@/lib/hooks";
 import type { ExerciseLog, WorkoutSession } from "@/lib/hooks";
 import {
   Mountain, ChevronDown, ChevronUp, ExternalLink, Footprints,
-  Target, ArrowDown, ArrowUp, Play, Calendar, Trophy, Save, X, Trash2,
+  Target, ArrowDown, ArrowUp, Play, Calendar, Trophy, Save, X, Trash2, Dumbbell,
 } from "lucide-react";
 import TrainingAnalytics from "@/components/TrainingAnalytics";
 
@@ -123,88 +123,133 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
   );
 }
 
-// ── Active Workout Session Panel ──────────────────────────
-function ActiveWorkoutPanel({ dayId, exercises, onUpdate, onToggle, onSave, onCancel }: {
+// ── Active Workout Session Panel (Mobile-First Fullscreen) ──────────────────────────
+function ActiveWorkoutPanel({ dayId, exercises, onUpdate, onToggle, onSave, onCancel, lastSession }: {
   dayId: string; exercises: ExerciseLog[];
   onUpdate: (i: number, field: keyof ExerciseLog, val: string | boolean) => void;
   onToggle: (i: number) => void;
   onSave: () => void;
   onCancel: () => void;
+  lastSession?: { exercises: ExerciseLog[] } | null;
 }) {
   const day = WORKOUT_PLAN.find((d) => d.id === dayId);
   if (!day) return null;
   const allDone = exercises.every((e) => e.done);
+  const doneCount = exercises.filter((e) => e.done).length;
+  const progressPct = Math.round((doneCount / exercises.length) * 100);
+
+  // Compare current input to last session's value for beat-last-session indicator
+  const getBeatIndicator = (ex: ExerciseLog, planUnit?: string) => {
+    if (!lastSession || !ex.weight) return null;
+    const lastEx = lastSession.exercises.find((e) => e.name === ex.name && e.done);
+    if (!lastEx?.weight) return null;
+    const curr = parseFloat(ex.weight);
+    const prev = parseFloat(lastEx.weight);
+    if (isNaN(curr) || isNaN(prev)) return null;
+    if (planUnit === "assist") {
+      // Lower is better for assist
+      if (curr < prev) return "up";
+      if (curr > prev) return "down";
+      return "same";
+    }
+    if (curr > prev) return "up";
+    if (curr < prev) return "down";
+    return "same";
+  };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}
-      className="border-2 border-[var(--primary)] bg-card">
-      <div className="flex items-center justify-between p-4 border-b border-[var(--primary)]/30 bg-[var(--primary)]/5">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+      className="fixed inset-0 z-50 bg-background flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--primary)]/30 bg-[var(--primary)]/5 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <span className="text-xl">{day.icon}</span>
+          <span className="text-lg">{day.icon}</span>
           <div>
-            <div className="font-mono text-sm font-bold text-[var(--primary)] tracking-wider">ACTIVE SESSION</div>
-            <div className="text-xs text-[var(--muted-foreground)] tracking-wide">{day.title} — {day.subtitle}</div>
+            <div className="font-mono text-xs font-bold text-[var(--primary)] tracking-wider">ACTIVE SESSION</div>
+            <div className="text-[10px] text-[var(--muted-foreground)] tracking-wide">{day.title}</div>
           </div>
         </div>
-        <button onClick={onCancel} className="text-[var(--muted-foreground)] hover:text-foreground"><X className="w-4 h-4" /></button>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-xs text-[var(--muted-foreground)]">{doneCount}/{exercises.length}</span>
+          <button onClick={onCancel} className="text-[var(--muted-foreground)] hover:text-foreground p-1"><X className="w-5 h-5" /></button>
+        </div>
       </div>
 
-      <div className="divide-y divide-border">
-        {exercises.map((ex, i) => {
-          const planEx = day.exercises[i];
-          const goalHit = !!(planEx?.goalValue && ex.weight && ex.done && (
-            planEx.unit === "assist"
-              ? parseFloat(ex.weight) <= planEx.goalValue
-              : parseFloat(ex.weight) >= planEx.goalValue
-          ));
-          return (
-            <div key={ex.name} className={`p-4 transition-colors ${ex.done ? "bg-[var(--primary)]/5" : ""}`}>
-              <div className="flex items-start gap-3">
-                <button onClick={() => onToggle(i)}
-                  className={`mt-0.5 w-6 h-6 border flex-shrink-0 flex items-center justify-center transition-all ${
-                    ex.done ? (goalHit ? "bg-amber-500 border-amber-500" : "bg-[var(--primary)] border-[var(--primary)]")
-                    : "border-border hover:border-[var(--primary)]"
-                  }`}>
-                  {ex.done && <span className={`text-xs font-bold ${goalHit ? "text-black" : "text-[var(--primary-foreground)]"}`}>{goalHit ? "★" : "✓"}</span>}
-                </button>
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`font-mono text-sm font-medium ${ex.done ? "line-through text-[var(--muted-foreground)]" : "text-foreground"}`}>{ex.name}</span>
-                    {goalHit && <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 bg-amber-400/10 px-1.5 py-0.5">GOAL HIT</span>}
-                    {planEx?.videoUrl && (
-                      <a href={planEx.videoUrl} target="_blank" rel="noopener noreferrer"
-                        className="text-[10px] font-mono text-blue-400 hover:text-blue-300 flex items-center gap-0.5">
-                        <Play className="w-3 h-3" /> HOW-TO
-                      </a>
-                    )}
+      {/* Progress bar */}
+      <div className="h-1 bg-[var(--secondary)] flex-shrink-0">
+        <motion.div className="h-full bg-[var(--primary)]" animate={{ width: `${progressPct}%` }} transition={{ duration: 0.3 }} />
+      </div>
+
+      {/* Scrollable exercise list */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="divide-y divide-border">
+          {exercises.map((ex, i) => {
+            const planEx = day.exercises[i];
+            const goalHit = !!(planEx?.goalValue && ex.weight && ex.done && (
+              planEx.unit === "assist"
+                ? parseFloat(ex.weight) <= planEx.goalValue
+                : parseFloat(ex.weight) >= planEx.goalValue
+            ));
+            const beat = getBeatIndicator(ex, planEx?.unit);
+            return (
+              <div key={ex.name} className={`px-4 py-4 transition-colors ${ex.done ? "bg-[var(--primary)]/5" : ""}`}>
+                <div className="flex items-start gap-3">
+                  <button onClick={() => onToggle(i)}
+                    className={`mt-0.5 w-8 h-8 border flex-shrink-0 flex items-center justify-center transition-all ${
+                      ex.done ? (goalHit ? "bg-amber-500 border-amber-500" : "bg-[var(--primary)] border-[var(--primary)]")
+                      : "border-border hover:border-[var(--primary)]"
+                    }`}>
+                    {ex.done && <span className={`text-sm font-bold ${goalHit ? "text-black" : "text-[var(--primary-foreground)]"}`}>{goalHit ? "★" : "✓"}</span>}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`font-mono text-sm font-medium ${ex.done ? "line-through text-[var(--muted-foreground)]" : "text-foreground"}`}>{ex.name}</span>
+                      {goalHit && <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 bg-amber-400/10 px-1.5 py-0.5">GOAL HIT</span>}
+                      {planEx?.videoUrl && (
+                        <a href={planEx.videoUrl} target="_blank" rel="noopener noreferrer"
+                          className="text-[10px] font-mono text-blue-400 hover:text-blue-300 flex items-center gap-0.5">
+                          <Play className="w-3 h-3" /> HOW-TO
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs font-mono text-[var(--muted-foreground)]">
+                      <span>{planEx?.sets}×{planEx?.reps}</span>
+                      <span>Goal: <span className="text-[var(--primary)]">{planEx?.goal}</span></span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <input type="text" placeholder={planEx?.unit === "sec" || planEx?.unit === "min" ? "duration" : "weight"}
+                        value={ex.weight} onChange={(e) => onUpdate(i, "weight", e.target.value)}
+                        className="w-24 h-10 bg-[var(--secondary)] border border-border px-3 py-2 text-sm font-mono text-foreground focus:border-[var(--primary)] focus:outline-none" />
+                      <input type="text" placeholder="reps" value={ex.reps}
+                        onChange={(e) => onUpdate(i, "reps", e.target.value)}
+                        className="w-20 h-10 bg-[var(--secondary)] border border-border px-3 py-2 text-sm font-mono text-foreground focus:border-[var(--primary)] focus:outline-none" />
+                      {beat && (
+                        <span className={`flex items-center gap-0.5 text-[10px] font-mono font-bold ${
+                          beat === "up" ? "text-green-400" : beat === "down" ? "text-red-400" : "text-[var(--muted-foreground)]"
+                        }`}>
+                          {beat === "up" && <ArrowUp className="w-3 h-3" />}
+                          {beat === "down" && <ArrowDown className="w-3 h-3" />}
+                          {beat === "up" ? "PR" : beat === "down" ? "DOWN" : "SAME"}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-[var(--muted-foreground)] mt-1.5 italic leading-relaxed">{planEx?.notes}</div>
                   </div>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs font-mono text-[var(--muted-foreground)]">
-                    <span>{planEx?.sets}×{planEx?.reps}</span>
-                    <span>Goal: <span className="text-[var(--primary)]">{planEx?.goal}</span></span>
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    <input type="text" placeholder={planEx?.unit === "sec" || planEx?.unit === "min" ? "duration" : "weight"}
-                      value={ex.weight} onChange={(e) => onUpdate(i, "weight", e.target.value)}
-                      className="w-20 bg-[var(--secondary)] border border-border px-2 py-1 text-xs font-mono text-foreground focus:border-[var(--primary)] focus:outline-none" />
-                    <input type="text" placeholder="reps" value={ex.reps}
-                      onChange={(e) => onUpdate(i, "reps", e.target.value)}
-                      className="w-16 bg-[var(--secondary)] border border-border px-2 py-1 text-xs font-mono text-foreground focus:border-[var(--primary)] focus:outline-none" />
-                  </div>
-                  <div className="text-[10px] text-[var(--muted-foreground)] mt-1 italic">{planEx?.notes}</div>
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
-      <div className="p-4 border-t border-[var(--primary)]/30">
+      {/* Sticky bottom save button */}
+      <div className="flex-shrink-0 p-4 border-t border-[var(--primary)]/30 bg-background">
         <button onClick={onSave}
-          className={`w-full py-3 font-mono text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+          className={`w-full py-4 font-mono text-sm font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
             allDone ? "bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
             : "bg-[var(--secondary)] text-[var(--muted-foreground)] hover:text-foreground"
           }`}>
-          <Save className="w-4 h-4" /> LOG WORKOUT
+          <Save className="w-4 h-4" /> LOG WORKOUT ({doneCount}/{exercises.length})
         </button>
       </div>
     </motion.div>
@@ -649,23 +694,12 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Active session or browse cards */}
-        {wl.activeSession ? (
-          <ActiveWorkoutPanel
-            dayId={wl.activeSession.dayId}
-            exercises={wl.activeSession.exercises}
-            onUpdate={wl.updateExercise}
-            onToggle={wl.toggleDone}
-            onSave={handleSave}
-            onCancel={wl.cancelSession}
-          />
-        ) : (
-          <div className="space-y-2">
-            {WORKOUT_PLAN.map((day) => (
-              <WorkoutCard key={day.id} day={day} onStart={wl.startSession} hasHitGoal={wl.hasHitGoal} getBestPerformance={wl.getBestPerformance} />
-            ))}
-          </div>
-        )}
+        {/* Browse cards (always visible) */}
+        <div className="space-y-2">
+          {WORKOUT_PLAN.map((day) => (
+            <WorkoutCard key={day.id} day={day} onStart={wl.startSession} hasHitGoal={wl.hasHitGoal} getBestPerformance={wl.getBestPerformance} />
+          ))}
+        </div>
 
         {/* Workout History */}
         <div className="mt-6">
@@ -691,6 +725,24 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Fullscreen Active Workout Overlay */}
+      <AnimatePresence>
+        {wl.activeSession && (
+          <ActiveWorkoutPanel
+            dayId={wl.activeSession.dayId}
+            exercises={wl.activeSession.exercises}
+            onUpdate={wl.updateExercise}
+            onToggle={wl.toggleDone}
+            onSave={handleSave}
+            onCancel={wl.cancelSession}
+            lastSession={(() => {
+              const prev = [...wl.sessions].reverse().find((s) => s.dayId === wl.activeSession!.dayId);
+              return prev || null;
+            })()}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Summary Modal */}
       <AnimatePresence>
