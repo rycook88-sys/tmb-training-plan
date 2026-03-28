@@ -11,6 +11,7 @@ import {
   Mountain, ChevronDown, ChevronUp, ExternalLink, Footprints,
   Target, ArrowDown, ArrowUp, Play, Calendar, Trophy, Save, X,
 } from "lucide-react";
+import TrainingAnalytics from "@/components/TrainingAnalytics";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/hero-tmb-ridge-TA9BE2JzZxaxi68um9vvG9.webp";
 const TOPO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/topo-texture-3ai3ccpyxv32r72SNbY3MU.webp";
@@ -657,6 +658,9 @@ export default function Home() {
           <WorkoutCalendar sessions={wl.sessions} />
         </div>
       </section>
+
+      {/* TRAINING ANALYTICS */}
+      <TrainingAnalytics />
 
       {/* TMB ITINERARY */}
       <ItinerarySection />
