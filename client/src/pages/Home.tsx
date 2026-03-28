@@ -6,14 +6,13 @@
  * Layout: Asymmetric dashboard, hard edges, no border-radius
  */
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ATHLETE,
   TMB_ITINERARY,
   WORKOUT_PLAN,
   FOOT_VIDEOS,
-  KEY_INSIGHTS,
   WEEKLY_BLOCKS,
   getDaysUntilTrip,
   getWeightProgress,
@@ -21,19 +20,13 @@ import {
 import type { ItineraryDay, WorkoutDay } from "@/lib/data";
 import {
   Mountain,
-  Weight,
   ChevronDown,
   ChevronUp,
   ExternalLink,
-  TrendingDown,
-  TrendingUp,
   Footprints,
-  AlertTriangle,
   Target,
-  Clock,
   ArrowDown,
   ArrowUp,
-  Minus,
   Play,
 } from "lucide-react";
 
@@ -474,23 +467,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ─── KEY INSIGHTS ─────────────────────────────── */}
-      <section className="container py-8">
-        <h2 className="text-xs uppercase tracking-[0.3em] text-[var(--muted-foreground)] font-mono mb-4 flex items-center gap-2">
-          <AlertTriangle className="w-3.5 h-3.5 text-[var(--primary)]" />
-          Mission-Critical Intel
-        </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {KEY_INSIGHTS.map((insight) => (
-            <div key={insight.category} className="border border-border bg-card p-4 hover:border-[var(--primary)]/30 transition-colors">
-              <div className="text-[10px] uppercase tracking-[0.3em] text-[var(--primary)] font-mono font-bold mb-2">
-                {insight.category}
-              </div>
-              <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">{insight.text}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* ─── WORKOUT PLAN ─────────────────────────────── */}
       <section className="container py-8">

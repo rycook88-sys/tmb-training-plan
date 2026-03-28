@@ -132,56 +132,17 @@ export const FOOT_VIDEOS = [
     title: "How to Correct HIGH ARCHES: 6 Exercises for Pes Cavus",
     channel: "Team Youphoric Health & Performance",
     url: "https://www.youtube.com/watch?v=Z-lTGrspHMc",
-    why: "Best overall video for your exact issue. 2 mobilization, 2 strengthening, 2 stretching exercises.",
-  },
-  {
-    title: "High Foot Arch — This 1 Trick Fixes It",
-    channel: "Zac Cupples (PT)",
-    url: "https://www.youtube.com/watch?v=9FHtSr-Am4c",
-    why: "Zac is a respected PT. Focuses on teaching the foot to flatten under load — exactly what you need for descents.",
-  },
-  {
-    title: "FIX High Arches & High Arch Feet [Supination & Pes Cavus]",
-    channel: "Michigan Foot Doctors",
-    url: "https://www.youtube.com/watch?v=dLWj0R_DaEA",
-    why: "Medical perspective on pes cavus. Covers orthotics, metatarsal pads, and when to seek professional help.",
+    why: "Your one-stop video. Covers mobilization, strengthening, and stretching for pes cavus — all 6 exercises in one routine.",
   },
   {
     title: "Fix High Arches & Supinated Feet FAST (in 30 Days)",
     channel: "Zac Cupples (PT)",
     url: "https://www.youtube.com/watch?v=wHTHJ1iXhew",
-    why: "3-exercise sequence for daily practice. Quick and actionable.",
-  },
-  {
-    title: "Transverse Arch SMFR Rollout",
-    channel: "Walking Well",
-    url: "https://www.youtube.com/watch?v=FOrtQZnzDpY",
-    why: "Specifically targets the transverse arch with sustained compression to widen the forefoot.",
+    why: "Quick 3-exercise daily sequence from a respected PT. Teaches the foot to flatten under load — exactly what you need for descents.",
   },
 ];
 
-export const KEY_INSIGHTS = [
-  {
-    category: "WEIGHTS",
-    text: "YES — progress toward goal weights in the table. Trap bar stays at 335 (maintain). All other lifts: push toward goals but never at the cost of form or recovery.",
-  },
-  {
-    category: "VYVANSE + EXERCISE",
-    text: "Vyvanse elevates resting HR 10–15 bpm and masks fatigue signals. Your RPE is unreliable — trust your heart rate monitor, not how you feel.",
-  },
-  {
-    category: "SEMAGLUTIDE + PROTEIN",
-    text: "GLP-1 medications accelerate muscle loss during caloric deficit. You MUST hit 180g+ protein daily. Non-negotiable. 2,500 cal minimum.",
-  },
-  {
-    category: "FOOT DIAGNOSIS",
-    text: "You have a HIGH/RIGID transverse arch (pes cavus pattern). The middle metatarsals are elevated — only big toe and pinky toe pads contact the ground. Fix: mobilize the transverse arch daily to let the middle metatarsals drop.",
-  },
-  {
-    category: "SLEEP = PERFORMANCE",
-    text: "Your stairmill data proves it: same machine, same level, 16 bpm difference based on sleep quality. Sleep is your #1 training variable.",
-  },
-];
+// KEY_INSIGHTS removed per user request
 
 export function getDaysUntilTrip(): number {
   const trip = new Date("2026-07-26T00:00:00");
