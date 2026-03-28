@@ -74,7 +74,7 @@ export const WORKOUT_PLAN: WorkoutDay[] = [
       { name: "Bulgarian Split Squat", sets: "3", reps: "10/leg", current: "50 lb DBs", goal: "60 lb DBs", goalValue: 60, unit: "lb", notes: "Rear foot elevated. Drive through heel." },
       { name: "Single-Leg RDL", sets: "3", reps: "10/leg", current: "40 lb DB", goal: "55 lb DB", goalValue: 55, unit: "lb", notes: "Hinge at hip. Feel the glute stretch.", videoUrl: "https://www.youtube.com/watch?v=Zfr6wizR8rs" },
       { name: "Trap Bar Deadlift", sets: "2", reps: "8", current: "335 lb", goal: "335 lb (maintain)", goalValue: 335, unit: "lb", notes: "Maintain lift. Slow eccentric, stop ½\" from ground. No bouncing." },
-      { name: "Calf Raise (Eccentric)", sets: "3", reps: "15", current: "BW", goal: "BW+25 lb", goalValue: 25, unit: "lb", notes: "2-sec up, 4-sec lowering. Full range." },
+      { name: "Standing Calf Raise Machine", sets: "2", reps: "15", current: "330 lb", goal: "370 lb", goalValue: 370, unit: "lb", notes: "2-sec raise, 4-sec eccentric lowering. Full ROM — stretch at bottom, squeeze at top." },
       { name: "Hip Adduction Machine", sets: "2", reps: "8", current: "220 lb", goal: "265 lb", goalValue: 265, unit: "lb", notes: "Adductor strength for uneven terrain. Full ROM, controlled eccentric." },
     ],
   },
