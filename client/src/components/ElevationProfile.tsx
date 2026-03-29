@@ -1,15 +1,14 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   AreaChart,
   Area,
   XAxis,
   YAxis,
   Tooltip,
-  ResponsiveContainer,
   ReferenceLine,
   ReferenceDot,
 } from "recharts";
-import { ChevronDown, Mountain, Home } from "lucide-react";
+import { ChevronDown, Mountain, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from "lucide-react";
 import profileRaw from "@/lib/tmb_elevation_profile.json";
 
 // ── types ──────────────────────────────────────────────────────────
@@ -53,6 +52,14 @@ const COUNTRY_COLORS: Record<string, string> = {
   switzerland: "#ef4444",
 };
 
+// ── zoom levels ────────────────────────────────────────────────────
+const ZOOM_LEVELS = [
+  { label: "1x", scale: 1 },
+  { label: "2x", scale: 2 },
+  { label: "3x", scale: 3 },
+  { label: "5x", scale: 5 },
+];
+
 // ── custom tooltip ─────────────────────────────────────────────────
 function CustomTooltip({ active, payload }: any) {
   if (!active || !payload?.[0]) return null;
@@ -93,11 +100,8 @@ function HotelDot(props: any) {
   if (!cx || !cy) return null;
   return (
     <g>
-      {/* Pin stem */}
       <line x1={cx} y1={cy} x2={cx} y2={cy - 18} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="2,2" />
-      {/* Circle bg */}
       <circle cx={cx} cy={cy - 24} r={10} fill="#1c1917" stroke="#f59e0b" strokeWidth={1.5} />
-      {/* House icon (simplified) */}
       <text x={cx} y={cy - 20} textAnchor="middle" fill="#f59e0b" fontSize={10}>⌂</text>
     </g>
   );
@@ -106,7 +110,11 @@ function HotelDot(props: any) {
 // ── main component ─────────────────────────────────────────────────
 export default function ElevationProfile() {
   const [open, setOpen] = useState(false);
-  const [hoveredStage, setHoveredStage] = useState<number | null>(null);
+  const [zoomIndex, setZoomIndex] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const zoom = ZOOM_LEVELS[zoomIndex];
+  const chartWidth = zoom.scale === 1 ? "100%" : `${zoom.scale * 100}%`;
 
   // Build gradient stops for the area fill based on stage/country
   const gradientStops = useMemo(() => {
@@ -129,13 +137,38 @@ export default function ElevationProfile() {
   const maxEle = Math.max(...data.profile.map((p) => p.elevation));
   const minEle = Math.min(...data.profile.map((p) => p.elevation));
 
+  // Scroll by a chunk when using arrow buttons
+  const scrollBy = (dir: "left" | "right") => {
+    if (!scrollRef.current) return;
+    const container = scrollRef.current;
+    const step = container.clientWidth * 0.6;
+    container.scrollBy({
+      left: dir === "right" ? step : -step,
+      behavior: "smooth",
+    });
+  };
+
+  // Reset scroll when zoom changes
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollLeft = 0;
+    }
+  }, [zoomIndex]);
+
+  const handleZoomIn = () => {
+    setZoomIndex((prev) => Math.min(prev + 1, ZOOM_LEVELS.length - 1));
+  };
+
+  const handleZoomOut = () => {
+    setZoomIndex((prev) => Math.max(prev - 1, 0));
+  };
+
   return (
     <section className="relative">
       {/* Header */}
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between px-6 py-5 bg-zinc-900/60 border border-zinc-800/50 hover:border-zinc-700/50 transition-all duration-300"
-        style={{ clipPath: open ? undefined : undefined }}
       >
         <div className="flex items-center gap-3">
           <Mountain className="w-5 h-5 text-amber-500" />
@@ -159,31 +192,97 @@ export default function ElevationProfile() {
       {/* Content */}
       {open && (
         <div className="border border-t-0 border-zinc-800/50 bg-zinc-950/80 px-4 py-6">
-          {/* Legend */}
-          <div className="flex items-center gap-6 mb-4 px-2">
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-1 rounded-full bg-[#e8913a]" />
-              <span className="text-[0.6rem] text-zinc-500 tracking-wider uppercase">France</span>
+          {/* Legend + Zoom Controls */}
+          <div className="flex items-center justify-between mb-4 px-2 flex-wrap gap-3">
+            {/* Legend */}
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-1 rounded-full bg-[#e8913a]" />
+                <span className="text-[0.6rem] text-zinc-500 tracking-wider uppercase">France</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-1 rounded-full bg-[#4ade80]" />
+                <span className="text-[0.6rem] text-zinc-500 tracking-wider uppercase">Italy</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-1 rounded-full bg-[#ef4444]" />
+                <span className="text-[0.6rem] text-zinc-500 tracking-wider uppercase">Switzerland</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-amber-500 text-xs">⌂</span>
+                <span className="text-[0.6rem] text-zinc-500 tracking-wider uppercase">Accommodation</span>
+              </div>
             </div>
+
+            {/* Zoom Controls */}
             <div className="flex items-center gap-1.5">
-              <div className="w-3 h-1 rounded-full bg-[#4ade80]" />
-              <span className="text-[0.6rem] text-zinc-500 tracking-wider uppercase">Italy</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-3 h-1 rounded-full bg-[#ef4444]" />
-              <span className="text-[0.6rem] text-zinc-500 tracking-wider uppercase">Switzerland</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-amber-500 text-xs">⌂</span>
-              <span className="text-[0.6rem] text-zinc-500 tracking-wider uppercase">Accommodation</span>
+              {/* Left arrow (only when zoomed) */}
+              {zoom.scale > 1 && (
+                <button
+                  onClick={() => scrollBy("left")}
+                  className="w-8 h-8 flex items-center justify-center rounded bg-zinc-800/80 border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors active:scale-95"
+                  title="Scroll left"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              )}
+
+              <button
+                onClick={handleZoomOut}
+                disabled={zoomIndex === 0}
+                className="w-8 h-8 flex items-center justify-center rounded bg-zinc-800/80 border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
+                title="Zoom out"
+              >
+                <ZoomOut className="w-4 h-4" />
+              </button>
+
+              <span
+                className="px-2 py-1 text-[0.65rem] font-mono text-amber-400 bg-zinc-800/60 rounded border border-zinc-700/30 min-w-[2.5rem] text-center"
+              >
+                {zoom.label}
+              </span>
+
+              <button
+                onClick={handleZoomIn}
+                disabled={zoomIndex === ZOOM_LEVELS.length - 1}
+                className="w-8 h-8 flex items-center justify-center rounded bg-zinc-800/80 border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
+                title="Zoom in"
+              >
+                <ZoomIn className="w-4 h-4" />
+              </button>
+
+              {/* Right arrow (only when zoomed) */}
+              {zoom.scale > 1 && (
+                <button
+                  onClick={() => scrollBy("right")}
+                  className="w-8 h-8 flex items-center justify-center rounded bg-zinc-800/80 border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors active:scale-95"
+                  title="Scroll right"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Chart */}
-          <div className="w-full" style={{ height: 320 }}>
-            <ResponsiveContainer width="100%" height="100%">
+          {/* Scrollable chart container */}
+          <div
+            ref={scrollRef}
+            className="w-full overflow-x-auto scrollbar-thin"
+            style={{
+              WebkitOverflowScrolling: "touch",
+              scrollbarWidth: "thin",
+              scrollbarColor: "#52525b #1c1917",
+            }}
+          >
+            <div style={{ width: chartWidth, minWidth: "100%", height: 320 }}>
               <AreaChart
                 data={data.profile}
+                width={
+                  zoom.scale === 1
+                    ? 800 // will be overridden by container
+                    : Math.max(800 * zoom.scale, 1600)
+                }
+                height={320}
                 margin={{ top: 30, right: 20, bottom: 20, left: 10 }}
               >
                 <defs>
@@ -276,8 +375,17 @@ export default function ElevationProfile() {
                   />
                 ))}
               </AreaChart>
-            </ResponsiveContainer>
+            </div>
           </div>
+
+          {/* Scroll hint when zoomed */}
+          {zoom.scale > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <span className="text-[0.6rem] text-zinc-600 tracking-wider uppercase font-mono">
+                ← Swipe or use arrows to scroll · {zoom.label} zoom →
+              </span>
+            </div>
+          )}
 
           {/* Accommodation strip below chart */}
           <div className="mt-4 grid grid-cols-11 gap-1 px-2">
