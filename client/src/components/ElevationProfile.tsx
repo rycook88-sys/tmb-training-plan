@@ -168,8 +168,8 @@ function HotelDot({ cx, cy, accom }: { cx?: number; cy?: number; accom: typeof d
   const isFinish = accom.day === 12;
   const label = isFinish ? "\u{1F3C1}" : isCableCar ? "\u{1F6A1}" : `D${accom.day}`;
   const name = accom.name;
-  const strokeColor = isFinish ? "#10B981" : isCableCar ? "#8B5CF6" : "#f59e0b";
-  const fillColor = isFinish ? "#10B981" : isCableCar ? "#8B5CF6" : "#f59e0b";
+  const strokeColor = isFinish ? "#10B981" : "#8B5CF6";
+  const fillColor = isFinish ? "#10B981" : "#8B5CF6";
   return (
     <g>
       <line x1={cx} y1={cy} x2={cx} y2={cy - 22} stroke={strokeColor} strokeWidth={1.5} strokeDasharray="2,2" />
@@ -203,7 +203,7 @@ function CountryLegend() {
         <span className="text-[0.6rem] text-zinc-500 tracking-wider uppercase">Switzerland</span>
       </div>
       <div className="flex items-center gap-1.5">
-        <span className="text-amber-500 text-xs">⌂</span>
+        <span className="text-violet-500 text-xs">⌂</span>
         <span className="text-[0.6rem] text-zinc-500 tracking-wider uppercase">Accommodation</span>
       </div>
     </div>
@@ -702,14 +702,14 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
                   onMouseEnter={() => onDayHover?.(a.day)}
                   onMouseLeave={() => onDayHover?.(null)}
                   className={`flex flex-col items-center text-center group cursor-pointer hover:bg-zinc-800/40 rounded-lg px-2 py-1.5 transition-colors ${
-                    highlightDay === a.day ? "bg-zinc-800/60 ring-1 ring-amber-500/40" : ""
+                    highlightDay === a.day ? "bg-zinc-800/60 ring-1 ring-violet-500/40" : ""
                   }`}
                 >
                   <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center font-bold mb-1 border transition-colors group-hover:border-amber-500 group-hover:text-amber-400"
+                    className="w-6 h-6 rounded-full flex items-center justify-center font-bold mb-1 border transition-colors group-hover:border-violet-400 group-hover:text-violet-300"
                     style={{
-                      borderColor: highlightDay === a.day ? "#f59e0b" : a.day === 12 ? "#10B981" : a.day === 11 ? "#8B5CF6" : a.day === 1 ? "#f59e0b" : "#52525b",
-                      color: highlightDay === a.day ? "#f59e0b" : a.day === 12 ? "#10B981" : a.day === 11 ? "#8B5CF6" : a.day === 1 ? "#f59e0b" : "#a1a1aa",
+                      borderColor: highlightDay === a.day ? "#C4B5FD" : a.day === 12 ? "#10B981" : "#8B5CF6",
+                      color: highlightDay === a.day ? "#C4B5FD" : a.day === 12 ? "#10B981" : "#8B5CF6",
                       background: "#1c1917",
                       fontSize: a.day >= 11 ? "0.7rem" : "0.55rem",
                     }}
