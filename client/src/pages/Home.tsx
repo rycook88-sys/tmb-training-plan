@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import TrainingAnalytics from "@/components/TrainingAnalytics";
 import { TMBRouteMap } from "@/components/TMBRouteMap";
+import ElevationProfile from "@/components/ElevationProfile";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/hero-tmb-ridge-TA9BE2JzZxaxi68um9vvG9.webp";
 const TOPO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/topo-texture-3ai3ccpyxv32r72SNbY3MU.webp";
@@ -716,6 +717,9 @@ export default function Home() {
 
       {/* TMB ROUTE MAP */}
       <TMBRouteMap />
+
+      {/* ELEVATION PROFILE */}
+      <ElevationProfile />
 
       {/* FOOT MOBILITY (Collapsible) */}
       <FootMobilitySection />
