@@ -94,10 +94,26 @@ export function useWorkoutLog() {
 
   const toggleDone = (index: number) => {
     if (!activeSession) return;
+    const day = WORKOUT_PLAN.find((d) => d.id === activeSession.dayId);
+    const isPickOne = day?.pickOne === true;
     setActiveSession((prev) => {
       if (!prev) return prev;
       const updated = [...prev.exercises];
-      updated[index] = { ...updated[index], done: !updated[index].done };
+      if (isPickOne) {
+        // Radio behavior: toggling one off just toggles it, toggling one on deselects others
+        const wasOn = updated[index].done;
+        if (!wasOn) {
+          // Turn all off, then turn this one on
+          for (let j = 0; j < updated.length; j++) {
+            updated[j] = { ...updated[j], done: j === index };
+          }
+        } else {
+          // Just toggle off
+          updated[index] = { ...updated[index], done: false };
+        }
+      } else {
+        updated[index] = { ...updated[index], done: !updated[index].done };
+      }
       return { ...prev, exercises: updated };
     });
   };

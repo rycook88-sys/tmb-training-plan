@@ -137,9 +137,12 @@ function ActiveWorkoutPanel({ dayId, exercises, onUpdate, onToggle, onSave, onCa
 }) {
   const day = WORKOUT_PLAN.find((d) => d.id === dayId);
   if (!day) return null;
-  const allDone = exercises.every((e) => e.done);
+  const isPickOne = day.pickOne === true;
   const doneCount = exercises.filter((e) => e.done).length;
-  const progressPct = Math.round((doneCount / exercises.length) * 100);
+  const allDone = isPickOne ? doneCount >= 1 : exercises.every((e) => e.done);
+  const progressPct = isPickOne
+    ? (doneCount >= 1 ? 100 : 0)
+    : Math.round((doneCount / exercises.length) * 100);
 
   // Compare current input to last session's value for beat-last-session indicator
   const getBeatIndicator = (ex: ExerciseLog, planUnit?: string) => {
@@ -173,7 +176,7 @@ function ActiveWorkoutPanel({ dayId, exercises, onUpdate, onToggle, onSave, onCa
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="font-mono text-xs text-[var(--muted-foreground)]">{doneCount}/{exercises.length}</span>
+          <span className="font-mono text-xs text-[var(--muted-foreground)]">{isPickOne ? (doneCount >= 1 ? "\u2713" : "Pick 1") : `${doneCount}/${exercises.length}`}</span>
           <button onClick={onCancel} className="text-[var(--muted-foreground)] hover:text-foreground p-1"><X className="w-5 h-5" /></button>
         </div>
       </div>
@@ -185,6 +188,12 @@ function ActiveWorkoutPanel({ dayId, exercises, onUpdate, onToggle, onSave, onCa
 
       {/* Scrollable exercise list */}
       <div className="flex-1 overflow-y-auto">
+        {isPickOne && (
+          <div className="px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex items-center gap-2">
+            <span className="text-amber-400 text-sm">◉</span>
+            <span className="text-xs font-mono text-amber-400/80 uppercase tracking-wider">Pick one activity — any choice counts as complete</span>
+          </div>
+        )}
         <div className="divide-y divide-border">
           {exercises.map((ex, i) => {
             const planEx = day.exercises[i];
@@ -199,6 +208,8 @@ function ActiveWorkoutPanel({ dayId, exercises, onUpdate, onToggle, onSave, onCa
                 <div className="flex items-start gap-3">
                   <button onClick={() => onToggle(i)}
                     className={`mt-0.5 w-8 h-8 border flex-shrink-0 flex items-center justify-center transition-all ${
+                      isPickOne ? "rounded-full" : ""
+                    } ${
                       ex.done ? (goalHit ? "bg-amber-500 border-amber-500" : "bg-[var(--primary)] border-[var(--primary)]")
                       : "border-border hover:border-[var(--primary)]"
                     }`}>
@@ -252,7 +263,7 @@ function ActiveWorkoutPanel({ dayId, exercises, onUpdate, onToggle, onSave, onCa
             allDone ? "bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90"
             : "bg-[var(--secondary)] text-[var(--muted-foreground)] hover:text-foreground"
           }`}>
-          <Save className="w-4 h-4" /> LOG WORKOUT ({doneCount}/{exercises.length})
+          <Save className="w-4 h-4" /> LOG WORKOUT {isPickOne ? (doneCount >= 1 ? "\u2713" : "(Pick 1)") : `(${doneCount}/${exercises.length})`}
         </button>
       </div>
     </motion.div>
@@ -275,7 +286,7 @@ function WorkoutCard({ day, onStart, hasHitGoal, getBestPerformance }: {
           <span className="text-xl">{day.icon}</span>
           <div>
             <div className="font-mono text-sm font-bold text-foreground tracking-wider">{day.title}</div>
-            <div className="text-xs text-[var(--muted-foreground)] tracking-wide">{day.subtitle}</div>
+            <div className="text-xs text-[var(--muted-foreground)] tracking-wide">{day.subtitle}{day.pickOne && <span className="ml-2 text-[10px] text-amber-400/80 font-mono">(pick one)</span>}</div>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -296,6 +307,8 @@ function WorkoutCard({ day, onStart, hasHitGoal, getBestPerformance }: {
                 return (
                   <div key={ex.name} className="flex items-start gap-3 p-4 border-b border-border last:border-b-0">
                     <div className={`mt-0.5 w-5 h-5 border flex-shrink-0 flex items-center justify-center ${
+                      day.pickOne ? "rounded-full" : ""
+                    } ${
                       goalMet ? "bg-amber-500 border-amber-500" : "border-border"
                     }`}>
                       {goalMet && <span className="text-[10px] font-bold text-black">★</span>}
@@ -428,11 +441,15 @@ function WorkoutCalendar({ sessions, onDelete }: { sessions: WorkoutSession[]; o
                             <span>{ex.weight || "BW"} {ex.reps ? `× ${ex.reps}` : ""}</span>
                           </div>
                         ))}
-                        {s.exercises.filter((e) => !e.done).length > 0 && (
-                          <div className="text-[10px] text-red-400/70 mt-1">
-                            Skipped: {s.exercises.filter((e) => !e.done).map((e) => e.name).join(", ")}
-                          </div>
-                        )}
+                        {s.exercises.filter((e) => !e.done).length > 0 && (() => {
+                          const dayDef = WORKOUT_PLAN.find((d) => d.id === s.dayId);
+                          if (dayDef?.pickOne) return null; // Don't show skipped for pick-one days
+                          return (
+                            <div className="text-[10px] text-red-400/70 mt-1">
+                              Skipped: {s.exercises.filter((e) => !e.done).map((e) => e.name).join(", ")}
+                            </div>
+                          );
+                        })()}
                       </div>
                     ))}
                   </motion.div>

@@ -62,6 +62,7 @@ export interface WorkoutDay {
   subtitle: string;
   icon: string;
   exercises: Exercise[];
+  pickOne?: boolean; // If true, completing ANY one exercise counts as 100% done
 }
 
 export const WORKOUT_PLAN: WorkoutDay[] = [
@@ -100,9 +101,11 @@ export const WORKOUT_PLAN: WorkoutDay[] = [
     icon: "🫀",
     exercises: [
       { name: "StairMill (Level 4)", sets: "1", reps: "60 min", current: "60 min @ HR<150", goal: "90 min @ HR<145", goalValue: 90, unit: "min", notes: "Zone 2. If HR drifts, drop to Level 3." },
-      { name: "Loaded Pack Walk", sets: "1", reps: "30–45 min", current: "6–8 lb", goal: "15 lb pack", goalValue: 15, unit: "lb", notes: "Add to stairmill or outdoor hike days." },
+      { name: "Outdoor Hike", sets: "1", reps: "2\u20134 hrs", current: "Hitchcock / local trails", goal: "3+ hrs w/ 15 lb pack", goalValue: 180, unit: "min", notes: "Best TMB-specific cardio. Hills > flat. Log time and elevation if possible." },
+      { name: "Loaded Pack Walk", sets: "1", reps: "30\u201345 min", current: "6\u20138 lb", goal: "15 lb pack", goalValue: 15, unit: "lb", notes: "Add to stairmill or outdoor hike days." },
       { name: "Incline Treadmill Walk", sets: "1", reps: "20 min", current: "15% grade", goal: "15% @ 3.5 mph", goalValue: 3.5, unit: "mph", notes: "Alternate with stairmill. Hip hinge practice." },
     ],
+    pickOne: true,
   },
   {
     id: "day-d",
