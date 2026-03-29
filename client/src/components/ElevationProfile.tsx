@@ -53,7 +53,7 @@ const STEEPNESS_SCALE = [
   { min: 300,  max: 600,      color: "#facc15" },  // yellow — moderate
   { min: 600,  max: 900,      color: "#fb923c" },  // orange — steep
   { min: 900,  max: 1200,     color: "#ef4444" },  // red — hard
-  { min: 1200, max: Infinity,  color: "#d946ef" },  // fuchsia — extreme
+  { min: 1200, max: Infinity,  color: "#f0f0f0" },  // white-hot — extreme
 ];
 const STEEPNESS_THRESHOLDS = [0, 300, 600, 900, 1200];
 
