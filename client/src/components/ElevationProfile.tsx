@@ -162,16 +162,9 @@ function SmartTooltip({ active, payload, coordinate, viewBox, mode }: any) {
 }
 
 // ── hotel marker on chart ──────────────────────────────────────────
-function HotelDot(props: any) {
-  const { cx, cy, payload } = props;
+function HotelDot({ cx, cy, accom, accomIdx }: { cx?: number; cy?: number; accom: typeof data.accommodations[0]; accomIdx: number }) {
   if (!cx || !cy) return null;
-  // Find the accommodation for this point
-  const accom = data.accommodations.find(
-    (a) => Math.abs(a.dist - (payload?.dist ?? -999)) < 0.3 && Math.abs(a.ele - (payload?.ele ?? -999)) < 50
-  );
-  if (!accom) return null;
-  const idx = data.accommodations.indexOf(accom);
-  const label = idx === 0 ? "▶" : idx === data.accommodations.length - 1 ? "⏹" : `D${idx}`;
+  const label = accomIdx === 0 ? "▶" : accomIdx === data.accommodations.length - 1 ? "⏹" : `D${accomIdx}`;
   const name = accom.name;
   return (
     <g>
@@ -182,7 +175,7 @@ function HotelDot(props: any) {
       </text>
       {/* Bubble with identifier */}
       <circle cx={cx} cy={cy - 26} r={11} fill="#1c1917" stroke="#f59e0b" strokeWidth={1.5} />
-      <text x={cx} y={cy - 22.5} textAnchor="middle" fill="#f59e0b" fontSize={idx === 0 || idx === data.accommodations.length - 1 ? 9 : 8} fontFamily="'JetBrains Mono', monospace" fontWeight="bold">
+      <text x={cx} y={cy - 22.5} textAnchor="middle" fill="#f59e0b" fontSize={accomIdx === 0 || accomIdx === data.accommodations.length - 1 ? 9 : 8} fontFamily="'JetBrains Mono', monospace" fontWeight="bold">
         {label}
       </text>
     </g>
@@ -661,14 +654,17 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
                 />
 
                 {/* Hotel markers */}
-                {visibleAccoms.map((a, i) => (
-                  <ReferenceDot
-                    key={`hotel-${i}`}
-                    x={a.dist}
-                    y={a.ele}
-                    shape={<HotelDot />}
-                  />
-                ))}
+                {visibleAccoms.map((a) => {
+                  const accomIdx = data.accommodations.indexOf(a);
+                  return (
+                    <ReferenceDot
+                      key={`hotel-${accomIdx}`}
+                      x={a.dist}
+                      y={a.ele}
+                      shape={<HotelDot accom={a} accomIdx={accomIdx} />}
+                    />
+                  );
+                })}
               </AreaChart>
             </ResponsiveContainer>
           </div>
