@@ -1,4 +1,7 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+// TMB Elevation Profile — stitched from real GPX data
+// Button-only horizontal scroll (no touch scroll to preserve tooltip)
+// Country-colored segments, accommodation markers at stage endpoints
+import { useState, useMemo, useRef, useCallback } from "react";
 import {
   AreaChart,
   Area,
@@ -7,44 +10,35 @@ import {
   Tooltip,
   ReferenceLine,
   ReferenceDot,
+  ResponsiveContainer,
 } from "recharts";
 import { ChevronDown, Mountain, ZoomIn, ZoomOut, ChevronLeft, ChevronRight } from "lucide-react";
 import profileRaw from "@/lib/tmb_elevation_profile.json";
 
 // ── types ──────────────────────────────────────────────────────────
 interface ProfilePoint {
-  distance: number;
-  elevation: number;
+  dist: number;
+  ele: number;
+  country: string;
+  day: number;
   stage: number;
 }
-interface Boundary {
-  distance: number;
-  label: string;
-  day: string;
-  elevation_ft: number;
+interface AccommodationMarker {
+  name: string;
+  dist: number;
+  ele: number;
+  day: number;
+  lat: number;
+  lon: number;
 }
 interface ProfileData {
-  profile: ProfilePoint[];
-  boundaries: Boundary[];
-  total_distance_miles: number;
-  point_count: number;
+  points: ProfilePoint[];
+  accommodations: AccommodationMarker[];
+  totalDistance: number;
+  peakElevation: number;
 }
 
-const data = profileRaw as ProfileData;
-
-// ── stage colors (match the map country colors) ────────────────────
-const STAGE_COUNTRIES: Record<number, string> = {
-  1: "france",
-  2: "france",
-  3: "italy",
-  4: "italy",
-  5: "italy",
-  6: "italy",
-  7: "switzerland",
-  8: "switzerland",
-  9: "france",
-  10: "france",
-};
+const data = profileRaw as unknown as ProfileData;
 
 const COUNTRY_COLORS: Record<string, string> = {
   france: "#e8913a",
@@ -64,30 +58,30 @@ const ZOOM_LEVELS = [
 function CustomTooltip({ active, payload }: any) {
   if (!active || !payload?.[0]) return null;
   const d = payload[0].payload as ProfilePoint;
-  const country = STAGE_COUNTRIES[d.stage] || "france";
-  const boundary = data.boundaries.find(
-    (b) => Math.abs(b.distance - d.distance) < 0.5
+  const color = COUNTRY_COLORS[d.country] || "#e8913a";
+  const accom = data.accommodations.find(
+    (a) => Math.abs(a.dist - d.dist) < 0.5
   );
   return (
-    <div className="bg-zinc-900/95 border border-zinc-700 rounded-lg px-3 py-2 text-xs shadow-xl">
+    <div className="bg-zinc-900/95 border border-zinc-700 rounded-lg px-3 py-2 text-xs shadow-xl pointer-events-none">
       <div className="flex items-center gap-2 mb-1">
         <div
           className="w-2 h-2 rounded-full"
-          style={{ background: COUNTRY_COLORS[country] }}
+          style={{ background: color }}
         />
         <span className="text-zinc-400 uppercase tracking-wider" style={{ fontSize: "0.65rem" }}>
-          Day {d.stage} · {country}
+          Day {d.day} · {d.country}
         </span>
       </div>
       <div className="text-white font-mono text-sm">
-        {d.elevation.toLocaleString()} ft
+        {d.ele.toLocaleString()} ft
       </div>
       <div className="text-zinc-500 font-mono" style={{ fontSize: "0.65rem" }}>
-        Mile {d.distance.toFixed(1)}
+        Mile {d.dist.toFixed(1)}
       </div>
-      {boundary && (
+      {accom && (
         <div className="mt-1 pt-1 border-t border-zinc-700 text-amber-400" style={{ fontSize: "0.65rem" }}>
-          🏠 {boundary.label}
+          🏠 {accom.name}
         </div>
       )}
     </div>
@@ -111,57 +105,92 @@ function HotelDot(props: any) {
 export default function ElevationProfile() {
   const [open, setOpen] = useState(false);
   const [zoomIndex, setZoomIndex] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  // Track the visible window start distance (in miles)
+  const [windowStart, setWindowStart] = useState(0);
 
   const zoom = ZOOM_LEVELS[zoomIndex];
-  const chartWidth = zoom.scale === 1 ? "100%" : `${zoom.scale * 100}%`;
+  const totalDist = data.totalDistance;
 
-  // Build gradient stops for the area fill based on stage/country
+  // How many miles are visible at the current zoom
+  const windowSize = totalDist / zoom.scale;
+
+  // Clamp windowStart to valid range
+  const clampedStart = Math.max(0, Math.min(windowStart, totalDist - windowSize));
+
+  // Filter points to the visible window
+  const visiblePoints = useMemo(() => {
+    const end = clampedStart + windowSize;
+    return data.points.filter((p) => p.dist >= clampedStart - 1 && p.dist <= end + 1);
+  }, [clampedStart, windowSize]);
+
+  // Visible accommodations
+  const visibleAccoms = useMemo(() => {
+    const end = clampedStart + windowSize;
+    return data.accommodations.filter((a) => a.dist >= clampedStart - 1 && a.dist <= end + 1);
+  }, [clampedStart, windowSize]);
+
+  // Day boundary lines (where one day ends and next begins)
+  const dayBoundaries = useMemo(() => {
+    const end = clampedStart + windowSize;
+    return data.accommodations
+      .filter((a) => a.dist > clampedStart && a.dist < end && a.day < 10);
+  }, [clampedStart, windowSize]);
+
+  // Build gradient stops for the area fill based on country
   const gradientStops = useMemo(() => {
-    if (!data.profile.length) return [];
-    const totalDist = data.total_distance_miles;
+    if (!visiblePoints.length) return [];
+    const minDist = visiblePoints[0].dist;
+    const maxDist = visiblePoints[visiblePoints.length - 1].dist;
+    const range = maxDist - minDist || 1;
     const stops: { offset: string; color: string }[] = [];
     let prevCountry = "";
-    for (const p of data.profile) {
-      const country = STAGE_COUNTRIES[p.stage] || "france";
-      if (country !== prevCountry) {
-        const offset = `${((p.distance / totalDist) * 100).toFixed(1)}%`;
-        stops.push({ offset, color: COUNTRY_COLORS[country] });
-        prevCountry = country;
+    for (const p of visiblePoints) {
+      if (p.country !== prevCountry) {
+        const offset = `${(((p.dist - minDist) / range) * 100).toFixed(1)}%`;
+        stops.push({ offset, color: COUNTRY_COLORS[p.country] || "#e8913a" });
+        prevCountry = p.country;
       }
     }
     return stops;
-  }, []);
+  }, [visiblePoints]);
 
   // Stats
-  const maxEle = Math.max(...data.profile.map((p) => p.elevation));
-  const minEle = Math.min(...data.profile.map((p) => p.elevation));
+  const maxEle = data.peakElevation;
+  const minEle = Math.min(...data.points.map((p) => p.ele));
 
-  // Scroll by a chunk when using arrow buttons
-  const scrollBy = (dir: "left" | "right") => {
-    if (!scrollRef.current) return;
-    const container = scrollRef.current;
-    const step = container.clientWidth * 0.6;
-    container.scrollBy({
-      left: dir === "right" ? step : -step,
-      behavior: "smooth",
+  // Scroll by a percentage of the visible window
+  const scrollBy = useCallback((dir: "left" | "right") => {
+    const step = windowSize * 0.5;
+    setWindowStart((prev) => {
+      const next = dir === "right" ? prev + step : prev - step;
+      return Math.max(0, Math.min(next, totalDist - windowSize));
+    });
+  }, [windowSize, totalDist]);
+
+  const handleZoomIn = () => {
+    setZoomIndex((prev) => {
+      const next = Math.min(prev + 1, ZOOM_LEVELS.length - 1);
+      // Center the new window on the current center
+      const currentCenter = clampedStart + windowSize / 2;
+      const newWindowSize = totalDist / ZOOM_LEVELS[next].scale;
+      setWindowStart(Math.max(0, Math.min(currentCenter - newWindowSize / 2, totalDist - newWindowSize)));
+      return next;
     });
   };
 
-  // Reset scroll when zoom changes
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollLeft = 0;
-    }
-  }, [zoomIndex]);
-
-  const handleZoomIn = () => {
-    setZoomIndex((prev) => Math.min(prev + 1, ZOOM_LEVELS.length - 1));
-  };
-
   const handleZoomOut = () => {
-    setZoomIndex((prev) => Math.max(prev - 1, 0));
+    setZoomIndex((prev) => {
+      const next = Math.max(prev - 1, 0);
+      const currentCenter = clampedStart + windowSize / 2;
+      const newWindowSize = totalDist / ZOOM_LEVELS[next].scale;
+      setWindowStart(Math.max(0, Math.min(currentCenter - newWindowSize / 2, totalDist - newWindowSize)));
+      return next;
+    });
   };
+
+  // Position indicator for zoomed view
+  const positionPct = totalDist > 0 ? (clampedStart / totalDist) * 100 : 0;
+  const windowPct = totalDist > 0 ? (windowSize / totalDist) * 100 : 100;
 
   return (
     <section className="relative">
@@ -180,7 +209,7 @@ export default function ElevationProfile() {
               Elevation Profile
             </h2>
             <p className="text-[0.65rem] text-zinc-500 tracking-wider uppercase mt-0.5">
-              {data.total_distance_miles} MILES · {maxEle.toLocaleString()} FT PEAK · 10 STAGES
+              {data.totalDistance} MILES · {maxEle.toLocaleString()} FT PEAK · 10 STAGES
             </p>
           </div>
         </div>
@@ -214,18 +243,16 @@ export default function ElevationProfile() {
               </div>
             </div>
 
-            {/* Zoom Controls */}
+            {/* Zoom + Nav Controls */}
             <div className="flex items-center gap-1.5">
-              {/* Left arrow (only when zoomed) */}
-              {zoom.scale > 1 && (
-                <button
-                  onClick={() => scrollBy("left")}
-                  className="w-8 h-8 flex items-center justify-center rounded bg-zinc-800/80 border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors active:scale-95"
-                  title="Scroll left"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-              )}
+              <button
+                onClick={() => scrollBy("left")}
+                disabled={clampedStart <= 0}
+                className="w-8 h-8 flex items-center justify-center rounded bg-zinc-800/80 border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
+                title="Scroll left"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
 
               <button
                 onClick={handleZoomOut}
@@ -251,42 +278,57 @@ export default function ElevationProfile() {
                 <ZoomIn className="w-4 h-4" />
               </button>
 
-              {/* Right arrow (only when zoomed) */}
-              {zoom.scale > 1 && (
-                <button
-                  onClick={() => scrollBy("right")}
-                  className="w-8 h-8 flex items-center justify-center rounded bg-zinc-800/80 border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors active:scale-95"
-                  title="Scroll right"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              )}
+              <button
+                onClick={() => scrollBy("right")}
+                disabled={clampedStart + windowSize >= totalDist}
+                className="w-8 h-8 flex items-center justify-center rounded bg-zinc-800/80 border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
+                title="Scroll right"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
-          {/* Scrollable chart container */}
-          <div
-            ref={scrollRef}
-            className="w-full overflow-x-auto scrollbar-thin"
-            style={{
-              WebkitOverflowScrolling: "touch",
-              scrollbarWidth: "thin",
-              scrollbarColor: "#52525b #1c1917",
-            }}
-          >
-            <div style={{ width: chartWidth, minWidth: "100%", height: 320 }}>
+          {/* Position indicator bar (when zoomed) */}
+          {zoom.scale > 1 && (
+            <div className="mx-2 mb-3">
+              <div className="h-1.5 bg-zinc-800 rounded-full relative overflow-hidden">
+                <div
+                  className="absolute top-0 h-full bg-amber-500/60 rounded-full transition-all duration-300"
+                  style={{
+                    left: `${positionPct}%`,
+                    width: `${windowPct}%`,
+                  }}
+                />
+                {/* Day markers on the position bar */}
+                {data.accommodations.map((a, i) => (
+                  <div
+                    key={i}
+                    className="absolute top-0 h-full w-px bg-zinc-600"
+                    style={{ left: `${(a.dist / totalDist) * 100}%` }}
+                  />
+                ))}
+              </div>
+              <div className="flex justify-between mt-1">
+                <span className="text-[0.55rem] font-mono text-zinc-600">
+                  Mile {clampedStart.toFixed(0)}
+                </span>
+                <span className="text-[0.55rem] font-mono text-zinc-600">
+                  Mile {Math.min(clampedStart + windowSize, totalDist).toFixed(0)}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Chart */}
+          <div style={{ width: "100%", height: 320 }}>
+            <ResponsiveContainer width="100%" height={320}>
               <AreaChart
-                data={data.profile}
-                width={
-                  zoom.scale === 1
-                    ? 800 // will be overridden by container
-                    : Math.max(800 * zoom.scale, 1600)
-                }
-                height={320}
+                data={visiblePoints}
                 margin={{ top: 30, right: 20, bottom: 20, left: 10 }}
               >
                 <defs>
-                  <linearGradient id="eleGradient" x1="0" y1="0" x2="1" y2="0">
+                  <linearGradient id="eleGradientV2" x1="0" y1="0" x2="1" y2="0">
                     {gradientStops.map((stop, i) => (
                       <stop
                         key={i}
@@ -296,7 +338,7 @@ export default function ElevationProfile() {
                       />
                     ))}
                   </linearGradient>
-                  <linearGradient id="eleStroke" x1="0" y1="0" x2="1" y2="0">
+                  <linearGradient id="eleStrokeV2" x1="0" y1="0" x2="1" y2="0">
                     {gradientStops.map((stop, i) => (
                       <stop
                         key={i}
@@ -308,9 +350,9 @@ export default function ElevationProfile() {
                   </linearGradient>
                 </defs>
                 <XAxis
-                  dataKey="distance"
+                  dataKey="dist"
                   type="number"
-                  domain={[0, "dataMax"]}
+                  domain={[clampedStart, clampedStart + windowSize]}
                   tickFormatter={(v: number) => `${v.toFixed(0)}`}
                   tick={{ fill: "#71717a", fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
                   axisLine={{ stroke: "#3f3f46" }}
@@ -342,11 +384,11 @@ export default function ElevationProfile() {
                 />
                 <Tooltip content={<CustomTooltip />} />
 
-                {/* Stage boundary lines */}
-                {data.boundaries.slice(1, -1).map((b, i) => (
+                {/* Day boundary lines */}
+                {dayBoundaries.map((b, i) => (
                   <ReferenceLine
                     key={i}
-                    x={b.distance}
+                    x={b.dist}
                     stroke="#3f3f46"
                     strokeDasharray="3 3"
                     strokeWidth={0.5}
@@ -356,68 +398,67 @@ export default function ElevationProfile() {
                 {/* Area fill */}
                 <Area
                   type="monotone"
-                  dataKey="elevation"
-                  stroke="url(#eleStroke)"
+                  dataKey="ele"
+                  stroke="url(#eleStrokeV2)"
                   strokeWidth={2}
-                  fill="url(#eleGradient)"
+                  fill="url(#eleGradientV2)"
                   fillOpacity={0.3}
                   dot={false}
                   activeDot={{ r: 4, fill: "#f59e0b", stroke: "#1c1917", strokeWidth: 2 }}
+                  isAnimationActive={false}
                 />
 
-                {/* Hotel markers as reference dots */}
-                {data.boundaries.map((b, i) => (
+                {/* Hotel markers */}
+                {visibleAccoms.map((a, i) => (
                   <ReferenceDot
                     key={`hotel-${i}`}
-                    x={b.distance}
-                    y={b.elevation_ft}
+                    x={a.dist}
+                    y={a.ele}
                     shape={<HotelDot />}
                   />
                 ))}
               </AreaChart>
-            </div>
+            </ResponsiveContainer>
           </div>
 
-          {/* Scroll hint when zoomed */}
-          {zoom.scale > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <span className="text-[0.6rem] text-zinc-600 tracking-wider uppercase font-mono">
-                ← Swipe or use arrows to scroll · {zoom.label} zoom →
-              </span>
-            </div>
-          )}
-
           {/* Accommodation strip below chart */}
-          <div className="mt-4 grid grid-cols-11 gap-1 px-2">
-            {data.boundaries.map((b, i) => (
-              <div
-                key={i}
-                className="flex flex-col items-center text-center group cursor-default"
-              >
-                <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-[0.55rem] font-bold mb-1 border transition-colors"
-                  style={{
-                    borderColor: i === 0 || i === data.boundaries.length - 1 ? "#f59e0b" : "#52525b",
-                    color: i === 0 || i === data.boundaries.length - 1 ? "#f59e0b" : "#a1a1aa",
-                    background: "#1c1917",
+          <div className="mt-4 overflow-x-auto">
+            <div className="flex gap-2 px-2 min-w-max">
+              {data.accommodations.map((a, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    // Jump to this accommodation in the chart
+                    const newStart = Math.max(0, a.dist - windowSize / 2);
+                    setWindowStart(Math.min(newStart, totalDist - windowSize));
                   }}
+                  className="flex flex-col items-center text-center group cursor-pointer hover:bg-zinc-800/40 rounded-lg px-2 py-1.5 transition-colors"
                 >
-                  {i === 0 ? "▶" : i === data.boundaries.length - 1 ? "⏹" : i}
-                </div>
-                <span
-                  className="text-zinc-500 group-hover:text-zinc-300 transition-colors leading-tight"
-                  style={{ fontSize: "0.5rem", fontFamily: "'JetBrains Mono', monospace" }}
-                >
-                  {b.elevation_ft.toLocaleString()}'
-                </span>
-                <span
-                  className="text-zinc-600 leading-tight mt-0.5 hidden sm:block"
-                  style={{ fontSize: "0.45rem" }}
-                >
-                  {b.label.length > 14 ? b.label.slice(0, 12) + "…" : b.label}
-                </span>
-              </div>
-            ))}
+                  <div
+                    className="w-6 h-6 rounded-full flex items-center justify-center text-[0.55rem] font-bold mb-1 border transition-colors group-hover:border-amber-500 group-hover:text-amber-400"
+                    style={{
+                      borderColor: i === 0 || i === data.accommodations.length - 1 ? "#f59e0b" : "#52525b",
+                      color: i === 0 || i === data.accommodations.length - 1 ? "#f59e0b" : "#a1a1aa",
+                      background: "#1c1917",
+                    }}
+                  >
+                    {i === 0 ? "▶" : i === data.accommodations.length - 1 ? "⏹" : `D${i}`}
+                  </div>
+                  <span
+                    className="text-zinc-500 group-hover:text-zinc-300 transition-colors leading-tight whitespace-nowrap"
+                    style={{ fontSize: "0.5rem", fontFamily: "'JetBrains Mono', monospace" }}
+                  >
+                    {a.ele.toLocaleString()}'
+                  </span>
+                  <span
+                    className="text-zinc-600 leading-tight mt-0.5 whitespace-nowrap"
+                    style={{ fontSize: "0.45rem" }}
+                  >
+                    {a.name.length > 18 ? a.name.slice(0, 16) + "…" : a.name}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
