@@ -96,6 +96,9 @@ const ZOOM_LEVELS = [
   { label: "2x", scale: 2 },
   { label: "3x", scale: 3 },
   { label: "5x", scale: 5 },
+  { label: "8x", scale: 8 },
+  { label: "12x", scale: 12 },
+  { label: "18x", scale: 18 },
 ];
 
 // ── smart tooltip — positions away from finger ────────────────────
@@ -166,13 +169,28 @@ function SmartTooltip({ active, payload, coordinate, viewBox, mode }: any) {
 
 // ── hotel marker on chart ──────────────────────────────────────────
 function HotelDot(props: any) {
-  const { cx, cy } = props;
+  const { cx, cy, payload } = props;
   if (!cx || !cy) return null;
+  // Find the accommodation for this point
+  const accom = data.accommodations.find(
+    (a) => Math.abs(a.dist - (payload?.dist ?? -999)) < 0.3 && Math.abs(a.ele - (payload?.ele ?? -999)) < 50
+  );
+  if (!accom) return null;
+  const idx = data.accommodations.indexOf(accom);
+  const label = idx === 0 ? "▶" : idx === data.accommodations.length - 1 ? "⏹" : `D${idx}`;
+  const name = accom.name;
   return (
     <g>
-      <line x1={cx} y1={cy} x2={cx} y2={cy - 18} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="2,2" />
-      <circle cx={cx} cy={cy - 24} r={10} fill="#1c1917" stroke="#f59e0b" strokeWidth={1.5} />
-      <text x={cx} y={cy - 20} textAnchor="middle" fill="#f59e0b" fontSize={10}>⌂</text>
+      <line x1={cx} y1={cy} x2={cx} y2={cy - 22} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="2,2" />
+      {/* Name above */}
+      <text x={cx} y={cy - 38} textAnchor="middle" fill="#a1a1aa" fontSize={7} fontFamily="'JetBrains Mono', monospace">
+        {name.length > 20 ? name.slice(0, 18) + "…" : name}
+      </text>
+      {/* Bubble with identifier */}
+      <circle cx={cx} cy={cy - 26} r={11} fill="#1c1917" stroke="#f59e0b" strokeWidth={1.5} />
+      <text x={cx} y={cy - 22.5} textAnchor="middle" fill="#f59e0b" fontSize={idx === 0 || idx === data.accommodations.length - 1 ? 9 : 8} fontFamily="'JetBrains Mono', monospace" fontWeight="bold">
+        {label}
+      </text>
     </g>
   );
 }
@@ -246,15 +264,22 @@ function SteepnessLegend() {
 // ── main component ─────────────────────────────────────────────────
 export default function ElevationProfile({ highlightDay, onDayHover }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void }) {
   const [open, setOpen] = useState(false);
-  const [zoomIndex, setZoomIndex] = useState(0);
+  const [customScale, setCustomScale] = useState(1); // continuous zoom scale
   const [windowStart, setWindowStart] = useState(0);
   const [mode, setMode] = useState<ViewMode>("country");
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
-  const zoom = ZOOM_LEVELS[zoomIndex];
   const totalDist = data.totalDistance;
-  const windowSize = totalDist / zoom.scale;
+  const windowSize = totalDist / customScale;
   const clampedStart = Math.max(0, Math.min(windowStart, totalDist - windowSize));
+
+  // Derive display label: show preset label if close to one, otherwise show scale
+  const zoomLabel = useMemo(() => {
+    for (const z of ZOOM_LEVELS) {
+      if (Math.abs(customScale - z.scale) < 0.05) return z.label;
+    }
+    return `${customScale.toFixed(1)}x`;
+  }, [customScale]);
 
   // ── Lock page scroll when finger is inside the chart area ────────
   useEffect(() => {
@@ -368,24 +393,24 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
     });
   }, [windowSize, totalDist]);
 
+  // Snap to the nearest preset zoom level in a given direction
   const handleZoomIn = () => {
-    setZoomIndex((prev) => {
-      const next = Math.min(prev + 1, ZOOM_LEVELS.length - 1);
-      const currentCenter = clampedStart + windowSize / 2;
-      const newWindowSize = totalDist / ZOOM_LEVELS[next].scale;
-      setWindowStart(Math.max(0, Math.min(currentCenter - newWindowSize / 2, totalDist - newWindowSize)));
-      return next;
-    });
+    const nextPreset = ZOOM_LEVELS.find(z => z.scale > customScale + 0.05);
+    if (!nextPreset) return;
+    const currentCenter = clampedStart + windowSize / 2;
+    const newWindowSize = totalDist / nextPreset.scale;
+    setCustomScale(nextPreset.scale);
+    setWindowStart(Math.max(0, Math.min(currentCenter - newWindowSize / 2, totalDist - newWindowSize)));
   };
 
   const handleZoomOut = () => {
-    setZoomIndex((prev) => {
-      const next = Math.max(prev - 1, 0);
-      const currentCenter = clampedStart + windowSize / 2;
-      const newWindowSize = totalDist / ZOOM_LEVELS[next].scale;
-      setWindowStart(Math.max(0, Math.min(currentCenter - newWindowSize / 2, totalDist - newWindowSize)));
-      return next;
-    });
+    const presets = [...ZOOM_LEVELS].reverse();
+    const nextPreset = presets.find(z => z.scale < customScale - 0.05);
+    if (!nextPreset) return;
+    const currentCenter = clampedStart + windowSize / 2;
+    const newWindowSize = totalDist / nextPreset.scale;
+    setCustomScale(nextPreset.scale);
+    setWindowStart(Math.max(0, Math.min(currentCenter - newWindowSize / 2, totalDist - newWindowSize)));
   };
 
   // Position indicator for zoomed view
@@ -474,18 +499,18 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
                 </button>
                 <button
                   onClick={handleZoomOut}
-                  disabled={zoomIndex === 0}
+                  disabled={customScale <= ZOOM_LEVELS[0].scale + 0.05}
                   className="w-8 h-8 flex items-center justify-center rounded bg-zinc-800/80 border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
                   title="Zoom out"
                 >
                   <ZoomOut className="w-4 h-4" />
                 </button>
                 <span className="px-2 py-1 text-[0.65rem] font-mono text-amber-400 bg-zinc-800/60 rounded border border-zinc-700/30 min-w-[2.5rem] text-center">
-                  {zoom.label}
+                  {zoomLabel}
                 </span>
                 <button
                   onClick={handleZoomIn}
-                  disabled={zoomIndex === ZOOM_LEVELS.length - 1}
+                  disabled={customScale >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1].scale - 0.05}
                   className="w-8 h-8 flex items-center justify-center rounded bg-zinc-800/80 border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
                   title="Zoom in"
                 >
@@ -507,7 +532,7 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
           </div>
 
           {/* Position indicator bar (when zoomed) */}
-          {zoom.scale > 1 && (
+          {customScale > 1.05 && (
             <div className="mx-2 mb-3">
               <div className="h-1.5 bg-zinc-800 rounded-full relative overflow-hidden">
                 <div
@@ -666,8 +691,22 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
                 <button
                   key={i}
                   onClick={() => {
-                    const newStart = Math.max(0, a.dist - windowSize / 2);
-                    setWindowStart(Math.min(newStart, totalDist - windowSize));
+                    // Find the day's distance range and zoom so it fills 96% of x-axis
+                    const dayNum = a.day;
+                    const dayPts = data.points.filter(p => p.day === dayNum);
+                    if (dayPts.length > 0) {
+                      const dayStart = dayPts[0].dist;
+                      const dayEnd = dayPts[dayPts.length - 1].dist;
+                      const daySpan = dayEnd - dayStart;
+                      const padding = daySpan * (2 / 96); // 2% on each side
+                      const newWindowSize = daySpan + padding * 2;
+                      const exactScale = totalDist / newWindowSize;
+                      setCustomScale(exactScale);
+                      const actualWindowSize = totalDist / exactScale;
+                      const dayCenter = (dayStart + dayEnd) / 2;
+                      const newStart = Math.max(0, Math.min(dayCenter - actualWindowSize / 2, totalDist - actualWindowSize));
+                      setWindowStart(newStart);
+                    }
                   }}
                   onMouseEnter={() => onDayHover?.(a.day)}
                   onMouseLeave={() => onDayHover?.(null)}
