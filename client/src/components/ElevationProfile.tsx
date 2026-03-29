@@ -49,19 +49,13 @@ const COUNTRY_COLORS: Record<string, string> = {
 // ── Steepness color scale ─────────────────────────────────────────
 // Absolute ft/mile scale — direction (climb/descent) is visible from the line itself
 const STEEPNESS_SCALE = [
-  { min: 0,    max: 200,  color: "#a1a1aa" },  // gray — flat
-  { min: 200,  max: 400,  color: "#86efac" },  // light green — gentle
-  { min: 400,  max: 600,  color: "#4ade80" },  // green — easy grade
-  { min: 600,  max: 750,  color: "#facc15" },  // yellow — moderate
-  { min: 750,  max: 900,  color: "#fb923c" },  // orange — steep
-  { min: 900,  max: 1000, color: "#ef4444" },  // red — hard
-  { min: 1000, max: 1100, color: "#ec4899" },  // magenta — very hard
-  { min: 1100, max: 1200, color: "#8b5cf6" },  // purple — brutal
-  { min: 1200, max: 1300, color: "#d946ef" },  // bright fuchsia — extreme
-  { min: 1300, max: 1400, color: "#f472b6" },  // neon pink — savage
-  { min: 1400, max: Infinity, color: "#f0f0f0" },  // white-hot — max effort
+  { min: 0,    max: 300,      color: "#4ade80" },  // green — easy
+  { min: 300,  max: 600,      color: "#facc15" },  // yellow — moderate
+  { min: 600,  max: 900,      color: "#fb923c" },  // orange — steep
+  { min: 900,  max: 1200,     color: "#ef4444" },  // red — hard
+  { min: 1200, max: Infinity,  color: "#d946ef" },  // fuchsia — extreme
 ];
-const STEEPNESS_THRESHOLDS = [0, 200, 400, 600, 750, 900, 1000, 1100, 1200, 1300, 1400];
+const STEEPNESS_THRESHOLDS = [0, 300, 600, 900, 1200];
 
 function getSteepnessColor(ftPerMile: number): string {
   const abs = Math.abs(ftPerMile);
