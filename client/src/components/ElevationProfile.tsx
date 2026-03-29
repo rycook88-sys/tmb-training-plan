@@ -168,21 +168,30 @@ export default function ElevationProfile() {
       .filter((a) => a.dist > clampedStart && a.dist < end && a.day < 10);
   }, [clampedStart, windowSize]);
 
-  // Build gradient stops for the area fill based on country
+  // Build gradient stops with HARD color transitions (no blending)
+  // Each border gets two stops at the same offset: end of old color + start of new color
   const gradientStops = useMemo(() => {
     if (!visiblePoints.length) return [];
     const minDist = visiblePoints[0].dist;
     const maxDist = visiblePoints[visiblePoints.length - 1].dist;
     const range = maxDist - minDist || 1;
     const stops: { offset: string; color: string }[] = [];
-    let prevCountry = "";
-    for (const p of visiblePoints) {
+    let prevCountry = visiblePoints[0].country;
+    // First stop at 0%
+    stops.push({ offset: "0%", color: COUNTRY_COLORS[prevCountry] || "#e8913a" });
+    for (let i = 1; i < visiblePoints.length; i++) {
+      const p = visiblePoints[i];
       if (p.country !== prevCountry) {
-        const offset = `${(((p.dist - minDist) / range) * 100).toFixed(1)}%`;
+        const offset = `${(((p.dist - minDist) / range) * 100).toFixed(2)}%`;
+        // End the previous country's color at this exact offset
+        stops.push({ offset, color: COUNTRY_COLORS[prevCountry] || "#e8913a" });
+        // Start the new country's color at the same offset (hard transition)
         stops.push({ offset, color: COUNTRY_COLORS[p.country] || "#e8913a" });
         prevCountry = p.country;
       }
     }
+    // Final stop at 100%
+    stops.push({ offset: "100%", color: COUNTRY_COLORS[prevCountry] || "#e8913a" });
     return stops;
   }, [visiblePoints]);
 
