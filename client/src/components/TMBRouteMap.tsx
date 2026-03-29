@@ -1,12 +1,21 @@
 // TMB Route Map — Leaflet + OpenTopoMap with real GPX trail data
 // Design: Alpine dark theme, topo map showing actual hiking trails
+// Trail segments colored by country (France/Italy/Switzerland)
 import { useState, useEffect, useRef } from "react";
 import { ChevronDown, Map, Bus, CableCar, Layers, Mountain } from "lucide-react";
 import { TMB_ITINERARY } from "@/lib/data";
 import trailDataRaw from "@/lib/tmb-trail-data.json";
+import countrySegmentsRaw from "@/lib/tmb-country-segments.json";
 import "leaflet/dist/leaflet.css";
 
 const trailData = trailDataRaw as unknown as Record<string, [number, number][]>;
+
+interface CountrySegment {
+  country: string;
+  day: number;
+  points: [number, number][];
+}
+const countrySegments = countrySegmentsRaw as unknown as CountrySegment[];
 
 interface Accommodation {
   day: number;
@@ -24,8 +33,8 @@ const ACCOMMODATIONS: Accommodation[] = [
   {
     day: 0,
     name: "RockyPop Hotel",
-    lat: 45.9238,
-    lng: 6.8698,
+    lat: 45.8972406,
+    lng: 6.8152178,
     elevation: "1,008m",
     type: "start",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rockypop_e77608f8.jpg",
@@ -135,24 +144,16 @@ const BUS_ROUTE: [number, number][] = [
   [45.61830, 6.76940],
 ];
 
-// Stage colors for each day
-const STAGE_COLORS: Record<number, string> = {
-  1: "#F97316",  // orange
-  2: "#F97316",
-  3: "#22C55E",  // green (Italy)
-  4: "#22C55E",
-  5: "#22C55E",
-  6: "#EAB308",  // yellow (border crossing)
-  7: "#EF4444",  // red (Switzerland)
-  8: "#EF4444",
-  9: "#3B82F6",  // blue (back to France)
-  10: "#3B82F6",
+const COUNTRY_COLORS: Record<string, string> = {
+  france: "#F97316",    // Orange for France
+  italy: "#22C55E",     // Green for Italy
+  switzerland: "#EF4444", // Red for Switzerland
 };
 
-const COUNTRY_COLORS: Record<string, string> = {
-  France: "#3B82F6",
-  Italy: "#22C55E",
-  Switzerland: "#EF4444",
+const COUNTRY_LABELS: Record<string, string> = {
+  france: "FRANCE",
+  italy: "ITALY",
+  switzerland: "SWITZERLAND",
 };
 
 function getTypeLabel(type: Accommodation["type"]): string {
@@ -166,6 +167,12 @@ function getTypeLabel(type: Accommodation["type"]): string {
   }
 }
 
+const COUNTRY_DISPLAY_COLORS: Record<string, string> = {
+  France: "#F97316",
+  Italy: "#22C55E",
+  Switzerland: "#EF4444",
+};
+
 export function TMBRouteMap() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
@@ -173,7 +180,7 @@ export function TMBRouteMap() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
-  const trailLayersRef = useRef<L.Polyline[]>([]);
+  const trailLayersRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const LRef = useRef<typeof import("leaflet") | null>(null);
 
@@ -211,30 +218,30 @@ export function TMBRouteMap() {
 
       mapInstanceRef.current = map;
 
-      // Draw trail segments from real GPX data
-      const typedTrailData = trailData as Record<string, [number, number][]>;
-      Object.entries(typedTrailData).forEach(([dayStr, points]) => {
-        const day = parseInt(dayStr);
-        const latLngs = points.map(([lat, lon]: [number, number]) => L.latLng(lat, lon));
-        const color = STAGE_COLORS[day] || "#F97316";
+      // Create a layer group for trail segments
+      const trailGroup = L.layerGroup().addTo(map);
+      trailLayersRef.current = trailGroup;
+
+      // Draw trail segments colored by country
+      countrySegments.forEach((seg) => {
+        const latLngs = seg.points.map(([lat, lon]: [number, number]) => L.latLng(lat, lon));
+        const color = COUNTRY_COLORS[seg.country] || "#F97316";
 
         // Trail shadow for depth
-        const shadow = L.polyline(latLngs, {
+        L.polyline(latLngs, {
           color: "#000000",
           weight: 6,
           opacity: 0.3,
-        }).addTo(map);
+        }).addTo(trailGroup);
 
         // Main trail line
-        const trail = L.polyline(latLngs, {
+        L.polyline(latLngs, {
           color,
           weight: 4,
           opacity: 0.9,
           lineCap: "round",
           lineJoin: "round",
-        }).addTo(map);
-
-        trailLayersRef.current.push(shadow, trail);
+        }).addTo(trailGroup);
       });
 
       // Draw bus route (dashed)
@@ -278,7 +285,7 @@ export function TMBRouteMap() {
               style="width:calc(100% + 0px);height:130px;object-fit:cover;display:block;" />
             <div style="padding:10px 14px 12px;">
               <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
-                <span style="background:${COUNTRY_COLORS[acc.country] || "#6B7280"};color:white;font-size:10px;padding:1px 6px;border-radius:3px;font-weight:600;">${acc.country}</span>
+                <span style="background:${COUNTRY_DISPLAY_COLORS[acc.country] || "#6B7280"};color:white;font-size:10px;padding:1px 6px;border-radius:3px;font-weight:600;">${acc.country}</span>
                 <span style="color:#94A3B8;font-size:10px;">${getTypeLabel(acc.type)}</span>
               </div>
               <h3 style="margin:3px 0;font-size:15px;font-weight:700;color:#1E293B;">
@@ -310,8 +317,8 @@ export function TMBRouteMap() {
 
       // Fit bounds to show all trail data
       const allPoints: L.LatLng[] = [];
-      Object.values(typedTrailData).forEach((points) => {
-        (points as [number, number][]).forEach(([lat, lon]) => {
+      countrySegments.forEach((seg) => {
+        seg.points.forEach(([lat, lon]: [number, number]) => {
           allPoints.push(L.latLng(lat, lon));
         });
       });
@@ -391,10 +398,9 @@ export function TMBRouteMap() {
     const map = mapInstanceRef.current;
     setSelectedDay(null);
 
-    const typedTrailData = trailData as Record<string, [number, number][]>;
     const allPoints: L.LatLng[] = [];
-    Object.values(typedTrailData).forEach((points) => {
-      (points as [number, number][]).forEach(([lat, lon]) => {
+    countrySegments.forEach((seg) => {
+      seg.points.forEach(([lat, lon]: [number, number]) => {
         allPoints.push(L.latLng(lat, lon));
       });
     });
@@ -465,7 +471,7 @@ export function TMBRouteMap() {
             <button
               onClick={() => {
                 if (mapInstanceRef.current) {
-                  mapInstanceRef.current.setView([45.9237, 6.8694], 14);
+                  mapInstanceRef.current.setView([45.8972406, 6.8152178], 14);
                 }
                 setSelectedDay(10);
               }}
