@@ -133,6 +133,28 @@ const ACCOMMODATIONS: Accommodation[] = [
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/nouveau-grassonnet_51afd809.jpg",
     country: "France",
   },
+  {
+    day: 11,
+    name: "Planpraz Cable Car (Top)",
+    lat: 45.93500,
+    lng: 6.84800,
+    elevation: "2,000m",
+    type: "cable-car" as any,
+    image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rockypop_e77608f8.jpg",
+    country: "France",
+    note: "End of walking — take the Planpraz cable car down to Chamonix",
+  },
+  {
+    day: 12,
+    name: "Chamonix",
+    lat: 45.92375,
+    lng: 6.86972,
+    elevation: "1,035m",
+    type: "finish" as any,
+    image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rockypop_e77608f8.jpg",
+    country: "France",
+    note: "You made it! Cable car descent to Chamonix",
+  },
 ];
 
 // Bus route from Les Chapieux to Bourg-Saint-Maurice
@@ -260,21 +282,28 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
 
         // Custom icon using divIcon
         const isStart = acc.day === 1;
+        const isCableCar = acc.day === 11;
+        const isFinish = acc.day === 12;
+        const isSpecial = isStart || isCableCar || isFinish;
+        const markerSize = isSpecial ? 36 : 30;
+        const markerLabel = isFinish ? "\u{1F3C1}" : isCableCar ? "\u{1F6A1}" : `D${acc.day}`;
+        const markerBg = isFinish ? "#10B981" : isCableCar ? "#8B5CF6" : isStart ? "#F97316" : "#0F172A";
+        const markerBorder = isFinish ? "#6EE7B7" : isCableCar ? "#C4B5FD" : isStart ? "#FED7AA" : "#F97316";
         const icon = L.divIcon({
           className: "tmb-marker",
           html: `<div style="
             display:flex;align-items:center;justify-content:center;
-            width:${isStart ? 36 : 30}px;height:${isStart ? 36 : 30}px;
+            width:${markerSize}px;height:${markerSize}px;
             border-radius:50%;
-            background:${isStart ? "#F97316" : "#0F172A"};
-            border:3px solid ${isStart ? "#FED7AA" : "#F97316"};
-            color:white;font-weight:700;font-size:12px;
+            background:${markerBg};
+            border:3px solid ${markerBorder};
+            color:white;font-weight:700;font-size:${isFinish || isCableCar ? 16 : 12}px;
             font-family:'JetBrains Mono',monospace;
             box-shadow:0 2px 8px rgba(0,0,0,0.5);
             cursor:pointer;
-          ">D${acc.day}</div>`,
-          iconSize: [isStart ? 36 : 30, isStart ? 36 : 30],
-          iconAnchor: [isStart ? 18 : 15, isStart ? 18 : 15],
+          ">${markerLabel}</div>`,
+          iconSize: [markerSize, markerSize],
+          iconAnchor: [markerSize / 2, markerSize / 2],
         });
 
         const marker = L.marker([acc.lat, acc.lng], { icon }).addTo(map);
@@ -466,8 +495,9 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
                     : "bg-slate-800 text-slate-400 hover:bg-slate-700"
                 }`}
               >
-                {`D${acc.day}`}
+                {acc.day === 12 ? "\u{1F3C1}" : acc.day === 11 ? "\u{1F6A1}" : `D${acc.day}`}
                 {acc.day === 3 && <Bus className="w-3 h-3" />}
+                {acc.day === 11 && <CableCar className="w-3 h-3" />}
               </button>
             ))}
 
@@ -539,8 +569,8 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-1.5">
-                  <span className="text-[10px] font-mono font-bold text-orange-400">
-                    {`DAY ${acc.day}`}
+                  <span className={`text-[10px] font-mono font-bold ${acc.day === 12 ? 'text-emerald-400' : acc.day === 11 ? 'text-violet-400' : 'text-orange-400'}`}>
+                    {acc.day === 12 ? "\u{1F3C1} FINISH" : acc.day === 11 ? "\u{1F6A1} CABLE CAR" : `DAY ${acc.day}`}
                   </span>
                   <p className="text-[10px] text-white font-medium leading-tight truncate">
                     {acc.name}

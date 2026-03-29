@@ -162,20 +162,24 @@ function SmartTooltip({ active, payload, coordinate, viewBox, mode }: any) {
 }
 
 // ── hotel marker on chart ──────────────────────────────────────────
-function HotelDot({ cx, cy, accom, accomIdx }: { cx?: number; cy?: number; accom: typeof data.accommodations[0]; accomIdx: number }) {
+function HotelDot({ cx, cy, accom }: { cx?: number; cy?: number; accom: typeof data.accommodations[0] }) {
   if (!cx || !cy) return null;
-  const label = `D${accomIdx + 1}`;
+  const isCableCar = accom.day === 11;
+  const isFinish = accom.day === 12;
+  const label = isFinish ? "\u{1F3C1}" : isCableCar ? "\u{1F6A1}" : `D${accom.day}`;
   const name = accom.name;
+  const strokeColor = isFinish ? "#10B981" : isCableCar ? "#8B5CF6" : "#f59e0b";
+  const fillColor = isFinish ? "#10B981" : isCableCar ? "#8B5CF6" : "#f59e0b";
   return (
     <g>
-      <line x1={cx} y1={cy} x2={cx} y2={cy - 22} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="2,2" />
+      <line x1={cx} y1={cy} x2={cx} y2={cy - 22} stroke={strokeColor} strokeWidth={1.5} strokeDasharray="2,2" />
       {/* Name above */}
       <text x={cx} y={cy - 38} textAnchor="middle" fill="#a1a1aa" fontSize={7} fontFamily="'JetBrains Mono', monospace">
-        {name.length > 20 ? name.slice(0, 18) + "…" : name}
+        {name.length > 20 ? name.slice(0, 18) + "\u2026" : name}
       </text>
       {/* Bubble with identifier */}
-      <circle cx={cx} cy={cy - 26} r={11} fill="#1c1917" stroke="#f59e0b" strokeWidth={1.5} />
-      <text x={cx} y={cy - 22.5} textAnchor="middle" fill="#f59e0b" fontSize={8} fontFamily="'JetBrains Mono', monospace" fontWeight="bold">
+      <circle cx={cx} cy={cy - 26} r={11} fill="#1c1917" stroke={strokeColor} strokeWidth={1.5} />
+      <text x={cx} y={cy - 22.5} textAnchor="middle" fill={fillColor} fontSize={isFinish || isCableCar ? 11 : 8} fontFamily="'JetBrains Mono', monospace" fontWeight="bold">
         {label}
       </text>
     </g>
@@ -279,7 +283,7 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
 
   // ── Navigate to highlighted day ──────────────────────────────────
   useEffect(() => {
-    if (highlightDay && highlightDay >= 1 && highlightDay <= 10 && open) {
+    if (highlightDay && highlightDay >= 1 && highlightDay <= 12 && open) {
       const dayPts = data.points.filter(p => p.day === highlightDay);
       if (dayPts.length > 0) {
         const dayStart = dayPts[0].dist;
@@ -654,17 +658,14 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
                 />
 
                 {/* Hotel markers */}
-                {visibleAccoms.map((a) => {
-                  const accomIdx = data.accommodations.indexOf(a);
-                  return (
+                {visibleAccoms.map((a, i) => (
                     <ReferenceDot
-                      key={`hotel-${accomIdx}`}
+                      key={`hotel-${a.day}`}
                       x={a.dist}
                       y={a.ele}
-                      shape={<HotelDot accom={a} accomIdx={accomIdx} />}
+                      shape={<HotelDot accom={a} />}
                     />
-                  );
-                })}
+                ))}
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -705,14 +706,15 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
                   }`}
                 >
                   <div
-                    className="w-6 h-6 rounded-full flex items-center justify-center text-[0.55rem] font-bold mb-1 border transition-colors group-hover:border-amber-500 group-hover:text-amber-400"
+                    className="w-6 h-6 rounded-full flex items-center justify-center font-bold mb-1 border transition-colors group-hover:border-amber-500 group-hover:text-amber-400"
                     style={{
-                      borderColor: highlightDay === a.day ? "#f59e0b" : i === 0 || i === data.accommodations.length - 1 ? "#f59e0b" : "#52525b",
-                      color: highlightDay === a.day ? "#f59e0b" : i === 0 || i === data.accommodations.length - 1 ? "#f59e0b" : "#a1a1aa",
+                      borderColor: highlightDay === a.day ? "#f59e0b" : a.day === 12 ? "#10B981" : a.day === 11 ? "#8B5CF6" : a.day === 1 ? "#f59e0b" : "#52525b",
+                      color: highlightDay === a.day ? "#f59e0b" : a.day === 12 ? "#10B981" : a.day === 11 ? "#8B5CF6" : a.day === 1 ? "#f59e0b" : "#a1a1aa",
                       background: "#1c1917",
+                      fontSize: a.day >= 11 ? "0.7rem" : "0.55rem",
                     }}
                   >
-                    {`D${i + 1}`}
+                    {a.day === 12 ? "\u{1F3C1}" : a.day === 11 ? "\u{1F6A1}" : `D${a.day}`}
                   </div>
                   <span
                     className="text-zinc-500 group-hover:text-zinc-300 transition-colors leading-tight whitespace-nowrap"
