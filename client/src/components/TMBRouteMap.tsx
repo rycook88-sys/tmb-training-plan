@@ -1,9 +1,12 @@
-// TMB Route Map — Interactive Google Maps with accommodation markers
-// Design: Alpine dark theme, custom markers with day numbers, photo info windows
-import { useState, useRef, useCallback } from "react";
-import { MapView } from "@/components/Map";
-import { ChevronDown, Map, Bus, CableCar } from "lucide-react";
+// TMB Route Map — Leaflet + OpenTopoMap with real GPX trail data
+// Design: Alpine dark theme, topo map showing actual hiking trails
+import { useState, useEffect, useRef } from "react";
+import { ChevronDown, Map, Bus, CableCar, Layers, Mountain } from "lucide-react";
 import { TMB_ITINERARY } from "@/lib/data";
+import trailDataRaw from "@/lib/tmb-trail-data.json";
+import "leaflet/dist/leaflet.css";
+
+const trailData = trailDataRaw as unknown as Record<string, [number, number][]>;
 
 interface Accommodation {
   day: number;
@@ -21,8 +24,8 @@ const ACCOMMODATIONS: Accommodation[] = [
   {
     day: 0,
     name: "RockyPop Hotel",
-    lat: 45.8920,
-    lng: 6.7980,
+    lat: 45.9238,
+    lng: 6.8698,
     elevation: "1,008m",
     type: "start",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rockypop_e77608f8.jpg",
@@ -32,8 +35,8 @@ const ACCOMMODATIONS: Accommodation[] = [
   {
     day: 1,
     name: "Gîte Le Pontet",
-    lat: 45.8028,
-    lng: 6.7216,
+    lat: 45.80299,
+    lng: 6.72218,
     elevation: "1,179m",
     type: "gite",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/gite-le-pontet_3f84378c.jpg",
@@ -42,8 +45,8 @@ const ACCOMMODATIONS: Accommodation[] = [
   {
     day: 2,
     name: "Hotel Base Camp Lodge",
-    lat: 45.6188,
-    lng: 6.7700,
+    lat: 45.6183,
+    lng: 6.7694,
     elevation: "840m",
     type: "hotel",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/base-camp-lodge_73fd4672.jpg",
@@ -53,8 +56,8 @@ const ACCOMMODATIONS: Accommodation[] = [
   {
     day: 3,
     name: "Rifugio Elisabetta",
-    lat: 45.7670,
-    lng: 6.8375,
+    lat: 45.76721,
+    lng: 6.83763,
     elevation: "2,195m",
     type: "rifugio",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rifugio-elisabetta_66a22f61.jpg",
@@ -63,8 +66,8 @@ const ACCOMMODATIONS: Accommodation[] = [
   {
     day: 4,
     name: "Rifugio Maison Vieille",
-    lat: 45.7870,
-    lng: 6.9500,
+    lat: 45.79085,
+    lng: 6.93129,
     elevation: "1,956m",
     type: "rifugio",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/maison-vieille_fa54cb04.jpg",
@@ -73,8 +76,8 @@ const ACCOMMODATIONS: Accommodation[] = [
   {
     day: 5,
     name: "Rifugio Chapy Mont Blanc",
-    lat: 45.8010,
-    lng: 6.9840,
+    lat: 45.82309,
+    lng: 6.96586,
     elevation: "1,467m",
     type: "rifugio",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rifugio-chapy_59cb8b94.jpg",
@@ -83,18 +86,18 @@ const ACCOMMODATIONS: Accommodation[] = [
   {
     day: 6,
     name: "Gîte Alpage de La Peule",
-    lat: 45.8983,
-    lng: 7.1124,
+    lat: 45.89864,
+    lng: 7.11268,
     elevation: "2,071m",
     type: "gite",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/alpage-la-peule_f059aaa4.jpg",
-    country: "Italy/Switzerland",
+    country: "Switzerland",
   },
   {
     day: 7,
     name: "Relais D'Arpette",
-    lat: 46.0301,
-    lng: 7.0931,
+    lat: 46.02985,
+    lng: 7.09294,
     elevation: "1,627m",
     type: "gite",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/relais-arpette_f7e434cb.jpg",
@@ -103,8 +106,8 @@ const ACCOMMODATIONS: Accommodation[] = [
   {
     day: 8,
     name: "Auberge Mont Blanc",
-    lat: 46.0550,
-    lng: 7.0230,
+    lat: 46.05623,
+    lng: 6.99534,
     elevation: "1,297m",
     type: "auberge",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/auberge-mont-blanc_4ef2c0b7.jpg",
@@ -113,8 +116,8 @@ const ACCOMMODATIONS: Accommodation[] = [
   {
     day: 9,
     name: "Gîte Le Nouveau Grassonnet",
-    lat: 45.9770,
-    lng: 6.9280,
+    lat: 45.96998,
+    lng: 6.91680,
     elevation: "1,199m",
     type: "gite",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/nouveau-grassonnet_51afd809.jpg",
@@ -122,91 +125,43 @@ const ACCOMMODATIONS: Accommodation[] = [
   },
 ];
 
-// TMB route waypoints for polyline (counter-clockwise from Les Houches)
-const TRAIL_WAYPOINTS: google.maps.LatLngLiteral[] = [
-  { lat: 45.8907, lng: 6.7968 }, // Les Houches trailhead
-  { lat: 45.8650, lng: 6.7750 }, // Col de Voza
-  { lat: 45.8350, lng: 6.7450 }, // Bionnassay
-  { lat: 45.8028, lng: 6.7216 }, // Les Contamines (Day 1)
-  { lat: 45.7800, lng: 6.7100 }, // Notre Dame de la Gorge
-  { lat: 45.7600, lng: 6.7050 }, // Nant Borrant
-  { lat: 45.7440, lng: 6.7130 }, // Col du Bonhomme
-  { lat: 45.7300, lng: 6.7200 }, // Col de la Croix du Bonhomme
-  { lat: 45.7180, lng: 6.7310 }, // Les Chapieux
+// Bus route from Les Chapieux to Bourg-Saint-Maurice
+const BUS_ROUTE: [number, number][] = [
+  [45.69641, 6.73363],
+  [45.68500, 6.73800],
+  [45.67000, 6.74500],
+  [45.65500, 6.75500],
+  [45.64000, 6.76000],
+  [45.61830, 6.76940],
 ];
 
-const BUS_WAYPOINTS: google.maps.LatLngLiteral[] = [
-  { lat: 45.7180, lng: 6.7310 }, // Les Chapieux
-  { lat: 45.7000, lng: 6.7400 },
-  { lat: 45.6700, lng: 6.7500 },
-  { lat: 45.6400, lng: 6.7600 },
-  { lat: 45.6188, lng: 6.7700 }, // Bourg-Saint-Maurice
-];
-
-const TRAIL_WAYPOINTS_2: google.maps.LatLngLiteral[] = [
-  { lat: 45.7180, lng: 6.7310 }, // Les Chapieux (resume after bus)
-  { lat: 45.7300, lng: 6.7500 },
-  { lat: 45.7400, lng: 6.7800 },
-  { lat: 45.7520, lng: 6.8080 }, // Col de la Seigne
-  { lat: 45.7600, lng: 6.8200 },
-  { lat: 45.7670, lng: 6.8375 }, // Rifugio Elisabetta (Day 3)
-  { lat: 45.7700, lng: 6.8600 },
-  { lat: 45.7750, lng: 6.8900 },
-  { lat: 45.7800, lng: 6.9200 },
-  { lat: 45.7870, lng: 6.9500 }, // Rifugio Maison Vieille (Day 4)
-  { lat: 45.7900, lng: 6.9600 },
-  { lat: 45.7927, lng: 6.9717 }, // Courmayeur
-  { lat: 45.8010, lng: 6.9840 }, // Rifugio Chapy (Day 5)
-  { lat: 45.8100, lng: 6.9900 },
-  { lat: 45.8200, lng: 7.0000 },
-  { lat: 45.8350, lng: 7.0200 },
-  { lat: 45.8500, lng: 7.0400 },
-  { lat: 45.8600, lng: 7.0500 }, // Rifugio Bonatti area
-  { lat: 45.8750, lng: 7.0700 },
-  { lat: 45.8900, lng: 7.0800 }, // Grand Col Ferret
-  { lat: 45.8983, lng: 7.1124 }, // La Peule (Day 6)
-  { lat: 45.9100, lng: 7.1200 },
-  { lat: 45.9300, lng: 7.1200 },
-  { lat: 45.9500, lng: 7.1150 },
-  { lat: 45.9700, lng: 7.1100 },
-  { lat: 45.9900, lng: 7.1080 },
-  { lat: 46.0100, lng: 7.1050 },
-  { lat: 46.0290, lng: 7.1000 },
-  { lat: 46.0301, lng: 7.0931 }, // Relais D'Arpette (Day 7)
-  { lat: 46.0400, lng: 7.0700 },
-  { lat: 46.0500, lng: 7.0500 },
-  { lat: 46.0560, lng: 7.0100 }, // Col de la Forclaz
-  { lat: 46.0550, lng: 7.0230 }, // Trient (Day 8)
-  { lat: 46.0500, lng: 7.0000 },
-  { lat: 46.0400, lng: 6.9850 },
-  { lat: 46.0230, lng: 6.9700 }, // Col de Balme
-  { lat: 46.0100, lng: 6.9600 },
-  { lat: 45.9900, lng: 6.9400 },
-  { lat: 45.9770, lng: 6.9280 }, // Argentière (Day 9)
-  { lat: 45.9800, lng: 6.9100 }, // Lac Blanc area
-  { lat: 45.9700, lng: 6.8900 },
-  { lat: 45.9600, lng: 6.8800 },
-  { lat: 45.9500, lng: 6.8700 },
-  { lat: 45.9370, lng: 6.8600 }, // Planpraz cable car
-  { lat: 45.9237, lng: 6.8694 }, // Chamonix (End)
-];
+// Stage colors for each day
+const STAGE_COLORS: Record<number, string> = {
+  1: "#F97316",  // orange
+  2: "#F97316",
+  3: "#22C55E",  // green (Italy)
+  4: "#22C55E",
+  5: "#22C55E",
+  6: "#EAB308",  // yellow (border crossing)
+  7: "#EF4444",  // red (Switzerland)
+  8: "#EF4444",
+  9: "#3B82F6",  // blue (back to France)
+  10: "#3B82F6",
+};
 
 const COUNTRY_COLORS: Record<string, string> = {
   France: "#3B82F6",
   Italy: "#22C55E",
   Switzerland: "#EF4444",
-  "Italy/Switzerland": "#F59E0B",
 };
 
 function getTypeLabel(type: Accommodation["type"]): string {
   switch (type) {
     case "start": return "Starting Hotel";
-    case "hut": return "Mountain Hut";
     case "hotel": return "Hotel";
     case "gite": return "Gîte";
     case "rifugio": return "Rifugio";
     case "auberge": return "Auberge";
-    case "end": return "Finish";
     default: return "Accommodation";
   }
 }
@@ -214,139 +169,240 @@ function getTypeLabel(type: Accommodation["type"]): string {
 export function TMBRouteMap() {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const mapRef = useRef<google.maps.Map | null>(null);
-  const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
-  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+  const [mapLayer, setMapLayer] = useState<"topo" | "satellite">("topo");
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.Marker[]>([]);
+  const trailLayersRef = useRef<L.Polyline[]>([]);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const LRef = useRef<typeof import("leaflet") | null>(null);
 
-  const handleMapReady = useCallback((map: google.maps.Map) => {
-    mapRef.current = map;
+  // Initialize map when section opens
+  useEffect(() => {
+    if (!isOpen || mapInstanceRef.current) return;
 
-    // Draw trail polyline (Les Houches to Les Chapieux)
-    new google.maps.Polyline({
-      path: TRAIL_WAYPOINTS,
-      geodesic: true,
-      strokeColor: "#F97316",
-      strokeOpacity: 0.9,
-      strokeWeight: 4,
-      map,
-    });
+    let cancelled = false;
 
-    // Draw bus route (dashed)
-    new google.maps.Polyline({
-      path: BUS_WAYPOINTS,
-      geodesic: true,
-      strokeColor: "#94A3B8",
-      strokeOpacity: 0.8,
-      strokeWeight: 3,
-      icons: [{
-        icon: { path: "M 0,-1 0,1", strokeOpacity: 1, scale: 3 },
-        offset: "0",
-        repeat: "15px",
-      }],
-      map,
-    });
+    const initMap = async () => {
+      const L = await import("leaflet");
+      if (cancelled) return;
+      LRef.current = L;
 
-    // Draw trail polyline (Les Chapieux to Chamonix)
-    new google.maps.Polyline({
-      path: TRAIL_WAYPOINTS_2,
-      geodesic: true,
-      strokeColor: "#F97316",
-      strokeOpacity: 0.9,
-      strokeWeight: 4,
-      map,
-    });
+      if (!mapContainerRef.current) return;
 
-    // Create info window
-    infoWindowRef.current = new google.maps.InfoWindow();
-
-    // Create markers for each accommodation
-    ACCOMMODATIONS.forEach((acc) => {
-      const itDay = TMB_ITINERARY.find(d => d.day === acc.day);
-      
-      // Create custom marker element
-      const markerDiv = document.createElement("div");
-      markerDiv.style.cssText = `
-        display: flex; align-items: center; justify-content: center;
-        width: ${acc.day === 0 ? "36px" : "32px"}; 
-        height: ${acc.day === 0 ? "36px" : "32px"};
-        border-radius: 50%; 
-        background: ${acc.day === 0 ? "#F97316" : "#1E293B"};
-        border: 3px solid ${acc.day === 0 ? "#FED7AA" : "#F97316"};
-        color: white; font-weight: 700; font-size: 13px;
-        font-family: 'JetBrains Mono', monospace;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-        cursor: pointer; transition: transform 0.2s;
-      `;
-      markerDiv.textContent = acc.day === 0 ? "▶" : `${acc.day}`;
-      markerDiv.addEventListener("mouseenter", () => {
-        markerDiv.style.transform = "scale(1.3)";
-      });
-      markerDiv.addEventListener("mouseleave", () => {
-        markerDiv.style.transform = "scale(1)";
+      // Create map
+      const map = L.map(mapContainerRef.current, {
+        center: [45.88, 6.92],
+        zoom: 10,
+        zoomControl: true,
+        attributionControl: true,
       });
 
-      const marker = new google.maps.marker.AdvancedMarkerElement({
-        map,
-        position: { lat: acc.lat, lng: acc.lng },
-        title: acc.name,
-        content: markerDiv,
+      // OpenTopoMap tiles (shows hiking trails!)
+      const topoLayer = L.tileLayer(
+        "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+        {
+          maxZoom: 17,
+          attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+        }
+      );
+      topoLayer.addTo(map);
+      tileLayerRef.current = topoLayer;
+
+      mapInstanceRef.current = map;
+
+      // Draw trail segments from real GPX data
+      const typedTrailData = trailData as Record<string, [number, number][]>;
+      Object.entries(typedTrailData).forEach(([dayStr, points]) => {
+        const day = parseInt(dayStr);
+        const latLngs = points.map(([lat, lon]: [number, number]) => L.latLng(lat, lon));
+        const color = STAGE_COLORS[day] || "#F97316";
+
+        // Trail shadow for depth
+        const shadow = L.polyline(latLngs, {
+          color: "#000000",
+          weight: 6,
+          opacity: 0.3,
+        }).addTo(map);
+
+        // Main trail line
+        const trail = L.polyline(latLngs, {
+          color,
+          weight: 4,
+          opacity: 0.9,
+          lineCap: "round",
+          lineJoin: "round",
+        }).addTo(map);
+
+        trailLayersRef.current.push(shadow, trail);
       });
 
-      marker.addListener("click", () => {
-        const infoContent = `
-          <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 280px; padding: 0;">
-            <img src="${acc.image}" alt="${acc.name}" style="width: 100%; height: 140px; object-fit: cover; border-radius: 8px 8px 0 0;" />
-            <div style="padding: 12px;">
-              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
-                <span style="background: ${COUNTRY_COLORS[acc.country] || "#6B7280"}; color: white; font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${acc.country}</span>
-                <span style="color: #94A3B8; font-size: 11px;">${getTypeLabel(acc.type)}</span>
+      // Draw bus route (dashed)
+      const busLatLngs = BUS_ROUTE.map(([lat, lon]) => L.latLng(lat, lon));
+      L.polyline(busLatLngs, {
+        color: "#94A3B8",
+        weight: 3,
+        opacity: 0.8,
+        dashArray: "10, 8",
+      }).addTo(map);
+
+      // Create markers
+      ACCOMMODATIONS.forEach((acc) => {
+        const itDay = TMB_ITINERARY.find((d) => d.day === acc.day);
+
+        // Custom icon using divIcon
+        const isStart = acc.day === 0;
+        const icon = L.divIcon({
+          className: "tmb-marker",
+          html: `<div style="
+            display:flex;align-items:center;justify-content:center;
+            width:${isStart ? 36 : 30}px;height:${isStart ? 36 : 30}px;
+            border-radius:50%;
+            background:${isStart ? "#F97316" : "#0F172A"};
+            border:3px solid ${isStart ? "#FED7AA" : "#F97316"};
+            color:white;font-weight:700;font-size:12px;
+            font-family:'JetBrains Mono',monospace;
+            box-shadow:0 2px 8px rgba(0,0,0,0.5);
+            cursor:pointer;
+          ">${isStart ? "▶" : acc.day}</div>`,
+          iconSize: [isStart ? 36 : 30, isStart ? 36 : 30],
+          iconAnchor: [isStart ? 18 : 15, isStart ? 18 : 15],
+        });
+
+        const marker = L.marker([acc.lat, acc.lng], { icon }).addTo(map);
+
+        // Popup content
+        const popupHtml = `
+          <div style="font-family:system-ui,-apple-system,sans-serif;width:260px;padding:0;margin:-14px -20px -14px -20px;">
+            <img src="${acc.image}" alt="${acc.name}" 
+              style="width:calc(100% + 0px);height:130px;object-fit:cover;display:block;" />
+            <div style="padding:10px 14px 12px;">
+              <div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
+                <span style="background:${COUNTRY_COLORS[acc.country] || "#6B7280"};color:white;font-size:10px;padding:1px 6px;border-radius:3px;font-weight:600;">${acc.country}</span>
+                <span style="color:#94A3B8;font-size:10px;">${getTypeLabel(acc.type)}</span>
               </div>
-              <h3 style="margin: 4px 0; font-size: 16px; font-weight: 700; color: #1E293B;">
-                ${acc.day === 0 ? "Start" : `Day ${acc.day}`}: ${acc.name}
+              <h3 style="margin:3px 0;font-size:15px;font-weight:700;color:#1E293B;">
+                ${isStart ? "Start" : `Day ${acc.day}`}: ${acc.name}
               </h3>
-              <p style="margin: 2px 0; font-size: 12px; color: #64748B;">Elevation: ${acc.elevation}</p>
+              <p style="margin:2px 0;font-size:11px;color:#64748B;">Elevation: ${acc.elevation}</p>
               ${itDay ? `
-                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #E2E8F0;">
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px;">
-                    <span style="color: #64748B;">Distance:</span><span style="color: #1E293B; font-weight: 600;">${itDay.distance} / ${itDay.distanceMi} mi</span>
-                    <span style="color: #64748B;">Duration:</span><span style="color: #1E293B; font-weight: 600;">${itDay.duration}</span>
-                    <span style="color: #22C55E;">↑ Ascent:</span><span style="color: #1E293B; font-weight: 600;">${itDay.ascent.toLocaleString()} ft</span>
-                    <span style="color: #EF4444;">↓ Descent:</span><span style="color: #1E293B; font-weight: 600;">${itDay.descent.toLocaleString()} ft</span>
+                <div style="margin-top:6px;padding-top:6px;border-top:1px solid #E2E8F0;">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;font-size:10px;">
+                    <span style="color:#64748B;">Distance:</span><span style="color:#1E293B;font-weight:600;">${itDay.distance} / ${itDay.distanceMi} mi</span>
+                    <span style="color:#64748B;">Duration:</span><span style="color:#1E293B;font-weight:600;">${itDay.duration}</span>
+                    <span style="color:#22C55E;">↑ Ascent:</span><span style="color:#1E293B;font-weight:600;">${itDay.ascent.toLocaleString()} ft</span>
+                    <span style="color:#EF4444;">↓ Descent:</span><span style="color:#1E293B;font-weight:600;">${itDay.descent.toLocaleString()} ft</span>
                   </div>
                 </div>
               ` : ""}
-              ${acc.note ? `<p style="margin-top: 8px; font-size: 11px; color: #F97316; font-style: italic;">${acc.note}</p>` : ""}
+              ${acc.note ? `<p style="margin-top:6px;font-size:10px;color:#F97316;font-style:italic;">${acc.note}</p>` : ""}
             </div>
           </div>
         `;
-        infoWindowRef.current?.setContent(infoContent);
-        infoWindowRef.current?.open(map, marker);
-        setSelectedDay(acc.day);
+
+        marker.bindPopup(popupHtml, {
+          maxWidth: 280,
+          className: "tmb-popup",
+        });
+
+        markersRef.current.push(marker);
       });
 
-      markersRef.current.push(marker);
-    });
+      // Fit bounds to show all trail data
+      const allPoints: L.LatLng[] = [];
+      Object.values(typedTrailData).forEach((points) => {
+        (points as [number, number][]).forEach(([lat, lon]) => {
+          allPoints.push(L.latLng(lat, lon));
+        });
+      });
+      if (allPoints.length > 0) {
+        const bounds = L.latLngBounds(allPoints);
+        map.fitBounds(bounds, { padding: [30, 30] });
+      }
 
-    // Fit bounds to show entire route
-    const bounds = new google.maps.LatLngBounds();
-    ACCOMMODATIONS.forEach(a => bounds.extend({ lat: a.lat, lng: a.lng }));
-    TRAIL_WAYPOINTS.forEach(p => bounds.extend(p));
-    TRAIL_WAYPOINTS_2.forEach(p => bounds.extend(p));
-    map.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 });
-  }, []);
+      // Force a resize after render
+      setTimeout(() => map.invalidateSize(), 100);
+    };
+
+    initMap();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
+
+  // Handle layer switching
+  useEffect(() => {
+    if (!mapInstanceRef.current || !LRef.current || !tileLayerRef.current) return;
+    const L = LRef.current;
+    const map = mapInstanceRef.current;
+
+    tileLayerRef.current.remove();
+
+    if (mapLayer === "topo") {
+      tileLayerRef.current = L.tileLayer(
+        "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+        {
+          maxZoom: 17,
+          attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+        }
+      ).addTo(map);
+    } else {
+      tileLayerRef.current = L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+          maxZoom: 18,
+          attribution: "&copy; Esri",
+        }
+      ).addTo(map);
+    }
+  }, [mapLayer]);
 
   const flyToDay = (day: number) => {
-    const acc = ACCOMMODATIONS.find(a => a.day === day);
-    if (acc && mapRef.current) {
-      mapRef.current.panTo({ lat: acc.lat, lng: acc.lng });
-      mapRef.current.setZoom(13);
-      setSelectedDay(day);
-      // Trigger marker click
-      const marker = markersRef.current[ACCOMMODATIONS.findIndex(a => a.day === day)];
-      if (marker) {
-        google.maps.event.trigger(marker, "click");
+    if (!mapInstanceRef.current || !LRef.current) return;
+    const map = mapInstanceRef.current;
+    const L = LRef.current;
+
+    setSelectedDay(day);
+
+    // If it's a trail day, zoom to that trail segment
+    const typedTrailData = trailData as Record<string, [number, number][]>;
+    const stagePoints = typedTrailData[day.toString()];
+    if (stagePoints && stagePoints.length > 0) {
+      const bounds = L.latLngBounds(
+        stagePoints.map(([lat, lon]: [number, number]) => L.latLng(lat, lon))
+      );
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+
+    // Open the marker popup
+    const acc = ACCOMMODATIONS.find((a) => a.day === day);
+    if (acc) {
+      const markerIdx = ACCOMMODATIONS.findIndex((a) => a.day === day);
+      if (markersRef.current[markerIdx]) {
+        markersRef.current[markerIdx].openPopup();
       }
     }
+  };
+
+  const showAll = () => {
+    if (!mapInstanceRef.current || !LRef.current) return;
+    const L = LRef.current;
+    const map = mapInstanceRef.current;
+    setSelectedDay(null);
+
+    const typedTrailData = trailData as Record<string, [number, number][]>;
+    const allPoints: L.LatLng[] = [];
+    Object.values(typedTrailData).forEach((points) => {
+      (points as [number, number][]).forEach(([lat, lon]) => {
+        allPoints.push(L.latLng(lat, lon));
+      });
+    });
+    if (allPoints.length > 0) {
+      map.fitBounds(L.latLngBounds(allPoints), { padding: [30, 30] });
+    }
+    // Close any open popups
+    map.closePopup();
   };
 
   return (
@@ -365,7 +421,7 @@ export function TMBRouteMap() {
               TMB Route Map
             </h2>
             <p className="text-xs text-slate-500 font-mono">
-              10 DAYS · 3 COUNTRIES · 9 STAYS · INTERACTIVE
+              10 DAYS · 3 COUNTRIES · 9 STAYS · REAL TRAIL DATA
             </p>
           </div>
         </div>
@@ -382,14 +438,7 @@ export function TMBRouteMap() {
           {/* Day selector pills */}
           <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide">
             <button
-              onClick={() => {
-                if (mapRef.current) {
-                  const bounds = new google.maps.LatLngBounds();
-                  ACCOMMODATIONS.forEach(a => bounds.extend({ lat: a.lat, lng: a.lng }));
-                  mapRef.current.fitBounds(bounds, 40);
-                }
-                setSelectedDay(null);
-              }}
+              onClick={showAll}
               className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-mono font-semibold transition-all ${
                 selectedDay === null
                   ? "bg-orange-500 text-white"
@@ -415,9 +464,8 @@ export function TMBRouteMap() {
             ))}
             <button
               onClick={() => {
-                if (mapRef.current) {
-                  mapRef.current.panTo({ lat: 45.9237, lng: 6.8694 });
-                  mapRef.current.setZoom(13);
+                if (mapInstanceRef.current) {
+                  mapInstanceRef.current.setView([45.9237, 6.8694], 14);
                 }
                 setSelectedDay(10);
               }}
@@ -431,41 +479,52 @@ export function TMBRouteMap() {
             </button>
           </div>
 
-          {/* Legend */}
-          <div className="flex flex-wrap gap-3 text-[10px] font-mono text-slate-500 px-1">
-            <span className="flex items-center gap-1.5">
-              <span className="w-6 h-0.5 bg-orange-500 rounded-full inline-block" />
-              TRAIL
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-6 h-0.5 border-t-2 border-dashed border-slate-400 inline-block" />
-              BUS TRANSFER
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-blue-500 inline-block" />
-              FRANCE
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-green-500 inline-block" />
-              ITALY
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-red-500 inline-block" />
-              SWITZERLAND
-            </span>
+          {/* Legend + Layer toggle */}
+          <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+            <div className="flex flex-wrap gap-3 text-[10px] font-mono text-slate-500">
+              <span className="flex items-center gap-1.5">
+                <span className="w-6 h-0.5 bg-orange-500 rounded-full inline-block" />
+                FRANCE
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-6 h-0.5 bg-green-500 rounded-full inline-block" />
+                ITALY
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-6 h-0.5 bg-red-500 rounded-full inline-block" />
+                SWITZERLAND
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-6 h-0.5 border-t-2 border-dashed border-slate-400 inline-block" />
+                BUS
+              </span>
+            </div>
+            <button
+              onClick={() => setMapLayer(mapLayer === "topo" ? "satellite" : "topo")}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-400 hover:text-slate-200 transition-colors"
+            >
+              {mapLayer === "topo" ? (
+                <>
+                  <Layers className="w-3 h-3" /> SATELLITE
+                </>
+              ) : (
+                <>
+                  <Mountain className="w-3 h-3" /> TOPO MAP
+                </>
+              )}
+            </button>
           </div>
 
-          {/* Map */}
+          {/* Map Container */}
           <div className="rounded-xl overflow-hidden border border-slate-700/50">
-            <MapView
-              className="h-[450px] sm:h-[550px]"
-              initialCenter={{ lat: 45.88, lng: 6.92 }}
-              initialZoom={10}
-              onMapReady={handleMapReady}
+            <div
+              ref={mapContainerRef}
+              className="h-[450px] sm:h-[550px] w-full"
+              style={{ background: "#1a1a2e" }}
             />
           </div>
 
-          {/* Accommodation list below map */}
+          {/* Accommodation thumbnails */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mt-3">
             {ACCOMMODATIONS.map((acc) => (
               <button
@@ -496,6 +555,35 @@ export function TMBRouteMap() {
           </div>
         </div>
       )}
+
+      {/* Leaflet popup styling */}
+      <style>{`
+        .tmb-popup .leaflet-popup-content-wrapper {
+          border-radius: 10px;
+          padding: 0;
+          overflow: hidden;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .tmb-popup .leaflet-popup-content {
+          margin: 14px 20px;
+          line-height: 1.4;
+        }
+        .tmb-popup .leaflet-popup-tip {
+          background: white;
+        }
+        .tmb-marker {
+          background: transparent !important;
+          border: none !important;
+        }
+        .leaflet-control-zoom a {
+          background: #1E293B !important;
+          color: #F97316 !important;
+          border-color: #334155 !important;
+        }
+        .leaflet-control-zoom a:hover {
+          background: #334155 !important;
+        }
+      `}</style>
     </section>
   );
 }
