@@ -47,22 +47,26 @@ const COUNTRY_COLORS: Record<string, string> = {
 };
 
 // ── Steepness color scale ─────────────────────────────────────────
-// ft/mile ranges mapped to colors (diverging: blue for descent, neutral for flat, red/orange for climb)
+// Absolute ft/mile scale — direction (climb/descent) is visible from the line itself
 const STEEPNESS_SCALE = [
-  { min: -Infinity, max: -800, color: "#1e40af", label: "< -800" },   // deep blue — very steep descent
-  { min: -800, max: -400, color: "#3b82f6", label: "-800 to -400" },  // blue — steep descent
-  { min: -400, max: -150, color: "#60a5fa", label: "-400 to -150" },  // light blue — moderate descent
-  { min: -150, max: 150, color: "#a1a1aa", label: "-150 to 150" },    // zinc/neutral — flat
-  { min: 150, max: 400, color: "#fb923c", label: "150 to 400" },      // orange — moderate climb
-  { min: 400, max: 800, color: "#f97316", label: "400 to 800" },      // deep orange — steep climb
-  { min: 800, max: Infinity, color: "#dc2626", label: "> 800" },      // red — very steep climb
+  { min: 0,    max: 100,  color: "#a1a1aa" },  // gray — flat
+  { min: 100,  max: 200,  color: "#86efac" },  // light green — gentle
+  { min: 200,  max: 350,  color: "#4ade80" },  // green — easy grade
+  { min: 350,  max: 500,  color: "#facc15" },  // yellow — moderate
+  { min: 500,  max: 650,  color: "#fb923c" },  // orange — steep
+  { min: 650,  max: 800,  color: "#f97316" },  // deep orange — very steep
+  { min: 800,  max: 1000, color: "#ef4444" },  // red — brutal
+  { min: 1000, max: 1200, color: "#dc2626" },  // deep red — extreme
+  { min: 1200, max: Infinity, color: "#991b1b" },  // dark red — max effort
 ];
+const STEEPNESS_THRESHOLDS = [0, 100, 200, 350, 500, 650, 800, 1000, 1200];
 
 function getSteepnessColor(ftPerMile: number): string {
+  const abs = Math.abs(ftPerMile);
   for (const s of STEEPNESS_SCALE) {
-    if (ftPerMile >= s.min && ftPerMile < s.max) return s.color;
+    if (abs >= s.min && abs < s.max) return s.color;
   }
-  return "#a1a1aa";
+  return STEEPNESS_SCALE[STEEPNESS_SCALE.length - 1].color;
 }
 
 // ── Pre-compute steepness at each point (smoothed over ~0.3 mile window) ──
@@ -142,9 +146,9 @@ function SmartTooltip({ active, payload, coordinate, viewBox, mode }: any) {
         </div>
         {mode === "steepness" && (
           <div className="mt-1 pt-1 border-t border-zinc-700 font-mono" style={{ fontSize: "0.65rem", color: steepColor }}>
-            {ftPerMile >= 0 ? "+" : ""}{Math.round(ftPerMile)} ft/mi
+            {Math.round(Math.abs(ftPerMile))} ft/mi
             <span className="text-zinc-500 ml-1">
-              ({ftPerMile > 150 ? "climb" : ftPerMile < -150 ? "descent" : "flat"})
+              ({ftPerMile > 100 ? "climb" : ftPerMile < -100 ? "descent" : "flat"})
             </span>
           </div>
         )}
@@ -198,30 +202,40 @@ function CountryLegend() {
 // ── Steepness Legend ────────────────────────────────────────────────
 function SteepnessLegend() {
   return (
-    <div className="flex items-center gap-1 flex-wrap">
-      <span className="text-[0.55rem] text-zinc-500 tracking-wider uppercase mr-1">ft/mi:</span>
-      {/* Gradient bar */}
-      <div className="flex items-center gap-0">
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <span className="text-[0.55rem] text-zinc-500 tracking-wider uppercase mr-0.5"
+        style={{ fontFamily: "'JetBrains Mono', monospace" }}>ft/mi</span>
+      {/* Color blocks with threshold numbers between them */}
+      <div className="flex items-end gap-0">
         {STEEPNESS_SCALE.map((s, i) => (
-          <div key={i} className="flex flex-col items-center">
+          <div key={i} className="flex items-end">
+            {/* Threshold number before this block (except first which is 0) */}
+            {i === 0 && (
+              <span className="text-zinc-600 px-0.5 leading-none" style={{ fontSize: "0.5rem", fontFamily: "'JetBrains Mono', monospace" }}>
+                {STEEPNESS_THRESHOLDS[i]}
+              </span>
+            )}
+            {/* Color block */}
             <div
-              className="h-2"
+              className="h-2.5"
               style={{
-                width: 28,
+                width: 22,
                 background: s.color,
                 borderRadius: i === 0 ? "2px 0 0 2px" : i === STEEPNESS_SCALE.length - 1 ? "0 2px 2px 0" : 0,
               }}
             />
-            <span className="text-zinc-600 mt-0.5" style={{ fontSize: "0.45rem", fontFamily: "'JetBrains Mono', monospace" }}>
-              {s.label}
-            </span>
+            {/* Threshold number after this block */}
+            {i < STEEPNESS_SCALE.length - 1 ? (
+              <span className="text-zinc-600 px-0.5 leading-none" style={{ fontSize: "0.5rem", fontFamily: "'JetBrains Mono', monospace" }}>
+                {STEEPNESS_THRESHOLDS[i + 1]}
+              </span>
+            ) : (
+              <span className="text-zinc-600 px-0.5 leading-none" style={{ fontSize: "0.5rem", fontFamily: "'JetBrains Mono', monospace" }}>
+                +
+              </span>
+            )}
           </div>
         ))}
-      </div>
-      <div className="flex items-center gap-1 ml-2">
-        <span className="text-[0.5rem] text-blue-400">▼ descent</span>
-        <span className="text-[0.5rem] text-zinc-500">· flat ·</span>
-        <span className="text-[0.5rem] text-orange-400">▲ climb</span>
       </div>
     </div>
   );
