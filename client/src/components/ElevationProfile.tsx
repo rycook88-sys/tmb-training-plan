@@ -1,7 +1,8 @@
 // TMB Elevation Profile — stitched from real GPX data
 // Button-only horizontal scroll (no touch scroll to preserve tooltip)
+// Touch: locks page scroll when finger is in chart, tooltip positioned away from finger
 // Country-colored segments, accommodation markers at stage endpoints
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import {
   AreaChart,
   Area,
@@ -54,36 +55,55 @@ const ZOOM_LEVELS = [
   { label: "5x", scale: 5 },
 ];
 
-// ── custom tooltip ─────────────────────────────────────────────────
-function CustomTooltip({ active, payload }: any) {
+// ── smart tooltip — positions away from finger ────────────────────
+function SmartTooltip({ active, payload, coordinate, viewBox }: any) {
   if (!active || !payload?.[0]) return null;
   const d = payload[0].payload as ProfilePoint;
   const color = COUNTRY_COLORS[d.country] || "#e8913a";
   const accom = data.accommodations.find(
     (a) => Math.abs(a.dist - d.dist) < 0.5
   );
+
+  // Determine if finger is on left or right half of chart
+  const chartWidth = viewBox?.width || 800;
+  const cx = coordinate?.x || 0;
+  const fingerOnLeft = cx < chartWidth / 2;
+
+  // Position tooltip on the opposite side from the finger
+  const tooltipStyle: React.CSSProperties = {
+    position: "absolute",
+    top: 8,
+    pointerEvents: "none" as const,
+    zIndex: 50,
+    ...(fingerOnLeft
+      ? { right: 8, left: "auto" }
+      : { left: 8, right: "auto" }),
+  };
+
   return (
-    <div className="bg-zinc-900/95 border border-zinc-700 rounded-lg px-3 py-2 text-xs shadow-xl pointer-events-none">
-      <div className="flex items-center gap-2 mb-1">
-        <div
-          className="w-2 h-2 rounded-full"
-          style={{ background: color }}
-        />
-        <span className="text-zinc-400 uppercase tracking-wider" style={{ fontSize: "0.65rem" }}>
-          Day {d.day} · {d.country}
-        </span>
-      </div>
-      <div className="text-white font-mono text-sm">
-        {d.ele.toLocaleString()} ft
-      </div>
-      <div className="text-zinc-500 font-mono" style={{ fontSize: "0.65rem" }}>
-        Mile {d.dist.toFixed(1)}
-      </div>
-      {accom && (
-        <div className="mt-1 pt-1 border-t border-zinc-700 text-amber-400" style={{ fontSize: "0.65rem" }}>
-          🏠 {accom.name}
+    <div style={tooltipStyle}>
+      <div className="bg-zinc-900/95 border border-zinc-700 rounded-lg px-3 py-2 text-xs shadow-xl">
+        <div className="flex items-center gap-2 mb-1">
+          <div
+            className="w-2 h-2 rounded-full"
+            style={{ background: color }}
+          />
+          <span className="text-zinc-400 uppercase tracking-wider" style={{ fontSize: "0.65rem" }}>
+            Day {d.day} · {d.country}
+          </span>
         </div>
-      )}
+        <div className="text-white font-mono text-sm">
+          {d.ele.toLocaleString()} ft
+        </div>
+        <div className="text-zinc-500 font-mono" style={{ fontSize: "0.65rem" }}>
+          Mile {d.dist.toFixed(1)}
+        </div>
+        {accom && (
+          <div className="mt-1 pt-1 border-t border-zinc-700 text-amber-400" style={{ fontSize: "0.65rem" }}>
+            🏠 {accom.name}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -105,17 +125,29 @@ function HotelDot(props: any) {
 export default function ElevationProfile() {
   const [open, setOpen] = useState(false);
   const [zoomIndex, setZoomIndex] = useState(0);
-  // Track the visible window start distance (in miles)
   const [windowStart, setWindowStart] = useState(0);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
 
   const zoom = ZOOM_LEVELS[zoomIndex];
   const totalDist = data.totalDistance;
-
-  // How many miles are visible at the current zoom
   const windowSize = totalDist / zoom.scale;
-
-  // Clamp windowStart to valid range
   const clampedStart = Math.max(0, Math.min(windowStart, totalDist - windowSize));
+
+  // ── Lock page scroll when finger is inside the chart area ────────
+  useEffect(() => {
+    const el = chartContainerRef.current;
+    if (!el) return;
+
+    const preventScroll = (e: TouchEvent) => {
+      // Only prevent vertical scroll — allow the touch to interact with the chart tooltip
+      e.preventDefault();
+    };
+
+    el.addEventListener("touchmove", preventScroll, { passive: false });
+    return () => {
+      el.removeEventListener("touchmove", preventScroll);
+    };
+  }, [open]);
 
   // Filter points to the visible window
   const visiblePoints = useMemo(() => {
@@ -129,7 +161,7 @@ export default function ElevationProfile() {
     return data.accommodations.filter((a) => a.dist >= clampedStart - 1 && a.dist <= end + 1);
   }, [clampedStart, windowSize]);
 
-  // Day boundary lines (where one day ends and next begins)
+  // Day boundary lines
   const dayBoundaries = useMemo(() => {
     const end = clampedStart + windowSize;
     return data.accommodations
@@ -170,7 +202,6 @@ export default function ElevationProfile() {
   const handleZoomIn = () => {
     setZoomIndex((prev) => {
       const next = Math.min(prev + 1, ZOOM_LEVELS.length - 1);
-      // Center the new window on the current center
       const currentCenter = clampedStart + windowSize / 2;
       const newWindowSize = totalDist / ZOOM_LEVELS[next].scale;
       setWindowStart(Math.max(0, Math.min(currentCenter - newWindowSize / 2, totalDist - newWindowSize)));
@@ -300,7 +331,6 @@ export default function ElevationProfile() {
                     width: `${windowPct}%`,
                   }}
                 />
-                {/* Day markers on the position bar */}
                 {data.accommodations.map((a, i) => (
                   <div
                     key={i}
@@ -320,8 +350,11 @@ export default function ElevationProfile() {
             </div>
           )}
 
-          {/* Chart */}
-          <div style={{ width: "100%", height: 320 }}>
+          {/* Chart — touch-action: none prevents page scroll when finger is inside */}
+          <div
+            ref={chartContainerRef}
+            style={{ width: "100%", height: 320, touchAction: "none", position: "relative" }}
+          >
             <ResponsiveContainer width="100%" height={320}>
               <AreaChart
                 data={visiblePoints}
@@ -382,7 +415,13 @@ export default function ElevationProfile() {
                     style: { fill: "#52525b", fontSize: 9, letterSpacing: "0.15em", fontFamily: "'JetBrains Mono', monospace" },
                   }}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip
+                  content={<SmartTooltip />}
+                  wrapperStyle={{ pointerEvents: "none", position: "absolute", top: 0, left: 0, right: 0 }}
+                  position={{ x: 0, y: 0 }}
+                  allowEscapeViewBox={{ x: true, y: true }}
+                  isAnimationActive={false}
+                />
 
                 {/* Day boundary lines */}
                 {dayBoundaries.map((b, i) => (
@@ -421,6 +460,11 @@ export default function ElevationProfile() {
             </ResponsiveContainer>
           </div>
 
+          {/* Touch hint */}
+          <p className="text-center text-[0.55rem] text-zinc-600 mt-1 tracking-wider">
+            TAP CHART TO SEE ELEVATION · USE BUTTONS TO SCROLL & ZOOM
+          </p>
+
           {/* Accommodation strip below chart */}
           <div className="mt-4 overflow-x-auto">
             <div className="flex gap-2 px-2 min-w-max">
@@ -428,7 +472,6 @@ export default function ElevationProfile() {
                 <button
                   key={i}
                   onClick={() => {
-                    // Jump to this accommodation in the chart
                     const newStart = Math.max(0, a.dist - windowSize / 2);
                     setWindowStart(Math.min(newStart, totalDist - windowSize));
                   }}
