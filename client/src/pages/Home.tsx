@@ -630,6 +630,7 @@ export default function Home() {
   const wt = useWeightTracker();
   const wl = useWorkoutLog();
   const [showSummary, setShowSummary] = useState<WorkoutSession | null>(null);
+  const [highlightDay, setHighlightDay] = useState<number | null>(null);
   // Compute exact totals from stitched GPX elevation profile data
   const totalMi = elevationData.totalDistance;
   const { totalAscent, totalDescent } = useMemo(() => {
@@ -727,10 +728,10 @@ export default function Home() {
       <ItinerarySection />
 
       {/* TMB ROUTE MAP */}
-      <TMBRouteMap />
+      <TMBRouteMap highlightDay={highlightDay} onDayHover={setHighlightDay} />
 
       {/* ELEVATION PROFILE */}
-      <ElevationProfile />
+      <ElevationProfile highlightDay={highlightDay} onDayHover={setHighlightDay} />
 
       {/* FOOT MOBILITY (Collapsible) */}
       <FootMobilitySection />

@@ -174,7 +174,7 @@ const COUNTRY_DISPLAY_COLORS: Record<string, string> = {
   Switzerland: "#EF4444",
 };
 
-export function TMBRouteMap() {
+export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [mapLayer, setMapLayer] = useState<"topo" | "satellite">("topo");
@@ -458,8 +458,10 @@ export function TMBRouteMap() {
               <button
                 key={acc.day}
                 onClick={() => flyToDay(acc.day)}
+                onMouseEnter={() => onDayHover?.(acc.day)}
+                onMouseLeave={() => onDayHover?.(null)}
                 className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-mono font-semibold transition-all flex items-center gap-1.5 ${
-                  selectedDay === acc.day
+                  selectedDay === acc.day || highlightDay === acc.day
                     ? "bg-orange-500 text-white"
                     : "bg-slate-800 text-slate-400 hover:bg-slate-700"
                 }`}
@@ -537,8 +539,10 @@ export function TMBRouteMap() {
               <button
                 key={acc.day}
                 onClick={() => flyToDay(acc.day)}
+                onMouseEnter={() => onDayHover?.(acc.day)}
+                onMouseLeave={() => onDayHover?.(null)}
                 className={`relative rounded-lg overflow-hidden border transition-all group cursor-pointer ${
-                  selectedDay === acc.day
+                  selectedDay === acc.day || highlightDay === acc.day
                     ? "border-orange-500 ring-1 ring-orange-500/30"
                     : "border-slate-700/50 hover:border-slate-600"
                 }`}
