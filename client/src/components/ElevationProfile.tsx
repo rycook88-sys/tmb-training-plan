@@ -164,7 +164,7 @@ function SmartTooltip({ active, payload, coordinate, viewBox, mode }: any) {
 // ── hotel marker on chart ──────────────────────────────────────────
 function HotelDot({ cx, cy, accom, accomIdx }: { cx?: number; cy?: number; accom: typeof data.accommodations[0]; accomIdx: number }) {
   if (!cx || !cy) return null;
-  const label = accomIdx === 0 ? "▶" : accomIdx === data.accommodations.length - 1 ? "⏹" : `D${accomIdx}`;
+  const label = `D${accomIdx + 1}`;
   const name = accom.name;
   return (
     <g>
@@ -175,7 +175,7 @@ function HotelDot({ cx, cy, accom, accomIdx }: { cx?: number; cy?: number; accom
       </text>
       {/* Bubble with identifier */}
       <circle cx={cx} cy={cy - 26} r={11} fill="#1c1917" stroke="#f59e0b" strokeWidth={1.5} />
-      <text x={cx} y={cy - 22.5} textAnchor="middle" fill="#f59e0b" fontSize={accomIdx === 0 || accomIdx === data.accommodations.length - 1 ? 9 : 8} fontFamily="'JetBrains Mono', monospace" fontWeight="bold">
+      <text x={cx} y={cy - 22.5} textAnchor="middle" fill="#f59e0b" fontSize={8} fontFamily="'JetBrains Mono', monospace" fontWeight="bold">
         {label}
       </text>
     </g>
@@ -307,7 +307,7 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
   const dayBoundaries = useMemo(() => {
     const end = clampedStart + windowSize;
     return data.accommodations
-      .filter((a) => a.dist > clampedStart && a.dist < end && a.day < 10);
+      .filter((a) => a.dist > clampedStart && a.dist < end);
   }, [clampedStart, windowSize]);
 
   // ── Build gradient stops for COUNTRY mode (hard transitions) ─────
@@ -712,7 +712,7 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
                       background: "#1c1917",
                     }}
                   >
-                    {i === 0 ? "▶" : i === data.accommodations.length - 1 ? "⏹" : `D${i}`}
+                    {`D${i + 1}`}
                   </div>
                   <span
                     className="text-zinc-500 group-hover:text-zinc-300 transition-colors leading-tight whitespace-nowrap"

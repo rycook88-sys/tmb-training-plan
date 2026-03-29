@@ -31,7 +31,7 @@ interface Accommodation {
 
 const ACCOMMODATIONS: Accommodation[] = [
   {
-    day: 0,
+    day: 1,
     name: "RockyPop Hotel",
     lat: 45.8972406,
     lng: 6.8152178,
@@ -42,7 +42,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     note: "Starting point — walk west to Les Houches trailhead",
   },
   {
-    day: 1,
+    day: 2,
     name: "Gîte Le Pontet",
     lat: 45.802991,
     lng: 6.722181,
@@ -52,7 +52,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     country: "France",
   },
   {
-    day: 2,
+    day: 3,
     name: "Hotel Base Camp Lodge",
     lat: 45.696411,
     lng: 6.733627,
@@ -64,7 +64,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     note: "Bus from Les Chapieux to Bourg-Saint-Maurice",
   },
   {
-    day: 3,
+    day: 4,
     name: "Rifugio Elisabetta",
     lat: 45.767213,
     lng: 6.837629,
@@ -74,7 +74,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     country: "Italy",
   },
   {
-    day: 4,
+    day: 5,
     name: "Rifugio Maison Vieille",
     lat: 45.79085,
     lng: 6.93129,
@@ -84,7 +84,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     country: "Italy",
   },
   {
-    day: 5,
+    day: 6,
     name: "Rifugio Chapy Mont Blanc",
     lat: 45.82309,
     lng: 6.96586,
@@ -94,7 +94,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     country: "Italy",
   },
   {
-    day: 6,
+    day: 7,
     name: "Gîte Alpage de La Peule",
     lat: 45.89864,
     lng: 7.11268,
@@ -104,7 +104,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     country: "Switzerland",
   },
   {
-    day: 7,
+    day: 8,
     name: "Relais D'Arpette",
     lat: 46.02985,
     lng: 7.09294,
@@ -114,7 +114,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     country: "Switzerland",
   },
   {
-    day: 8,
+    day: 9,
     name: "Auberge Mont Blanc",
     lat: 46.05623,
     lng: 6.99534,
@@ -124,7 +124,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     country: "Switzerland",
   },
   {
-    day: 9,
+    day: 10,
     name: "Gîte Le Nouveau Grassonnet",
     lat: 45.96998,
     lng: 6.91680,
@@ -259,7 +259,7 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
         const itDay = TMB_ITINERARY.find((d) => d.day === acc.day);
 
         // Custom icon using divIcon
-        const isStart = acc.day === 0;
+        const isStart = acc.day === 1;
         const icon = L.divIcon({
           className: "tmb-marker",
           html: `<div style="
@@ -272,7 +272,7 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
             font-family:'JetBrains Mono',monospace;
             box-shadow:0 2px 8px rgba(0,0,0,0.5);
             cursor:pointer;
-          ">${isStart ? "▶" : acc.day}</div>`,
+          ">D${acc.day}</div>`,
           iconSize: [isStart ? 36 : 30, isStart ? 36 : 30],
           iconAnchor: [isStart ? 18 : 15, isStart ? 18 : 15],
         });
@@ -290,7 +290,7 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
                 <span style="color:#94A3B8;font-size:10px;">${getTypeLabel(acc.type)}</span>
               </div>
               <h3 style="margin:3px 0;font-size:15px;font-weight:700;color:#1E293B;">
-                ${isStart ? "Start" : `Day ${acc.day}`}: ${acc.name}
+                Day ${acc.day}: ${acc.name}
               </h3>
               <p style="margin:2px 0;font-size:11px;color:#64748B;">Elevation: ${acc.elevation}</p>
               ${itDay ? `
@@ -466,26 +466,11 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
                     : "bg-slate-800 text-slate-400 hover:bg-slate-700"
                 }`}
               >
-                {acc.day === 0 ? "START" : `D${acc.day}`}
-                {acc.day === 2 && <Bus className="w-3 h-3" />}
-                {acc.day === 0 && <span className="text-[10px]">▶</span>}
+                {`D${acc.day}`}
+                {acc.day === 3 && <Bus className="w-3 h-3" />}
               </button>
             ))}
-            <button
-              onClick={() => {
-                if (mapInstanceRef.current) {
-                  mapInstanceRef.current.setView([45.8972406, 6.8152178], 14);
-                }
-                setSelectedDay(10);
-              }}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-mono font-semibold transition-all flex items-center gap-1.5 ${
-                selectedDay === 10
-                  ? "bg-orange-500 text-white"
-                  : "bg-slate-800 text-slate-400 hover:bg-slate-700"
-              }`}
-            >
-              END <CableCar className="w-3 h-3" />
-            </button>
+
           </div>
 
           {/* Legend + Layer toggle */}
@@ -555,7 +540,7 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-1.5">
                   <span className="text-[10px] font-mono font-bold text-orange-400">
-                    {acc.day === 0 ? "START" : `DAY ${acc.day}`}
+                    {`DAY ${acc.day}`}
                   </span>
                   <p className="text-[10px] text-white font-medium leading-tight truncate">
                     {acc.name}
