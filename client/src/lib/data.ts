@@ -31,16 +31,16 @@ export interface ItineraryDay {
 }
 
 export const TMB_ITINERARY: ItineraryDay[] = [
-  { day: 1, date: "Jul 26", from: "Les Houches", to: "Gîte Le Pontet", distance: "19.3 km", distanceMi: 12, duration: "10:00", ascent: 4659, descent: 4068, difficulty: "brutal", note: "Opening day — massive elevation. Set a conservative pace." },
-  { day: 2, date: "Jul 27", from: "Les Contamines", to: "Les Chapieux", distance: "16.6 km", distanceMi: 10.3, duration: "08:45", ascent: 4232, descent: 2986, difficulty: "hard", note: "Col du Bonhomme. Big climb, moderate descent." },
-  { day: 3, date: "Jul 28", from: "Bourg Saint Maurice", to: "Rifugio Elisabetta", distance: "14.3 km", distanceMi: 8.9, duration: "05:35", ascent: 3248, descent: 1214, difficulty: "moderate", note: "Shuttle start. Mostly climbing — good for your engine." },
-  { day: 4, date: "Jul 29", from: "Rifugio Elisabetta", to: "Rifugio Maison Vieille", distance: "11 km", distanceMi: 6.8, duration: "04:30", ascent: 1476, descent: 2395, difficulty: "easy", note: "Short day. Recovery opportunity. Descent-heavy — practice mechanics." },
-  { day: 5, date: "Jul 30", from: "Rifugio Maison Vieille", to: "Rifugio Chapy Mont Blanc", distance: "16.2 km", distanceMi: 10.1, duration: "07:10", ascent: 2920, descent: 4560, difficulty: "hard", note: "Welcome to Courmayeur. 4,560 ft descent — KNEE DAY #1." },
-  { day: 6, date: "Jul 31", from: "Rifugio Chapy", to: "Gîte Alpage de La Peule", distance: "23.2 km", distanceMi: 14.4, duration: "10:15", ascent: 5249, descent: 3248, difficulty: "brutal", note: "Col Ferret — longest day. 5,249 ft climb. Manage energy." },
-  { day: 7, date: "Aug 01", from: "Gîte Alpage de La Peule", to: "Relais D'Arpette", distance: "22.3 km", distanceMi: 13.9, duration: "07:50", ascent: 2231, descent: 3576, difficulty: "hard", note: "Long distance, net downhill. 3,576 ft descent." },
-  { day: 8, date: "Aug 02", from: "Relais D'Arpette", to: "Trient", distance: "15.4 km", distanceMi: 9.6, duration: "07:15", ascent: 2395, descent: 3478, difficulty: "hard", note: "Another descent-heavy day. 3,478 ft down. Protect knees." },
-  { day: 9, date: "Aug 03", from: "Trient", to: "Argentière", distance: "16.4 km", distanceMi: 10.2, duration: "08:15", ascent: 3248, descent: 3806, difficulty: "hard", note: "Biggest descent day: 3,806 ft. KNEE DAY #2." },
-  { day: 10, date: "Aug 04", from: "Argentière", to: "Chamonix", distance: "17.1 km", distanceMi: 10.6, duration: "07:55", ascent: 4856, descent: 2133, difficulty: "hard", note: "Final push. Huge climb to finish. Leave it all out there." },
+  { day: 1, date: "Jul 26", from: "Les Houches", to: "Gîte Le Pontet", distance: "20.6 km", distanceMi: 12.8, duration: "10:00", ascent: 4587, descent: 4031, difficulty: "brutal", note: "Opening day — massive elevation. Set a conservative pace." },
+  { day: 2, date: "Jul 27", from: "Les Contamines", to: "Les Chapieux", distance: "16.4 km", distanceMi: 10.2, duration: "08:45", ascent: 4204, descent: 2855, difficulty: "hard", note: "Col du Bonhomme. Big climb, moderate descent." },
+  { day: 3, date: "Jul 28", from: "Bourg Saint Maurice", to: "Rifugio Elisabetta", distance: "14.2 km", distanceMi: 8.8, duration: "05:35", ascent: 3140, descent: 1182, difficulty: "moderate", note: "Shuttle start. Mostly climbing — good for your engine." },
+  { day: 4, date: "Jul 29", from: "Rifugio Elisabetta", to: "Rifugio Maison Vieille", distance: "10.1 km", distanceMi: 6.3, duration: "04:30", ascent: 1460, descent: 2050, difficulty: "easy", note: "Short day. Recovery opportunity. Descent-heavy — practice mechanics." },
+  { day: 5, date: "Jul 30", from: "Rifugio Maison Vieille", to: "Rifugio Chapy Mont Blanc", distance: "15.9 km", distanceMi: 9.9, duration: "07:10", ascent: 2770, descent: 4471, difficulty: "hard", note: "Welcome to Courmayeur. 4,471 ft descent — KNEE DAY #1." },
+  { day: 6, date: "Jul 31", from: "Rifugio Chapy", to: "Gîte Alpage de La Peule", distance: "23.0 km", distanceMi: 14.3, duration: "10:15", ascent: 5071, descent: 2910, difficulty: "brutal", note: "Col Ferret — longest day. 5,071 ft climb. Manage energy." },
+  { day: 7, date: "Aug 01", from: "Gîte Alpage de La Peule", to: "Relais D'Arpette", distance: "22.2 km", distanceMi: 13.8, duration: "07:50", ascent: 2046, descent: 3426, difficulty: "hard", note: "Long distance, net downhill. 3,426 ft descent." },
+  { day: 8, date: "Aug 02", from: "Relais D'Arpette", to: "Trient", distance: "15.3 km", distanceMi: 9.5, duration: "07:15", ascent: 2317, descent: 3345, difficulty: "hard", note: "Another descent-heavy day. 3,345 ft down. Protect knees." },
+  { day: 9, date: "Aug 03", from: "Trient", to: "Argentière", distance: "19.8 km", distanceMi: 12.3, duration: "08:15", ascent: 3667, descent: 3999, difficulty: "hard", note: "Biggest descent day: 3,999 ft. KNEE DAY #2." },
+  { day: 10, date: "Aug 04", from: "Argentière", to: "Chamonix", distance: "16.9 km", distanceMi: 10.5, duration: "07:55", ascent: 4724, descent: 1928, difficulty: "hard", note: "Final push. Huge climb to finish. Leave it all out there." },
 ];
 
 export interface Exercise {

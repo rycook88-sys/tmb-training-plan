@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ATHLETE, TMB_ITINERARY, WORKOUT_PLAN, FOOT_VIDEOS,
@@ -14,6 +14,7 @@ import {
 import TrainingAnalytics from "@/components/TrainingAnalytics";
 import { TMBRouteMap } from "@/components/TMBRouteMap";
 import ElevationProfile from "@/components/ElevationProfile";
+import elevationData from "@/lib/tmb_elevation_profile.json";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/hero-tmb-ridge-TA9BE2JzZxaxi68um9vvG9.webp";
 const TOPO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/topo-texture-3ai3ccpyxv32r72SNbY3MU.webp";
@@ -629,9 +630,19 @@ export default function Home() {
   const wt = useWeightTracker();
   const wl = useWorkoutLog();
   const [showSummary, setShowSummary] = useState<WorkoutSession | null>(null);
-  const totalA = TMB_ITINERARY.reduce((s, d) => s + d.ascent, 0);
-  const totalD = TMB_ITINERARY.reduce((s, d) => s + d.descent, 0);
-  const totalMi = TMB_ITINERARY.reduce((s, d) => s + d.distanceMi, 0);
+  // Compute exact totals from stitched GPX elevation profile data
+  const totalMi = elevationData.totalDistance;
+  const { totalAscent, totalDescent } = useMemo(() => {
+    const pts = elevationData.points;
+    let asc = 0, desc = 0;
+    for (let i = 1; i < pts.length; i++) {
+      const diff = pts[i].ele - pts[i - 1].ele;
+      if (diff > 0) asc += diff; else desc += Math.abs(diff);
+    }
+    return { totalAscent: Math.round(asc), totalDescent: Math.round(desc) };
+  }, []);
+  const totalA = totalAscent;
+  const totalD = totalDescent;
 
   const handleSave = () => {
     const session = wl.saveSession();
