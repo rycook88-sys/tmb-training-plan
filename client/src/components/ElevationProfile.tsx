@@ -22,15 +22,12 @@ interface ProfilePoint {
   ele: number;
   country: string;
   day: number;
-  stage: number;
 }
 interface AccommodationMarker {
   name: string;
   dist: number;
   ele: number;
   day: number;
-  lat: number;
-  lon: number;
 }
 interface ProfileData {
   points: ProfilePoint[];
