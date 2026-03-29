@@ -231,10 +231,22 @@ function ActiveWorkoutPanel({ dayId, exercises, onUpdate, onToggle, onSave, onCa
                       <span>Goal: <span className="text-[var(--primary)]">{planEx?.goal}</span></span>
                     </div>
                     <div className="flex items-center gap-2 mt-2">
-                      <input type="text" placeholder={planEx?.unit === "sec" || planEx?.unit === "min" ? "duration" : "weight"}
+                      <input type="text" placeholder={
+                        planEx?.unit === "sec" ? "seconds" :
+                        planEx?.unit === "min" ? "minutes" :
+                        planEx?.unit === "hrs" ? "hours" :
+                        planEx?.unit === "lb" ? "lbs" :
+                        "weight"
+                      }
                         value={ex.weight} onChange={(e) => onUpdate(i, "weight", e.target.value)}
                         className="w-24 h-10 bg-[var(--secondary)] border border-border px-3 py-2 text-sm font-mono text-foreground focus:border-[var(--primary)] focus:outline-none" />
-                      <input type="text" placeholder="reps" value={ex.reps}
+                      <input type="text" placeholder={
+                        planEx?.unit === "hrs" ? "pack lbs" :
+                        planEx?.unit === "sec" || planEx?.unit === "min" ? "level" :
+                        planEx?.unit === "lb" ? "pack lbs" :
+                        planEx?.unit === "mph" ? "grade %" :
+                        "reps"
+                      } value={ex.reps}
                         onChange={(e) => onUpdate(i, "reps", e.target.value)}
                         className="w-20 h-10 bg-[var(--secondary)] border border-border px-3 py-2 text-sm font-mono text-foreground focus:border-[var(--primary)] focus:outline-none" />
                       {beat && (

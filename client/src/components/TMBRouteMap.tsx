@@ -449,8 +449,8 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
         className="w-full flex items-center justify-between py-4 px-1 group cursor-pointer"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center">
-            <Map className="w-5 h-5 text-orange-400" />
+          <div className="w-10 h-10 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+            <Map className="w-5 h-5 text-violet-400" />
           </div>
           <div className="text-left">
             <h2 className="text-lg font-bold text-slate-100 tracking-tight">
@@ -477,7 +477,7 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
               onClick={showAll}
               className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-mono font-semibold transition-all ${
                 selectedDay === null
-                  ? "bg-orange-500 text-white"
+                  ? "bg-violet-500 text-white"
                   : "bg-slate-800 text-slate-400 hover:bg-slate-700"
               }`}
             >
@@ -491,7 +491,7 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
                 onMouseLeave={() => onDayHover?.(null)}
                 className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-mono font-semibold transition-all flex items-center gap-1.5 ${
                   selectedDay === acc.day || highlightDay === acc.day
-                    ? "bg-orange-500 text-white"
+                    ? "bg-violet-500 text-white"
                     : "bg-slate-800 text-slate-400 hover:bg-slate-700"
                 }`}
               >
@@ -507,7 +507,7 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
           <div className="flex flex-wrap items-center justify-between gap-3 px-1">
             <div className="flex flex-wrap gap-3 text-[10px] font-mono text-slate-500">
               <span className="flex items-center gap-1.5">
-                <span className="w-6 h-0.5 bg-orange-500 rounded-full inline-block" />
+                <span className="w-6 h-0.5 bg-violet-500 rounded-full inline-block" />
                 FRANCE
               </span>
               <span className="flex items-center gap-1.5">
@@ -558,7 +558,7 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
                 onMouseLeave={() => onDayHover?.(null)}
                 className={`relative rounded-lg overflow-hidden border transition-all group cursor-pointer ${
                   selectedDay === acc.day || highlightDay === acc.day
-                    ? "border-orange-500 ring-1 ring-orange-500/30"
+                    ? "border-violet-500 ring-1 ring-violet-500/30"
                     : "border-slate-700/50 hover:border-slate-600"
                 }`}
               >
@@ -569,7 +569,7 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-1.5">
-                  <span className={`text-[10px] font-mono font-bold ${acc.day === 12 ? 'text-emerald-400' : acc.day === 11 ? 'text-violet-400' : 'text-orange-400'}`}>
+                  <span className={`text-[10px] font-mono font-bold ${acc.day === 12 ? 'text-emerald-400' : acc.day === 11 ? 'text-violet-400' : 'text-violet-400'}`}>
                     {acc.day === 12 ? "\u{1F3C1} FINISH" : acc.day === 11 ? "\u{1F6A1} CABLE CAR" : `DAY ${acc.day}`}
                   </span>
                   <p className="text-[10px] text-white font-medium leading-tight truncate">

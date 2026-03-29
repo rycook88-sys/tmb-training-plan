@@ -499,6 +499,15 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
                 <span className="px-2 py-1 text-[0.65rem] font-mono text-amber-400 bg-zinc-800/60 rounded border border-zinc-700/30 min-w-[2.5rem] text-center">
                   {zoomLabel}
                 </span>
+                {customScale > 1.05 && (
+                  <button
+                    onClick={() => { setCustomScale(1); setWindowStart(0); }}
+                    className="px-2 h-8 flex items-center justify-center rounded bg-zinc-800/80 border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors active:scale-95 text-[0.6rem] font-mono"
+                    title="Reset to full view"
+                  >
+                    1x
+                  </button>
+                )}
                 <button
                   onClick={handleZoomIn}
                   disabled={customScale >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1].scale - 0.05}

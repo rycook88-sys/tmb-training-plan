@@ -220,9 +220,13 @@ export function useWorkoutLog() {
 }
 
 export function generateSummary(session: WorkoutSession, allSessions: WorkoutSession[]): string {
+  const planDay = WORKOUT_PLAN.find((d) => d.id === session.dayId);
+  const isPickOne = planDay?.pickOne === true;
   const completed = session.exercises.filter((e) => e.done).length;
   const total = session.exercises.length;
-  const pct = Math.round((completed / total) * 100);
+  const pct = isPickOne
+    ? (completed >= 1 ? 100 : 0)
+    : Math.round((completed / total) * 100);
 
   const dayType = session.dayId;
   const prevSame = allSessions.filter((s) => s.dayId === dayType && s.date !== session.date);
@@ -230,10 +234,15 @@ export function generateSummary(session: WorkoutSession, allSessions: WorkoutSes
 
   let summary = "";
 
-  if (pct === 100) {
+  if (isPickOne && completed >= 1) {
+    const chosenEx = session.exercises.find((e) => e.done);
+    summary += `Cardio complete — ${chosenEx?.name || "activity"} logged. One solid session is all it takes. `;
+  } else if (pct === 100) {
     summary += "Full session completed. That is the standard. ";
   } else if (pct >= 70) {
     summary += `${completed}/${total} exercises done (${pct}%). Acceptable, but the skipped ones matter. `;
+  } else if (isPickOne && completed === 0) {
+    summary += "No activity selected. Pick one and get it done next time. ";
   } else {
     summary += `${completed}/${total} exercises done (${pct}%). Not enough volume. If you are too fatigued, check sleep and nutrition. `;
   }
