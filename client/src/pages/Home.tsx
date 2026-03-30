@@ -588,8 +588,8 @@ function FootMobilitySection() {
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between group cursor-pointer"
       >
-        <h2 className="text-xs uppercase tracking-[0.3em] text-[var(--muted-foreground)] font-mono flex items-center gap-2">
-          <Footprints className="w-3.5 h-3.5 text-[var(--primary)]" /> Foot Mobility — High Transverse Arch Protocol
+        <h2 className="text-sm uppercase tracking-[0.2em] text-foreground font-mono flex items-center gap-3 font-semibold">
+          <span className="text-xl">🦶</span> Foot Mobility — High Transverse Arch Protocol
         </h2>
         <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3 }}>
           <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-colors" />
@@ -710,8 +710,8 @@ export default function Home() {
       {/* WORKOUT PLAN */}
       <section className="container py-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xs uppercase tracking-[0.3em] text-[var(--muted-foreground)] font-mono flex items-center gap-2">
-            <Target className="w-3.5 h-3.5 text-[var(--primary)]" /> Training Protocol
+          <h2 className="text-sm uppercase tracking-[0.2em] text-foreground font-mono flex items-center gap-3 font-semibold">
+            <span className="text-xl">🏋️</span> Training Protocol
           </h2>
         </div>
 

@@ -426,8 +426,8 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between group cursor-pointer"
       >
-        <h2 className="text-xs uppercase tracking-[0.3em] text-[var(--muted-foreground)] font-mono flex items-center gap-2">
-          <Mountain className="w-3.5 h-3.5 text-[var(--primary)]" /> Elevation Profile
+        <h2 className="text-sm uppercase tracking-[0.2em] text-foreground font-mono flex items-center gap-3 font-semibold">
+          <span className="text-xl">📈</span> Elevation Profile
         </h2>
         <div className="flex items-center gap-3">
           <span className="text-xs font-mono text-[var(--muted-foreground)]">{data.totalDistance} mi · {maxEle.toLocaleString()}' peak · 10 stages</span>
