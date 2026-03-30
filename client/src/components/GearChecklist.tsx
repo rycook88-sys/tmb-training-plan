@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Check, Package, AlertTriangle, Minus, Plus, RotateCcw, Trash2, PlusCircle, X } from "lucide-react";
+import { ChevronDown, Check, Package, AlertTriangle, Minus, Plus, RotateCcw, Trash2, PlusCircle, X, ExternalLink } from "lucide-react";
 
 /* ── Types ─────────────────────────────────────────── */
 interface GearItem {
@@ -11,6 +11,7 @@ interface GearItem {
   packed: boolean;
   worn: boolean;
   maybe: boolean;
+  buyLink?: string;
 }
 
 const CATEGORIES = ["Pack", "Clothing", "Sleep", "Water", "Navigation", "Safety", "Electronics", "Money", "Toiletries", "Worn"];
@@ -34,6 +35,12 @@ const INITIAL_GEAR: GearItem[] = [
   { id: "money", name: "Euros & Francs", category: "Money", weightOz: 2, packed: true, worn: false, maybe: false },
   { id: "toiletries", name: "Toiletries", category: "Toiletries", weightOz: 6, packed: true, worn: false, maybe: false },
   { id: "water-filter", name: "Water Filter", category: "Water", weightOz: 5, packed: false, worn: false, maybe: true },
+  { id: "dirty-girls", name: "Dirty Girl Gaiters", category: "Clothing", weightOz: 2, packed: false, worn: false, maybe: false },
+  { id: "knee-bands", name: "Patellar Tendon Bands (x2)", category: "Safety", weightOz: 3, packed: false, worn: false, maybe: false },
+  { id: "buff", name: "Merino Buff / Bandana", category: "Clothing", weightOz: 2, packed: false, worn: false, maybe: false },
+  { id: "insoles", name: "Superfeet Hike Support Insoles", category: "Worn", weightOz: 4, packed: false, worn: true, maybe: false },
+  { id: "merino-tee", name: "Merino Wool T-Shirt (2nd shirt)", category: "Clothing", weightOz: 5, packed: false, worn: false, maybe: false },
+  { id: "merino-boxers", name: "Merino Boxer Briefs (x2)", category: "Clothing", weightOz: 6, packed: false, worn: false, maybe: false, buyLink: "https://www.smartwool.com/shop/mens-active-boxer-brief-sw0168" },
   { id: "hiking-shoes", name: "Hiking Shoes", category: "Worn", weightOz: 44, packed: true, worn: true, maybe: false },
   { id: "zip-pants", name: "Zip-Off Pants", category: "Worn", weightOz: 14, packed: true, worn: true, maybe: false },
   { id: "compression", name: "Compression Shorts", category: "Worn", weightOz: 4, packed: true, worn: true, maybe: false },
@@ -359,6 +366,17 @@ export default function GearChecklist() {
                             <span className={`text-xs font-mono ${item.packed ? "text-foreground" : "text-[var(--muted-foreground)] line-through"}`}>
                               {item.name}
                             </span>
+                            {item.buyLink && (
+                              <a
+                                href={item.buyLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 ml-2 text-[9px] font-mono text-[var(--primary)] hover:text-[var(--primary)]/80 transition-colors"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <ExternalLink className="w-3 h-3" /> Buy
+                              </a>
+                            )}
                             {item.maybe && (
                               <span className="ml-2 text-[9px] font-mono text-yellow-500 uppercase">maybe</span>
                             )}
