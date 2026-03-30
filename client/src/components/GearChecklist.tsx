@@ -243,7 +243,7 @@ export default function GearChecklist() {
   const weightPct = Math.min((stats.totalLbs / TARGET_MAX) * 100, 120);
 
   return (
-    <section className="container py-8">
+    <section className="container py-6">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between group cursor-pointer"

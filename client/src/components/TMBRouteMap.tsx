@@ -442,30 +442,23 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
   };
 
   return (
-    <section className="relative">
+    <section className="container py-6">
       {/* Section Header */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between py-4 px-1 group cursor-pointer"
+        className="w-full flex items-center justify-between group cursor-pointer"
       >
+        <h2 className="text-xs uppercase tracking-[0.3em] text-[var(--muted-foreground)] font-mono flex items-center gap-2">
+          <Map className="w-3.5 h-3.5 text-[var(--primary)]" /> TMB Route Map
+        </h2>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
-            <Map className="w-5 h-5 text-violet-400" />
-          </div>
-          <div className="text-left">
-            <h2 className="text-lg font-bold text-slate-100 tracking-tight">
-              TMB Route Map
-            </h2>
-            <p className="text-xs text-slate-500 font-mono">
-              10 DAYS · 3 COUNTRIES · 9 STAYS · REAL TRAIL DATA
-            </p>
-          </div>
+          <span className="text-xs font-mono text-[var(--muted-foreground)]">10 days · 3 countries · real trail data</span>
+          <ChevronDown
+            className={`w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-all duration-300 ${
+              isOpen ? "rotate-180" : ""
+            }`}
+          />
         </div>
-        <ChevronDown
-          className={`w-5 h-5 text-slate-500 transition-transform duration-300 ${
-            isOpen ? "rotate-180" : ""
-          }`}
-        />
       </button>
 
       {/* Map Content */}

@@ -583,7 +583,7 @@ function ItinerarySection() {
 function FootMobilitySection() {
   const [open, setOpen] = useState(false);
   return (
-    <section className="container py-8">
+    <section className="container py-6">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between group cursor-pointer"
@@ -708,7 +708,7 @@ export default function Home() {
       </section>
 
       {/* WORKOUT PLAN */}
-      <section className="container py-8">
+      <section className="container py-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xs uppercase tracking-[0.3em] text-[var(--muted-foreground)] font-mono flex items-center gap-2">
             <Target className="w-3.5 h-3.5 text-[var(--primary)]" /> Training Protocol

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown,
-  ChevronUp,
   CreditCard,
   Banknote,
   Coffee,
@@ -13,7 +13,6 @@ import {
   Wallet,
   Info,
   Check,
-  X,
 } from "lucide-react";
 
 /* ── types ── */
@@ -22,9 +21,9 @@ interface FoodStop {
   type: "refuge" | "restaurant" | "cafe" | "supermarket" | "food-truck";
   description: string;
   mustTry?: string;
-  priceRange: string; // e.g. "€10-15"
+  priceRange: string;
   payment: "card" | "cash" | "both";
-  highlight?: boolean; // "don't miss" stop
+  highlight?: boolean;
 }
 
 interface DayBudget {
@@ -34,7 +33,7 @@ interface DayBudget {
   to: string;
   country: "france" | "italy" | "switzerland";
   currency: "EUR" | "CHF";
-  sleepElevation: number; // meters
+  sleepElevation: number;
   foodStops: FoodStop[];
   transportCost?: { item: string; price: string };
   estimatedLow: number;
@@ -295,7 +294,7 @@ const DAYS: DayBudget[] = [
   },
   {
     day: 8,
-    label: "Day 8 (🇨🇭)",
+    label: "Day 8 (CH)",
     from: "Gîte La Peule",
     to: "Relais D'Arpette",
     country: "switzerland",
@@ -342,7 +341,7 @@ const DAYS: DayBudget[] = [
   },
   {
     day: 9,
-    label: "Day 9 (🇨🇭)",
+    label: "Day 9 (CH)",
     from: "Relais D'Arpette",
     to: "Auberge Mont Blanc",
     country: "switzerland",
@@ -359,7 +358,7 @@ const DAYS: DayBudget[] = [
         highlight: true,
       },
       {
-        name: "Hôtel du Col de la Forclaz",
+        name: "Col de la Forclaz",
         type: "restaurant",
         description: "Beer, fries, burgers at the pass",
         mustTry: "Burger — hikers next to you will make you jealous",
@@ -435,9 +434,9 @@ const DAYS: DayBudget[] = [
 ];
 
 const COUNTRY_FLAG: Record<string, string> = {
-  france: "🇫🇷",
-  italy: "🇮🇹",
-  switzerland: "🇨🇭",
+  france: "\u{1F1EB}\u{1F1F7}",
+  italy: "\u{1F1EE}\u{1F1F9}",
+  switzerland: "\u{1F1E8}\u{1F1ED}",
 };
 
 const PAYMENT_ICON: Record<string, { icon: typeof CreditCard; label: string; color: string }> = {
@@ -479,188 +478,204 @@ export default function DailyBudget() {
   }, []);
 
   return (
-    <section className="mb-6">
+    <section className="container py-6">
       {/* Header */}
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between bg-zinc-900/80 border border-zinc-800 rounded-xl px-5 py-4 hover:bg-zinc-800/80 transition-colors"
+        className="w-full flex items-center justify-between group cursor-pointer"
       >
+        <h2 className="text-xs uppercase tracking-[0.3em] text-[var(--muted-foreground)] font-mono flex items-center gap-2">
+          <Wallet className="w-3.5 h-3.5 text-[var(--primary)]" /> Daily Budget & Food Stops
+        </h2>
         <div className="flex items-center gap-3">
-          <Wallet className="w-5 h-5 text-emerald-400" />
-          <span className="font-semibold text-white text-lg">Daily Budget & Food Stops</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-zinc-400">
+          <span className="text-xs font-mono text-[var(--muted-foreground)]">
             €{totals.eurLow}–{totals.eurHigh} + CHF {totals.chfLow}–{totals.chfHigh}
           </span>
-          {open ? (
-            <ChevronUp className="w-5 h-5 text-zinc-400" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-zinc-400" />
-          )}
+          <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3 }}>
+            <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-colors" />
+          </motion.div>
         </div>
       </button>
 
-      {open && (
-        <div className="mt-3 space-y-3">
-          {/* Summary cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {/* EUR total */}
-            <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">🇪🇺</span>
-                <span className="font-medium text-white">Euros (9 days)</span>
-              </div>
-              <div className="text-2xl font-bold text-emerald-400">
-                €{totals.eurLow}–{totals.eurHigh}
-              </div>
-              <p className="text-xs text-zinc-500 mt-1">France & Italy days</p>
-            </div>
-            {/* CHF total */}
-            <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">🇨🇭</span>
-                <span className="font-medium text-white">Swiss Francs (2 days)</span>
-              </div>
-              <div className="text-2xl font-bold text-red-400">
-                CHF {totals.chfLow}–{totals.chfHigh}
-              </div>
-              <p className="text-xs text-zinc-500 mt-1">Switzerland days (20-30% pricier)</p>
-            </div>
-            {/* Credit card */}
-            <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <CreditCard className="w-5 h-5 text-blue-400" />
-                <span className="font-medium text-white">Capital One Venture</span>
-              </div>
-              <div className="flex items-center gap-1 text-green-400 font-semibold">
-                <Check className="w-4 h-4" /> No foreign transaction fees
-              </div>
-              <p className="text-xs text-zinc-500 mt-1">Use tap-to-pay wherever accepted. Carry cash for remote refuges.</p>
-            </div>
-          </div>
-
-          {/* Cash recommendations */}
-          <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Banknote className="w-5 h-5 text-amber-400" />
-              <span className="font-medium text-white">Cash to Carry</span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-zinc-400 font-medium">EUR Denominations:</span>
-                <p className="text-zinc-300 mt-1">€200–300 in small bills: 10× €5, 8× €10, 4× €20. Avoid €50+. Keep coins for small purchases.</p>
-              </div>
-              <div>
-                <span className="text-zinc-400 font-medium">CHF Denominations:</span>
-                <p className="text-zinc-300 mt-1">CHF 80–100 in small bills: 2× CHF 10, 3× CHF 20. One CHF 50 max. Some places accept EUR at poor rate.</p>
-              </div>
-            </div>
-            <div className="mt-3 flex items-start gap-2 text-xs text-zinc-500">
-              <Info className="w-4 h-4 mt-0.5 shrink-0" />
-              <span>ATMs available in Chamonix (D1), Les Contamines (D2), Courmayeur (D6), La Fouly (D8), and Chamonix (D11).</span>
-            </div>
-          </div>
-
-          {/* Day-by-day */}
-          {DAYS.map((day) => {
-            const isExpanded = expandedDay === day.day;
-            const PayIcon = PAYMENT_ICON;
-            return (
-              <div key={day.day} className="bg-zinc-900/60 border border-zinc-800 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setExpandedDay(isExpanded ? null : day.day)}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-zinc-800/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg">{COUNTRY_FLAG[day.country]}</span>
-                    <div className="text-left">
-                      <span className="font-medium text-white">D{day.day}</span>
-                      <span className="text-zinc-400 ml-2 text-sm">{day.from} → {day.to}</span>
-                    </div>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="mt-4 space-y-4">
+              {/* Summary cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {/* EUR total */}
+                <div className="border border-border bg-card p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">{COUNTRY_FLAG.france}</span>
+                    <span className="text-[10px] uppercase tracking-[0.2em] font-mono text-[var(--muted-foreground)]">Euros (9 days)</span>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {day.transportCost && (
-                      <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded-full flex items-center gap-1">
-                        {day.transportCost.item.includes("Bus") ? <Bus className="w-3 h-3" /> : <CableCar className="w-3 h-3" />}
-                        {day.transportCost.price}
-                      </span>
-                    )}
-                    <span className="text-sm font-medium text-zinc-300">
-                      {day.currency === "EUR" ? "€" : "CHF "}{day.estimatedLow}–{day.estimatedHigh}
-                    </span>
-                    {day.foodStops.some((s) => s.highlight) && (
-                      <span className="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full">
-                        Don't miss
-                      </span>
-                    )}
-                    {isExpanded ? (
-                      <ChevronUp className="w-4 h-4 text-zinc-500" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-zinc-500" />
-                    )}
+                  <div className="text-xl font-mono font-bold text-green-400">
+                    €{totals.eurLow}–{totals.eurHigh}
                   </div>
-                </button>
+                  <p className="text-[10px] font-mono text-[var(--muted-foreground)] mt-1">France & Italy days</p>
+                </div>
+                {/* CHF total */}
+                <div className="border border-border bg-card p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">{COUNTRY_FLAG.switzerland}</span>
+                    <span className="text-[10px] uppercase tracking-[0.2em] font-mono text-[var(--muted-foreground)]">Swiss Francs (2 days)</span>
+                  </div>
+                  <div className="text-xl font-mono font-bold text-red-400">
+                    CHF {totals.chfLow}–{totals.chfHigh}
+                  </div>
+                  <p className="text-[10px] font-mono text-[var(--muted-foreground)] mt-1">Switzerland days (20-30% pricier)</p>
+                </div>
+                {/* Credit card */}
+                <div className="border border-border bg-card p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CreditCard className="w-4 h-4 text-blue-400" />
+                    <span className="text-[10px] uppercase tracking-[0.2em] font-mono text-[var(--muted-foreground)]">Capital One Venture</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-green-400 font-mono text-sm font-bold">
+                    <Check className="w-3.5 h-3.5" /> No foreign transaction fees
+                  </div>
+                  <p className="text-[10px] font-mono text-[var(--muted-foreground)] mt-1">Use tap-to-pay wherever accepted. Carry cash for remote refuges.</p>
+                </div>
+              </div>
 
-                {isExpanded && (
-                  <div className="px-4 pb-4 space-y-3">
-                    {day.notes && (
-                      <p className="text-sm text-zinc-400 italic border-l-2 border-zinc-700 pl-3">
-                        {day.notes}
-                      </p>
-                    )}
+              {/* Cash recommendations */}
+              <div className="border border-border bg-card p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Banknote className="w-4 h-4 text-amber-400" />
+                  <span className="text-[10px] uppercase tracking-[0.3em] font-mono font-bold text-foreground">Cash to Carry</span>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-[10px] uppercase tracking-[0.2em] font-mono text-[var(--primary)]">EUR Denominations</span>
+                    <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-relaxed">€200–300 in small bills: 10× €5, 8× €10, 4× €20. Avoid €50+. Keep coins for small purchases.</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase tracking-[0.2em] font-mono text-[var(--primary)]">CHF Denominations</span>
+                    <p className="text-xs text-[var(--muted-foreground)] mt-1 leading-relaxed">CHF 80–100 in small bills: 2× CHF 10, 3× CHF 20. One CHF 50 max. Some places accept EUR at poor rate.</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-start gap-2 text-[10px] font-mono text-[var(--muted-foreground)]">
+                  <Info className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[var(--primary)]" />
+                  <span>ATMs available in Chamonix (D1), Les Contamines (D2), Courmayeur (D6), La Fouly (D8), and Chamonix (D11).</span>
+                </div>
+              </div>
 
-                    {day.foodStops.map((stop, i) => {
-                      const StopIcon = STOP_ICON[stop.type] || UtensilsCrossed;
-                      const pay = PAYMENT_ICON[stop.payment];
-                      const PaymentIcon = pay.icon;
-                      return (
-                        <div
-                          key={i}
-                          className={`flex items-start gap-3 p-3 rounded-lg ${
-                            stop.highlight
-                              ? "bg-amber-500/10 border border-amber-500/20"
-                              : "bg-zinc-800/40"
-                          }`}
-                        >
-                          <StopIcon className={`w-4 h-4 mt-1 shrink-0 ${stop.highlight ? "text-amber-400" : "text-zinc-500"}`} />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium text-white text-sm">{stop.name}</span>
-                              <span className={`flex items-center gap-1 text-xs ${pay.color}`}>
-                                <PaymentIcon className="w-3 h-3" />
-                                {pay.label}
-                              </span>
-                              <span className="text-xs text-zinc-500">{stop.priceRange}</span>
-                            </div>
-                            <p className="text-xs text-zinc-400 mt-0.5">{stop.description}</p>
-                            {stop.mustTry && (
-                              <p className="text-xs text-emerald-400 mt-1 flex items-center gap-1">
-                                <span>⭐</span> {stop.mustTry}
-                              </p>
-                            )}
+              {/* Day-by-day */}
+              <div className="border border-border bg-card divide-y divide-border">
+                {DAYS.map((day) => {
+                  const isExpanded = expandedDay === day.day;
+                  return (
+                    <div key={day.day}>
+                      <button
+                        onClick={() => setExpandedDay(isExpanded ? null : day.day)}
+                        className="w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--secondary)] transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm">{COUNTRY_FLAG[day.country]}</span>
+                          <div className="text-left">
+                            <span className="font-mono text-xs font-bold text-foreground">D{day.day}</span>
+                            <span className="text-xs text-[var(--muted-foreground)] ml-2">{day.from} → {day.to}</span>
                           </div>
                         </div>
-                      );
-                    })}
+                        <div className="flex items-center gap-3">
+                          {day.transportCost && (
+                            <span className="text-[10px] font-mono bg-blue-500/15 text-blue-400 px-2 py-0.5 flex items-center gap-1">
+                              {day.transportCost.item.includes("Bus") ? <Bus className="w-3 h-3" /> : <CableCar className="w-3 h-3" />}
+                              {day.transportCost.price}
+                            </span>
+                          )}
+                          <span className="text-xs font-mono font-medium text-[var(--muted-foreground)]">
+                            {day.currency === "EUR" ? "€" : "CHF "}{day.estimatedLow}–{day.estimatedHigh}
+                          </span>
+                          {day.foodStops.some((s) => s.highlight) && (
+                            <span className="text-[10px] font-mono bg-amber-500/15 text-amber-400 px-2 py-0.5">
+                              Don't miss
+                            </span>
+                          )}
+                          <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.3 }}>
+                            <ChevronDown className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+                          </motion.div>
+                        </div>
+                      </button>
 
-                    {day.transportCost && (
-                      <div className="flex items-center gap-2 p-2 bg-blue-500/10 rounded-lg text-sm">
-                        {day.transportCost.item.includes("Bus") ? (
-                          <Bus className="w-4 h-4 text-blue-400" />
-                        ) : (
-                          <CableCar className="w-4 h-4 text-blue-400" />
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                            className="overflow-hidden"
+                          >
+                            <div className="px-4 pb-4 space-y-3">
+                              {day.notes && (
+                                <p className="text-xs text-[var(--muted-foreground)] italic border-l-2 border-[var(--primary)]/30 pl-3">
+                                  {day.notes}
+                                </p>
+                              )}
+
+                              {day.foodStops.map((stop, i) => {
+                                const StopIcon = STOP_ICON[stop.type] || UtensilsCrossed;
+                                const pay = PAYMENT_ICON[stop.payment];
+                                const PaymentIcon = pay.icon;
+                                return (
+                                  <div
+                                    key={i}
+                                    className={`flex items-start gap-3 p-3 ${
+                                      stop.highlight
+                                        ? "bg-amber-500/10 border border-amber-500/20"
+                                        : "bg-[var(--secondary)]"
+                                    }`}
+                                  >
+                                    <StopIcon className={`w-3.5 h-3.5 mt-1 shrink-0 ${stop.highlight ? "text-amber-400" : "text-[var(--muted-foreground)]"}`} />
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-mono text-xs font-medium text-foreground">{stop.name}</span>
+                                        <span className={`flex items-center gap-1 text-[10px] font-mono ${pay.color}`}>
+                                          <PaymentIcon className="w-3 h-3" />
+                                          {pay.label}
+                                        </span>
+                                        <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{stop.priceRange}</span>
+                                      </div>
+                                      <p className="text-[10px] text-[var(--muted-foreground)] mt-0.5">{stop.description}</p>
+                                      {stop.mustTry && (
+                                        <p className="text-[10px] text-green-400 mt-1 flex items-center gap-1">
+                                          <span>⭐</span> {stop.mustTry}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+
+                              {day.transportCost && (
+                                <div className="flex items-center gap-2 p-3 bg-blue-500/10 border border-blue-500/20 text-xs font-mono">
+                                  {day.transportCost.item.includes("Bus") ? (
+                                    <Bus className="w-3.5 h-3.5 text-blue-400" />
+                                  ) : (
+                                    <CableCar className="w-3.5 h-3.5 text-blue-400" />
+                                  )}
+                                  <span className="text-blue-400">{day.transportCost.item}: {day.transportCost.price}</span>
+                                </div>
+                              )}
+                            </div>
+                          </motion.div>
                         )}
-                        <span className="text-blue-300">{day.transportCost.item}: {day.transportCost.price}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
+                      </AnimatePresence>
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
-      )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }

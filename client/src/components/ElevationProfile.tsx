@@ -420,34 +420,26 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
   }, [highlightDay]);
 
   return (
-    <section className="relative">
+    <section className="container py-6">
       {/* Header */}
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-6 py-5 bg-zinc-900/60 border border-zinc-800/50 hover:border-zinc-700/50 transition-all duration-300"
+        className="w-full flex items-center justify-between group cursor-pointer"
       >
+        <h2 className="text-xs uppercase tracking-[0.3em] text-[var(--muted-foreground)] font-mono flex items-center gap-2">
+          <Mountain className="w-3.5 h-3.5 text-[var(--primary)]" /> Elevation Profile
+        </h2>
         <div className="flex items-center gap-3">
-          <Mountain className="w-5 h-5 text-amber-500" />
-          <div className="text-left">
-            <h2
-              className="text-sm font-bold tracking-[0.2em] uppercase"
-              style={{ fontFamily: "'JetBrains Mono', monospace" }}
-            >
-              Elevation Profile
-            </h2>
-            <p className="text-[0.65rem] text-zinc-500 tracking-wider uppercase mt-0.5">
-              {data.totalDistance} MILES · {maxEle.toLocaleString()} FT PEAK · 10 STAGES
-            </p>
-          </div>
+          <span className="text-xs font-mono text-[var(--muted-foreground)]">{data.totalDistance} mi · {maxEle.toLocaleString()}' peak · 10 stages</span>
+          <ChevronDown
+            className={`w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-all duration-300 ${open ? "rotate-180" : ""}`}
+          />
         </div>
-        <ChevronDown
-          className={`w-5 h-5 text-zinc-500 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
-        />
       </button>
 
       {/* Content */}
       {open && (
-        <div className="border border-t-0 border-zinc-800/50 bg-zinc-950/80 px-4 py-6">
+        <div className="mt-4 border border-border bg-card px-4 py-6">
           {/* Mode Toggle + Legend + Zoom Controls */}
           <div className="flex flex-col gap-3 mb-4 px-2">
             {/* Top row: Mode toggle + Zoom controls */}

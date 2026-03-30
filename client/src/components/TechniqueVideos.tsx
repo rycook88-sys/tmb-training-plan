@@ -1,19 +1,18 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown,
-  ChevronUp,
   Play,
   ArrowDown,
   ArrowUp,
   Mountain,
-  Footprints,
   Map,
 } from "lucide-react";
 
 /* ── types ── */
 interface Video {
   title: string;
-  id: string; // YouTube video ID
+  id: string;
   duration?: string;
   description: string;
 }
@@ -136,97 +135,112 @@ export default function TechniqueVideos() {
   const totalVideos = CATEGORIES.reduce((sum, c) => sum + c.videos.length, 0);
 
   return (
-    <section className="mb-6">
+    <section className="container py-6">
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between bg-zinc-900/80 border border-zinc-800 rounded-xl px-5 py-4 hover:bg-zinc-800/80 transition-colors"
+        className="w-full flex items-center justify-between group cursor-pointer"
       >
+        <h2 className="text-xs uppercase tracking-[0.3em] text-[var(--muted-foreground)] font-mono flex items-center gap-2">
+          <Play className="w-3.5 h-3.5 text-[var(--primary)]" /> Technique Video Library
+        </h2>
         <div className="flex items-center gap-3">
-          <Play className="w-5 h-5 text-purple-400" />
-          <span className="font-semibold text-white text-lg">Technique Video Library</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-zinc-400">{totalVideos} videos in {CATEGORIES.length} categories</span>
-          {open ? (
-            <ChevronUp className="w-5 h-5 text-zinc-400" />
-          ) : (
-            <ChevronDown className="w-5 h-5 text-zinc-400" />
-          )}
+          <span className="text-xs font-mono text-[var(--muted-foreground)]">{totalVideos} videos · {CATEGORIES.length} categories</span>
+          <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3 }}>
+            <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-colors" />
+          </motion.div>
         </div>
       </button>
 
-      {open && (
-        <div className="mt-3 space-y-2">
-          {CATEGORIES.map((cat) => {
-            const isExpanded = expandedCat === cat.name;
-            const CatIcon = cat.icon;
-            return (
-              <div key={cat.name} className="bg-zinc-900/60 border border-zinc-800 rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setExpandedCat(isExpanded ? null : cat.name)}
-                  className="w-full flex items-center justify-between px-4 py-3 hover:bg-zinc-800/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <CatIcon className={`w-4 h-4 ${cat.color}`} />
-                    <span className="font-medium text-white">{cat.name}</span>
-                    <span className="text-xs text-zinc-500">{cat.videos.length} videos</span>
-                  </div>
-                  {isExpanded ? (
-                    <ChevronUp className="w-4 h-4 text-zinc-500" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4 text-zinc-500" />
-                  )}
-                </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="mt-4 space-y-2">
+              {CATEGORIES.map((cat) => {
+                const isExpanded = expandedCat === cat.name;
+                const CatIcon = cat.icon;
+                return (
+                  <div key={cat.name} className="border border-border bg-card overflow-hidden">
+                    <button
+                      onClick={() => setExpandedCat(isExpanded ? null : cat.name)}
+                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-[var(--secondary)] transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <CatIcon className={`w-3.5 h-3.5 ${cat.color}`} />
+                        <span className="font-mono text-xs font-bold text-foreground">{cat.name}</span>
+                        <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{cat.videos.length} videos</span>
+                      </div>
+                      <motion.div animate={{ rotate: isExpanded ? 180 : 0 }} transition={{ duration: 0.3 }}>
+                        <ChevronDown className="w-3.5 h-3.5 text-[var(--muted-foreground)]" />
+                      </motion.div>
+                    </button>
 
-                {isExpanded && (
-                  <div className="px-4 pb-4 space-y-3">
-                    {cat.videos.map((video) => {
-                      const isPlaying = playingVideo === video.id;
-                      return (
-                        <div key={video.id} className="space-y-2">
-                          <button
-                            onClick={() => setPlayingVideo(isPlaying ? null : video.id)}
-                            className="w-full flex items-start gap-3 p-3 rounded-lg bg-zinc-800/40 hover:bg-zinc-800/70 transition-colors text-left"
-                          >
-                            <div className="relative w-24 h-16 shrink-0 rounded overflow-hidden bg-zinc-700">
-                              <img
-                                src={`https://img.youtube.com/vi/${video.id}/mqdefault.jpg`}
-                                alt={video.title}
-                                className="w-full h-full object-cover"
-                              />
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="w-8 h-8 bg-black/60 rounded-full flex items-center justify-center">
-                                  <Play className="w-4 h-4 text-white fill-white" />
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.3, ease: "easeInOut" }}
+                          className="overflow-hidden"
+                        >
+                          <div className="px-4 pb-4 space-y-3">
+                            {cat.videos.map((video) => {
+                              const isPlaying = playingVideo === video.id;
+                              return (
+                                <div key={video.id} className="space-y-2">
+                                  <button
+                                    onClick={() => setPlayingVideo(isPlaying ? null : video.id)}
+                                    className="w-full flex items-start gap-3 p-3 bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 transition-colors text-left"
+                                  >
+                                    <div className="relative w-24 h-16 shrink-0 overflow-hidden bg-[var(--secondary)]">
+                                      <img
+                                        src={`https://img.youtube.com/vi/${video.id}/mqdefault.jpg`}
+                                        alt={video.title}
+                                        className="w-full h-full object-cover"
+                                      />
+                                      <div className="absolute inset-0 flex items-center justify-center">
+                                        <div className="w-8 h-8 bg-black/60 rounded-full flex items-center justify-center">
+                                          <Play className="w-4 h-4 text-white fill-white" />
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-mono text-xs font-medium text-foreground leading-tight">{video.title}</p>
+                                      <p className="text-[10px] text-[var(--muted-foreground)] mt-1">{video.description}</p>
+                                    </div>
+                                  </button>
+
+                                  {isPlaying && (
+                                    <div className="aspect-video w-full overflow-hidden">
+                                      <iframe
+                                        src={`https://www.youtube.com/embed/${video.id}?autoplay=1`}
+                                        title={video.title}
+                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                        allowFullScreen
+                                        className="w-full h-full"
+                                      />
+                                    </div>
+                                  )}
                                 </div>
-                              </div>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-white text-sm leading-tight">{video.title}</p>
-                              <p className="text-xs text-zinc-400 mt-1">{video.description}</p>
-                            </div>
-                          </button>
-
-                          {isPlaying && (
-                            <div className="aspect-video w-full rounded-lg overflow-hidden">
-                              <iframe
-                                src={`https://www.youtube.com/embed/${video.id}?autoplay=1`}
-                                title={video.title}
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                                className="w-full h-full"
-                              />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                              );
+                            })}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
