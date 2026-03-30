@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ATHLETE, TMB_ITINERARY, WORKOUT_PLAN, FOOT_VIDEOS,
-  WEEKLY_BLOCKS, getDaysUntilTrip,
+  getDaysUntilTrip,
 } from "@/lib/data";
 import type { ItineraryDay, WorkoutDay } from "@/lib/data";
 import { useWeightTracker, useWorkoutLog, generateSummary } from "@/lib/hooks";
@@ -231,22 +231,10 @@ function ActiveWorkoutPanel({ dayId, exercises, onUpdate, onToggle, onSave, onCa
                       <span>Goal: <span className="text-[var(--primary)]">{planEx?.goal}</span></span>
                     </div>
                     <div className="flex items-center gap-2 mt-2">
-                      <input type="text" placeholder={
-                        planEx?.unit === "sec" ? "seconds" :
-                        planEx?.unit === "min" ? "minutes" :
-                        planEx?.unit === "hrs" ? "hours" :
-                        planEx?.unit === "lb" ? "lbs" :
-                        "weight"
-                      }
+                      <input type="text" placeholder={planEx?.placeholder1 || "weight"}
                         value={ex.weight} onChange={(e) => onUpdate(i, "weight", e.target.value)}
                         className="w-24 h-10 bg-[var(--secondary)] border border-border px-3 py-2 text-sm font-mono text-foreground focus:border-[var(--primary)] focus:outline-none" />
-                      <input type="text" placeholder={
-                        planEx?.unit === "hrs" ? "pack lbs" :
-                        planEx?.unit === "sec" || planEx?.unit === "min" ? "level" :
-                        planEx?.unit === "lb" ? "pack lbs" :
-                        planEx?.unit === "mph" ? "grade %" :
-                        "reps"
-                      } value={ex.reps}
+                      <input type="text" placeholder={planEx?.placeholder2 || "reps"} value={ex.reps}
                         onChange={(e) => onUpdate(i, "reps", e.target.value)}
                         className="w-20 h-10 bg-[var(--secondary)] border border-border px-3 py-2 text-sm font-mono text-foreground focus:border-[var(--primary)] focus:outline-none" />
                       {beat && (
@@ -723,19 +711,6 @@ export default function Home() {
           </h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-          {WEEKLY_BLOCKS.map((block) => (
-            <div key={block.label} className="border border-border bg-card p-4">
-              <div className="font-mono text-xs font-bold text-foreground tracking-wider mb-2">{block.label}</div>
-              <div className="flex gap-2 flex-wrap">
-                {block.pattern.map((p, i) => (
-                  <span key={i} className="text-[10px] font-mono bg-[var(--secondary)] text-[var(--muted-foreground)] px-2 py-1">{p}</span>
-                ))}
-              </div>
-              <div className="text-[10px] text-[var(--muted-foreground)] mt-2 italic">{block.notes}</div>
-            </div>
-          ))}
-        </div>
 
         {/* Browse cards (always visible) */}
         <div className="space-y-2">
