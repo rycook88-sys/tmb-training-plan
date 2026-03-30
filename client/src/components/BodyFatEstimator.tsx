@@ -542,8 +542,8 @@ export default function BodyFatEstimator() {
                     {[
                       { pct: 12, label: "12%", desc: "Shredded", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-12pct-kxzsgTLAShW84J8YQjumFw.webp" },
                       { pct: 15, label: "15%", desc: "Lean", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-15pct-AVt3dujjwjR3NNcyDncKDK.webp" },
-                      { pct: 18, label: "18%", desc: "Fit", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-18pct-jreDw5DzBcwD4jZtvws3Jd.webp" },
-                      { pct: 22, label: "22%", desc: "Average", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-22pct-9kQ3a3jnaYoUjfPuoA4Cj3.webp" },
+                      { pct: 18, label: "18%", desc: "Fit", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-18pct-v2-KKboZMNFsiB8L3ernzhYQb.webp" },
+                      { pct: 22, label: "22%", desc: "Average", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-22pct-v2-TVFGkneCg3g7uh24oRx7Ms.webp" },
                       { pct: 25, label: "25%", desc: "Soft", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-25pct-oM3m9EWEP5HkjoKz7aukUf.webp" },
                     ].map(ref => {
                       // Use composite if available, otherwise default visual estimate of 22%
