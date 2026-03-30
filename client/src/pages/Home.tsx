@@ -14,6 +14,7 @@ import {
 import TrainingAnalytics from "@/components/TrainingAnalytics";
 import { TMBRouteMap } from "@/components/TMBRouteMap";
 import ElevationProfile from "@/components/ElevationProfile";
+import GearChecklist from "@/components/GearChecklist";
 import elevationData from "@/lib/tmb_elevation_profile.json";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/hero-tmb-ridge-TA9BE2JzZxaxi68um9vvG9.webp";
@@ -736,6 +737,9 @@ export default function Home() {
 
       {/* ELEVATION PROFILE */}
       <ElevationProfile highlightDay={highlightDay} onDayHover={setHighlightDay} />
+
+      {/* GEAR CHECKLIST (Collapsible) */}
+      <GearChecklist />
 
       {/* FOOT MOBILITY (Collapsible) */}
       <FootMobilitySection />
