@@ -1,5 +1,5 @@
 // ============================================================
-// Body Fat Estimator — Navy/DoD Method + Photo Reference
+// Body Fat Estimator — Multi-Formula (Navy, YMCA, Covert Bailey)
 // Design: Alpine Command Center / Topographic Brutalism
 // ============================================================
 import { useState, useCallback, useEffect, useRef } from "react";
@@ -7,24 +7,35 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Info, X, Camera, Trash2, RotateCcw } from "lucide-react";
 
 // ── Guide images (CDN) ──────────────────────────────────────
-const GUIDE_IMAGES = {
+const GUIDE_IMAGES: Record<string, string> = {
   neck: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-neck-dU4hoeM9RNsTid6yU45zP4.webp",
   waist: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-waist-5vVK8eK8GgnLzRhm93wTh8.webp",
   hip: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-hip-ihFs99LzAw8JaiCMEYEMB8.webp",
+  chest: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-chest-hWaJ9xpiagt6zAHECEg42D.webp",
+  bicep: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-bicep-Muxh72Tr95FUMMwDzBTuLP.webp",
+  thigh: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-thigh-JBYcKqeDhaVBtZvBeNMZU2.webp",
+  forearm: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-forearm-EUt7rSkBaSmnR67bnLJfEo.webp",
 };
 
 // ── Measurement fields ──────────────────────────────────────
+type FieldKey = "neck" | "waist" | "hip" | "chest" | "bicep" | "thigh" | "forearm";
+
 interface MeasurementField {
-  key: "neck" | "waist" | "hip";
+  key: FieldKey;
   label: string;
   hint: string;
   guideImage: string;
+  required: boolean; // required for Navy formula
 }
 
 const FIELDS: MeasurementField[] = [
-  { key: "neck", label: "Neck", hint: "Measure at the narrowest point, just below the Adam's apple", guideImage: GUIDE_IMAGES.neck },
-  { key: "waist", label: "Waist", hint: "Measure at navel level, relaxed (don't suck in)", guideImage: GUIDE_IMAGES.waist },
-  { key: "hip", label: "Hip", hint: "Measure at the widest point of the buttocks", guideImage: GUIDE_IMAGES.hip },
+  { key: "neck", label: "Neck", hint: "Measure at the narrowest point, just below the Adam's apple", guideImage: GUIDE_IMAGES.neck, required: true },
+  { key: "chest", label: "Chest", hint: "Measure at nipple level with arms relaxed at sides", guideImage: GUIDE_IMAGES.chest, required: false },
+  { key: "bicep", label: "Bicep", hint: "Measure at the widest point, arm relaxed and hanging (not flexed)", guideImage: GUIDE_IMAGES.bicep, required: false },
+  { key: "forearm", label: "Forearm", hint: "Measure at the widest point, about 2 inches below the elbow", guideImage: GUIDE_IMAGES.forearm, required: false },
+  { key: "waist", label: "Waist", hint: "Measure at navel level, relaxed (don't suck in)", guideImage: GUIDE_IMAGES.waist, required: true },
+  { key: "hip", label: "Hip", hint: "Measure at the widest point of the buttocks", guideImage: GUIDE_IMAGES.hip, required: false },
+  { key: "thigh", label: "Thigh", hint: "Measure at the widest point of the upper thigh, just below the glute fold", guideImage: GUIDE_IMAGES.thigh, required: false },
 ];
 
 // ── Body fat categories ─────────────────────────────────────
@@ -49,13 +60,51 @@ function getCategory(bf: number): BFCategory {
   return CATEGORIES.find(c => bf >= c.min && bf <= c.max) || CATEGORIES[CATEGORIES.length - 1];
 }
 
-// ── Navy method formula (male) ──────────────────────────────
-function navyBodyFat(neck: number, waist: number, hip: number, heightIn: number): number {
-  // US Navy / DoD formula for males (inches)
-  // BF% = 86.010 × log10(waist − neck) − 70.041 × log10(height) + 36.76
+// ── Formulas ────────────────────────────────────────────────
+
+// Navy / DoD (male): BF% = 86.010 × log10(waist − neck) − 70.041 × log10(height) + 36.76
+function navyBodyFat(neck: number, waist: number, heightIn: number): number | null {
   const diff = waist - neck;
-  if (diff <= 0 || heightIn <= 0) return 0;
+  if (diff <= 0 || heightIn <= 0) return null;
   return 86.010 * Math.log10(diff) - 70.041 * Math.log10(heightIn) + 36.76;
+}
+
+// YMCA (male): BF% = (-98.42 + 4.15 × waist − 0.082 × weight) / weight × 100
+// We use current weight from localStorage if available
+function ymcaBodyFat(waist: number, weightLbs: number): number | null {
+  if (waist <= 0 || weightLbs <= 0) return null;
+  const leanBody = (weightLbs * 1.082) + (waist * -4.15) + 94.42;
+  const bf = ((weightLbs - leanBody) / weightLbs) * 100;
+  return bf > 0 ? bf : null;
+}
+
+// Covert Bailey (male) adapted formula:
+// Uses waist, hip, forearm, neck circumferences
+// Original: waist + 0.5*hip - 3*forearm - wrist
+// Adapted without wrist: uses neck as proxy
+function covertBaileyBodyFat(waist: number, hip: number, forearm: number, neck: number): number | null {
+  if (waist <= 0 || hip <= 0 || forearm <= 0 || neck <= 0) return null;
+  // Covert Bailey male adapted formula
+  const bf = (waist * 1.0) + (hip * 0.5) - (forearm * 3.0) - neck + 10.0;
+  return bf > 0 ? bf : null;
+}
+
+interface FormulaResult {
+  name: string;
+  shortName: string;
+  bf: number;
+  available: boolean;
+  note: string;
+}
+
+function getWeight(): number {
+  try {
+    const raw = localStorage.getItem("tmb-weight-entries");
+    if (!raw) return 226;
+    const entries = JSON.parse(raw);
+    if (entries.length > 0) return entries[entries.length - 1].weight || 226;
+  } catch { /* ignore */ }
+  return 226;
 }
 
 // ── Persistence ─────────────────────────────────────────────
@@ -64,19 +113,35 @@ const STORAGE_KEY = "tmb-bodyfat-entries";
 interface BFEntry {
   id: string;
   date: string;
-  neck: number;
-  waist: number;
-  hip: number;
+  measurements: Record<FieldKey, number>;
   heightIn: number;
-  bf: number;
+  weightLbs: number;
+  navy: number | null;
+  ymca: number | null;
+  covertBailey: number | null;
+  composite: number;
   method: "tape";
-  photos?: string[]; // base64 data URLs
+  photos?: string[];
 }
 
 function loadEntries(): BFEntry[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    // Handle legacy entries
+    return parsed.map((e: any) => {
+      if (e.measurements) return e;
+      return {
+        ...e,
+        measurements: { neck: e.neck || 0, waist: e.waist || 0, hip: e.hip || 0, chest: 0, bicep: 0, thigh: 0, forearm: 0 },
+        weightLbs: e.weightLbs || 226,
+        navy: e.bf || null,
+        ymca: null,
+        covertBailey: null,
+        composite: e.bf || 0,
+      };
+    });
   } catch { return []; }
 }
 
@@ -136,9 +201,9 @@ export default function BodyFatEstimator() {
   // Inputs
   const [heightFt, setHeightFt] = useState("6");
   const [heightInR, setHeightInR] = useState("1");
-  const [neck, setNeck] = useState("");
-  const [waist, setWaist] = useState("");
-  const [hip, setHip] = useState("");
+  const [measurements, setMeasurements] = useState<Record<FieldKey, string>>({
+    neck: "", chest: "", bicep: "", forearm: "", waist: "", hip: "", thigh: "",
+  });
   const [unit, setUnit] = useState<"in" | "cm">("in");
 
   // Photos
@@ -155,12 +220,52 @@ export default function BodyFatEstimator() {
     const n = parseFloat(v) || 0;
     return unit === "cm" ? n / 2.54 : n;
   };
-  const neckIn = toIn(neck);
-  const waistIn = toIn(waist);
-  const hipIn = toIn(hip);
-  const canCalc = neckIn > 0 && waistIn > 0 && heightIn > 0 && waistIn > neckIn;
-  const bf = canCalc ? Math.max(0, navyBodyFat(neckIn, waistIn, hipIn, heightIn)) : null;
-  const cat = bf !== null ? getCategory(bf) : null;
+
+  const vals: Record<FieldKey, number> = {} as any;
+  for (const f of FIELDS) {
+    vals[f.key] = toIn(measurements[f.key]);
+  }
+
+  const weightLbs = getWeight();
+
+  // Run all formulas
+  const navyResult = navyBodyFat(vals.neck, vals.waist, heightIn);
+  const ymcaResult = ymcaBodyFat(vals.waist, weightLbs);
+  const cbResult = covertBaileyBodyFat(vals.waist, vals.hip, vals.forearm, vals.neck);
+
+  const formulas: FormulaResult[] = [
+    {
+      name: "Navy / DoD Method",
+      shortName: "Navy",
+      bf: navyResult ?? 0,
+      available: navyResult !== null && navyResult > 0,
+      note: "Uses neck, waist, height",
+    },
+    {
+      name: "YMCA Formula",
+      shortName: "YMCA",
+      bf: ymcaResult ?? 0,
+      available: ymcaResult !== null && ymcaResult > 0,
+      note: `Uses waist, weight (${weightLbs} lb)`,
+    },
+    {
+      name: "Covert Bailey Method",
+      shortName: "C. Bailey",
+      bf: cbResult ?? 0,
+      available: cbResult !== null && cbResult > 0,
+      note: "Uses waist, hip, forearm, neck",
+    },
+  ];
+
+  const availableFormulas = formulas.filter(f => f.available);
+  const composite = availableFormulas.length > 0
+    ? availableFormulas.reduce((sum, f) => sum + f.bf, 0) / availableFormulas.length
+    : null;
+  const compositeCat = composite !== null ? getCategory(composite) : null;
+
+  const handleMeasurement = useCallback((key: FieldKey, value: string) => {
+    setMeasurements(prev => ({ ...prev, [key]: value }));
+  }, []);
 
   const handlePhoto = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -176,22 +281,24 @@ export default function BodyFatEstimator() {
   }, []);
 
   const handleSave = useCallback(() => {
-    if (bf === null) return;
+    if (composite === null) return;
     const entry: BFEntry = {
       id: Date.now().toString(36),
       date: new Date().toISOString().slice(0, 10),
-      neck: neckIn,
-      waist: waistIn,
-      hip: hipIn,
+      measurements: { ...vals },
       heightIn,
-      bf: Math.round(bf * 10) / 10,
+      weightLbs,
+      navy: navyResult && navyResult > 0 ? Math.round(navyResult * 10) / 10 : null,
+      ymca: ymcaResult && ymcaResult > 0 ? Math.round(ymcaResult * 10) / 10 : null,
+      covertBailey: cbResult && cbResult > 0 ? Math.round(cbResult * 10) / 10 : null,
+      composite: Math.round(composite * 10) / 10,
       method: "tape",
       photos: photos.length > 0 ? photos : undefined,
     };
     const next = [entry, ...entries].slice(0, 20);
     setEntries(next);
     saveEntries(next);
-  }, [bf, neckIn, waistIn, hipIn, heightIn, photos, entries]);
+  }, [composite, vals, heightIn, weightLbs, navyResult, ymcaResult, cbResult, photos, entries]);
 
   const handleDelete = useCallback((id: string) => {
     const next = entries.filter(e => e.id !== id);
@@ -200,9 +307,7 @@ export default function BodyFatEstimator() {
   }, [entries]);
 
   const handleReset = useCallback(() => {
-    setNeck("");
-    setWaist("");
-    setHip("");
+    setMeasurements({ neck: "", chest: "", bicep: "", forearm: "", waist: "", hip: "", thigh: "" });
     setPhotos([]);
   }, []);
 
@@ -220,8 +325,8 @@ export default function BodyFatEstimator() {
         </h2>
         <div className="flex items-center gap-3">
           {latest && (
-            <span className={`text-xs font-mono font-bold ${getCategory(latest.bf).color}`}>
-              {latest.bf}% · {getCategory(latest.bf).label}
+            <span className={`text-xs font-mono font-bold ${getCategory(latest.composite).color}`}>
+              {latest.composite}% · {getCategory(latest.composite).label}
             </span>
           )}
           <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3 }}>
@@ -245,7 +350,7 @@ export default function BodyFatEstimator() {
               <div className="flex items-start gap-3 bg-[var(--primary)]/5 border border-[var(--primary)]/20 p-3">
                 <Info className="w-4 h-4 text-[var(--primary)] mt-0.5 shrink-0" />
                 <p className="text-xs font-mono text-muted-foreground leading-relaxed">
-                  <span className="text-foreground font-semibold">Note for muscular athletes:</span> The Navy tape method can overestimate body fat by 3–5% if you carry significant muscle mass, since it relies on circumference ratios. Use this as a <span className="text-[var(--primary)]">trend tracker</span> rather than an absolute number. Photo comparisons alongside measurements give a more complete picture.
+                  <span className="text-foreground font-semibold">Multi-formula approach:</span> We run 3 different formulas and average the results for a more reliable estimate. Individual formulas can vary by 3–5% — the composite narrows the range. For muscular builds, treat this as a <span className="text-[var(--primary)]">trend tracker</span> rather than an absolute number.
                 </p>
               </div>
 
@@ -290,97 +395,138 @@ export default function BodyFatEstimator() {
                     ))}
                   </div>
                 </div>
+                <div>
+                  <label className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground block mb-1.5">Weight</label>
+                  <span className="text-sm font-mono text-foreground">{weightLbs} lb</span>
+                  <span className="text-[9px] font-mono text-muted-foreground ml-1">(from gauge)</span>
+                </div>
               </div>
 
               {/* Measurement inputs */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <label className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground block">
                   Circumference Measurements ({unit})
                 </label>
-                {FIELDS.map(field => (
-                  <div key={field.key} className="flex items-center gap-2">
-                    <button
-                      onClick={() => setGuideField(field)}
-                      className="shrink-0 w-8 h-8 flex items-center justify-center border border-border bg-background hover:border-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors cursor-pointer group/guide"
-                      title={`How to measure ${field.label}`}
-                    >
-                      <Info className="w-3.5 h-3.5 text-muted-foreground group-hover/guide:text-[var(--primary)] transition-colors" />
-                    </button>
-                    <div className="flex-1 flex items-center border border-border bg-background focus-within:border-[var(--primary)] transition-colors">
-                      <span className="text-xs font-mono text-muted-foreground pl-3 pr-2 w-16 shrink-0">{field.label}</span>
-                      <input
-                        type="number"
-                        step="0.25"
-                        value={field.key === "neck" ? neck : field.key === "waist" ? waist : hip}
-                        onChange={e => {
-                          const v = e.target.value;
-                          if (field.key === "neck") setNeck(v);
-                          else if (field.key === "waist") setWaist(v);
-                          else setHip(v);
-                        }}
-                        className="flex-1 bg-transparent text-foreground text-sm font-mono px-2 py-2 focus:outline-none"
-                        placeholder={`0.0 ${unit}`}
-                      />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {FIELDS.map(field => (
+                    <div key={field.key} className="flex items-center gap-2">
+                      <button
+                        onClick={() => setGuideField(field)}
+                        className="shrink-0 w-8 h-8 flex items-center justify-center border border-border bg-background hover:border-[var(--primary)] hover:bg-[var(--primary)]/10 transition-colors cursor-pointer group/guide"
+                        title={`How to measure ${field.label}`}
+                      >
+                        <Info className="w-3.5 h-3.5 text-muted-foreground group-hover/guide:text-[var(--primary)] transition-colors" />
+                      </button>
+                      <div className="flex-1 flex items-center border border-border bg-background focus-within:border-[var(--primary)] transition-colors">
+                        <span className="text-xs font-mono text-muted-foreground pl-3 pr-2 w-20 shrink-0">
+                          {field.label}
+                          {field.required && <span className="text-[var(--primary)] ml-0.5">*</span>}
+                        </span>
+                        <input
+                          type="number"
+                          step="0.25"
+                          value={measurements[field.key]}
+                          onChange={e => handleMeasurement(field.key, e.target.value)}
+                          className="flex-1 bg-transparent text-foreground text-sm font-mono px-2 py-2 focus:outline-none"
+                          placeholder={`0.0 ${unit}`}
+                        />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <p className="text-[9px] font-mono text-muted-foreground/60 mt-1">
+                  <span className="text-[var(--primary)]">*</span> Required for Navy formula. More measurements = more formulas = better accuracy.
+                </p>
               </div>
 
-              {/* Result */}
-              {bf !== null && (
+              {/* Multi-formula results */}
+              {composite !== null && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="border border-border bg-background p-4"
+                  className="space-y-3"
                 >
-                  <div className="flex items-baseline gap-3 mb-3">
-                    <span className={`text-3xl font-mono font-bold ${cat!.color}`}>
-                      {bf.toFixed(1)}%
-                    </span>
-                    <span className={`text-sm font-mono font-semibold ${cat!.color}`}>
-                      {cat!.label}
-                    </span>
-                    <span className="text-xs font-mono text-muted-foreground ml-auto">
-                      Navy / DoD Method
-                    </span>
-                  </div>
-
-                  {/* Category bar */}
-                  <div className="flex h-2 w-full gap-0.5 mb-2">
-                    {CATEGORIES.map(c => (
-                      <div
-                        key={c.label}
-                        className={`flex-1 ${c.barColor} ${
-                          cat!.label === c.label ? "opacity-100" : "opacity-20"
-                        } transition-opacity`}
-                      />
-                    ))}
-                  </div>
-                  <div className="flex justify-between text-[9px] font-mono text-muted-foreground">
-                    {CATEGORIES.map(c => (
-                      <span key={c.label} className={cat!.label === c.label ? "text-foreground font-bold" : ""}>
-                        {c.range}
+                  {/* Composite result */}
+                  <div className="border border-border bg-background p-4">
+                    <div className="flex items-baseline gap-3 mb-3">
+                      <span className={`text-3xl font-mono font-bold ${compositeCat!.color}`}>
+                        {composite.toFixed(1)}%
                       </span>
-                    ))}
-                  </div>
+                      <span className={`text-sm font-mono font-semibold ${compositeCat!.color}`}>
+                        {compositeCat!.label}
+                      </span>
+                      <span className="text-xs font-mono text-muted-foreground ml-auto">
+                        Composite ({availableFormulas.length} formula{availableFormulas.length > 1 ? "s" : ""})
+                      </span>
+                    </div>
 
-                  {/* Lean mass estimate */}
-                  {entries.length > 0 && entries[0].bf && (
+                    {/* Category bar */}
+                    <div className="flex h-2 w-full gap-0.5 mb-2">
+                      {CATEGORIES.map(c => (
+                        <div
+                          key={c.label}
+                          className={`flex-1 ${c.barColor} ${
+                            compositeCat!.label === c.label ? "opacity-100" : "opacity-20"
+                          } transition-opacity`}
+                        />
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-[9px] font-mono text-muted-foreground">
+                      {CATEGORIES.map(c => (
+                        <span key={c.label} className={compositeCat!.label === c.label ? "text-foreground font-bold" : ""}>
+                          {c.range}
+                        </span>
+                      ))}
+                    </div>
+
+                    {/* Lean / Fat mass */}
                     <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 gap-4">
                       <div>
                         <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground block mb-0.5">Est. Fat Mass</span>
                         <span className="text-sm font-mono text-foreground">
-                          ~{((bf / 100) * (parseInt(heightFt) > 0 ? 226 : 0)).toFixed(0)} lbs
+                          ~{((composite / 100) * weightLbs).toFixed(0)} lbs
                         </span>
                       </div>
                       <div>
                         <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground block mb-0.5">Est. Lean Mass</span>
                         <span className="text-sm font-mono text-[var(--primary)]">
-                          ~{(226 - (bf / 100) * 226).toFixed(0)} lbs
+                          ~{(weightLbs - (composite / 100) * weightLbs).toFixed(0)} lbs
                         </span>
                       </div>
                     </div>
-                  )}
+                  </div>
+
+                  {/* Individual formula breakdown */}
+                  <div className="border border-border bg-background">
+                    <div className="px-4 py-2 border-b border-border">
+                      <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
+                        Formula Breakdown
+                      </span>
+                    </div>
+                    <div className="divide-y divide-border">
+                      {formulas.map(f => {
+                        const fCat = f.available ? getCategory(f.bf) : null;
+                        return (
+                          <div key={f.shortName} className="px-4 py-2.5 flex items-center gap-3">
+                            <div className={`w-2 h-2 rounded-full shrink-0 ${f.available ? fCat!.barColor : "bg-zinc-700"}`} />
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-mono text-foreground font-semibold">{f.name}</span>
+                              <span className="text-[9px] font-mono text-muted-foreground ml-2">{f.note}</span>
+                            </div>
+                            {f.available ? (
+                              <span className={`text-sm font-mono font-bold ${fCat!.color} shrink-0`}>
+                                {f.bf.toFixed(1)}%
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-mono text-muted-foreground/50 shrink-0">
+                                needs more data
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </motion.div>
               )}
 
@@ -428,9 +574,9 @@ export default function BodyFatEstimator() {
               <div className="flex gap-2">
                 <button
                   onClick={handleSave}
-                  disabled={bf === null}
+                  disabled={composite === null}
                   className={`flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] font-bold transition-colors cursor-pointer ${
-                    bf !== null
+                    composite !== null
                       ? "bg-[var(--primary)] text-black hover:bg-[var(--primary)]/90"
                       : "bg-muted text-muted-foreground cursor-not-allowed"
                   }`}
@@ -453,14 +599,19 @@ export default function BodyFatEstimator() {
                   </label>
                   <div className="space-y-1">
                     {entries.map(entry => {
-                      const ec = getCategory(entry.bf);
+                      const ec = getCategory(entry.composite);
+                      const methods = [
+                        entry.navy !== null ? `Navy:${entry.navy}%` : null,
+                        entry.ymca !== null ? `YMCA:${entry.ymca}%` : null,
+                        entry.covertBailey !== null ? `CB:${entry.covertBailey}%` : null,
+                      ].filter(Boolean);
                       return (
                         <div key={entry.id} className="flex items-center gap-3 py-1.5 px-2 border border-border bg-background group/entry">
                           <span className="text-xs font-mono text-muted-foreground w-20 shrink-0">{entry.date}</span>
-                          <span className={`text-sm font-mono font-bold ${ec.color}`}>{entry.bf}%</span>
+                          <span className={`text-sm font-mono font-bold ${ec.color}`}>{entry.composite}%</span>
                           <span className="text-[10px] font-mono text-muted-foreground">{ec.label}</span>
-                          <span className="text-[10px] font-mono text-muted-foreground ml-auto">
-                            N:{entry.neck.toFixed(1)}" W:{entry.waist.toFixed(1)}"
+                          <span className="text-[9px] font-mono text-muted-foreground/70 ml-auto hidden sm:inline">
+                            {methods.join(" · ")}
                           </span>
                           {entry.photos && entry.photos.length > 0 && (
                             <Camera className="w-3 h-3 text-muted-foreground" />

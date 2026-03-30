@@ -1,19 +1,14 @@
-# Body Fat Estimator Section
+# Enhanced Body Fat Estimator
 
-## Phase 1: Generate measurement guide illustrations
-- [ ] Generate neck measurement guide illustration
-- [ ] Generate waist measurement guide illustration
-- [ ] Generate hip measurement guide illustration
+## Phase 1: Generate guide illustrations for new sites
+- [ ] Chest measurement guide
+- [ ] Bicep measurement guide
+- [ ] Thigh measurement guide
+- [ ] Forearm measurement guide
 
-## Phase 2: Build BodyFatEstimator component
-- [ ] Navy method calculator (neck, waist, hip, height inputs)
-- [ ] Measurement guide modal with illustration for each site
-- [ ] Photo upload section for visual estimate reference
-- [ ] Body fat category display with ranges
-- [ ] Muscle mass caveat / disclaimer
-- [ ] History tracking in localStorage
-- [ ] Consistent section header style (emoji + bright text)
-
-## Phase 3: Integrate into Home.tsx
-- [ ] Add component between Weight Gauge and Training Protocol (or after Foot Mobility)
-- [ ] Verify styling consistency
+## Phase 2: Update BodyFatEstimator component
+- [ ] Add chest, bicep, thigh, forearm input fields with guide icons
+- [ ] Implement YMCA formula
+- [ ] Implement Covert Bailey formula
+- [ ] Show all 3 formula results + composite average
+- [ ] Update history to store all measurements
