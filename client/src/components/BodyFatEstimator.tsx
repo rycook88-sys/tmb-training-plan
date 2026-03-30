@@ -527,140 +527,148 @@ export default function BodyFatEstimator() {
                       })}
                     </div>
                   </div>
-                  {/* ── Visual BF% Reference Strip ── */}
+                </motion.div>
+              )}
+
+              {/* ── Visual BF% Reference Strip — ALWAYS VISIBLE ── */}
+              <div className="border border-border bg-background">
+                <div className="px-4 py-2 border-b border-border">
+                  <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
+                    Visual Reference — Similar Build at Different BF%
+                  </span>
+                </div>
+                <div className="p-3">
+                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+                    {[
+                      { pct: 12, label: "12%", desc: "Shredded", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-12pct-kxzsgTLAShW84J8YQjumFw.webp" },
+                      { pct: 15, label: "15%", desc: "Lean", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-15pct-AVt3dujjwjR3NNcyDncKDK.webp" },
+                      { pct: 18, label: "18%", desc: "Fit", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-18pct-jreDw5DzBcwD4jZtvws3Jd.webp" },
+                      { pct: 22, label: "22%", desc: "Average", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-22pct-9kQ3a3jnaYoUjfPuoA4Cj3.webp" },
+                      { pct: 25, label: "25%", desc: "Soft", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-25pct-oM3m9EWEP5HkjoKz7aukUf.webp" },
+                    ].map(ref => {
+                      // Use composite if available, otherwise default visual estimate of 22%
+                      const activeBf = composite ?? 22;
+                      const isClosest = Math.abs(activeBf - ref.pct) <= 3;
+                      return (
+                        <div
+                          key={ref.pct}
+                          className={`shrink-0 w-28 border transition-all ${
+                            isClosest
+                              ? "border-[var(--primary)] ring-1 ring-[var(--primary)]/30"
+                              : "border-border"
+                          }`}
+                        >
+                          <div className="aspect-[3/4] overflow-hidden bg-zinc-900">
+                            <img
+                              src={ref.img}
+                              alt={`${ref.label} body fat reference`}
+                              className="w-full h-full object-cover object-top"
+                            />
+                          </div>
+                          <div className={`px-2 py-1.5 text-center ${
+                            isClosest ? "bg-[var(--primary)]/10" : "bg-background"
+                          }`}>
+                            <span className={`text-sm font-mono font-bold block ${
+                              isClosest ? "text-[var(--primary)]" : "text-foreground"
+                            }`}>
+                              {ref.label}
+                            </span>
+                            <span className="text-[9px] font-mono text-muted-foreground">
+                              {ref.desc}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[9px] font-mono text-muted-foreground/60 mt-2">
+                    {composite !== null
+                      ? `Your current estimate (${composite.toFixed(1)}%) is highlighted. Illustrations show a similar muscular build at each level.`
+                      : "Based on visual estimate (~22%). Enter measurements above for a more precise highlight."
+                    }
+                  </p>
+                </div>
+              </div>
+
+              {/* ── Weight → BF% Projection Table — ALWAYS VISIBLE ── */}
+              {(() => {
+                // Use composite if available, otherwise default visual estimate of 22%
+                const activeBf = composite ?? 22;
+                const leanMass = weightLbs - (activeBf / 100) * weightLbs;
+                // Assume some muscle loss during cut: ~0.25 lb muscle lost per 1 lb total lost
+                const muscleRetention = 0.75;
+                const projections: { weight: number; bf: number; leanEst: number; fatEst: number }[] = [];
+                for (let w = Math.ceil(weightLbs / 5) * 5; w >= 195; w -= 5) {
+                  const totalLost = weightLbs - w;
+                  const muscleLost = totalLost * (1 - muscleRetention);
+                  const adjLean = leanMass - muscleLost;
+                  const adjFat = w - adjLean;
+                  const bf = (adjFat / w) * 100;
+                  if (bf > 0) projections.push({ weight: w, bf, leanEst: adjLean, fatEst: adjFat });
+                }
+                return (
                   <div className="border border-border bg-background">
                     <div className="px-4 py-2 border-b border-border">
                       <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
-                        Visual Reference — Similar Build at Different BF%
+                        Weight → BF% Projection
+                      </span>
+                      <span className="text-[9px] font-mono text-muted-foreground/60 ml-2">
+                        {composite !== null
+                          ? "(assumes 75% fat / 25% muscle loss ratio)"
+                          : "(using visual estimate ~22% — enter measurements for precision)"
+                        }
                       </span>
                     </div>
-                    <div className="p-3">
-                      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
-                        {[
-                          { pct: 12, label: "12%", desc: "Shredded", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-12pct-kxzsgTLAShW84J8YQjumFw.webp" },
-                          { pct: 15, label: "15%", desc: "Lean", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-15pct-AVt3dujjwjR3NNcyDncKDK.webp" },
-                          { pct: 18, label: "18%", desc: "Fit", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-18pct-jreDw5DzBcwD4jZtvws3Jd.webp" },
-                          { pct: 22, label: "22%", desc: "Average", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-22pct-9kQ3a3jnaYoUjfPuoA4Cj3.webp" },
-                          { pct: 25, label: "25%", desc: "Soft", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-25pct-oM3m9EWEP5HkjoKz7aukUf.webp" },
-                        ].map(ref => {
-                          const isClosest = composite !== null && Math.abs(composite - ref.pct) <= 3;
-                          return (
-                            <div
-                              key={ref.pct}
-                              className={`shrink-0 w-28 border transition-all ${
-                                isClosest
-                                  ? "border-[var(--primary)] ring-1 ring-[var(--primary)]/30"
-                                  : "border-border"
-                              }`}
-                            >
-                              <div className="aspect-[3/4] overflow-hidden bg-zinc-900">
-                                <img
-                                  src={ref.img}
-                                  alt={`${ref.label} body fat reference`}
-                                  className="w-full h-full object-cover object-top"
-                                />
-                              </div>
-                              <div className={`px-2 py-1.5 text-center ${
-                                isClosest ? "bg-[var(--primary)]/10" : "bg-background"
-                              }`}>
-                                <span className={`text-sm font-mono font-bold block ${
-                                  isClosest ? "text-[var(--primary)]" : "text-foreground"
-                                }`}>
-                                  {ref.label}
-                                </span>
-                                <span className="text-[9px] font-mono text-muted-foreground">
-                                  {ref.desc}
-                                </span>
-                              </div>
+                    <div className="divide-y divide-border">
+                      {projections.map(p => {
+                        const pCat = getCategory(p.bf);
+                        const isCurrent = p.weight === Math.ceil(weightLbs / 5) * 5;
+                        const isTarget = p.weight === 205;
+                        return (
+                          <div
+                            key={p.weight}
+                            className={`px-4 py-2 flex items-center gap-3 text-xs font-mono ${
+                              isCurrent ? "bg-[var(--primary)]/5" : isTarget ? "bg-green-500/5" : ""
+                            }`}
+                          >
+                            <span className={`w-14 shrink-0 font-bold ${
+                              isCurrent ? "text-[var(--primary)]" : isTarget ? "text-green-400" : "text-foreground"
+                            }`}>
+                              {p.weight} lb
+                            </span>
+                            <div className="flex-1 h-1.5 bg-zinc-800 overflow-hidden">
+                              <div
+                                className={`h-full ${pCat.barColor} transition-all`}
+                                style={{ width: `${Math.min(p.bf / 30 * 100, 100)}%` }}
+                              />
                             </div>
-                          );
-                        })}
-                      </div>
-                      {composite !== null && (
-                        <p className="text-[9px] font-mono text-muted-foreground/60 mt-2">
-                          Your current estimate ({composite.toFixed(1)}%) is highlighted. Illustrations show a similar muscular build at each level.
-                        </p>
-                      )}
+                            <span className={`w-12 text-right font-bold ${pCat.color}`}>
+                              {p.bf.toFixed(1)}%
+                            </span>
+                            <span className="w-16 text-right text-muted-foreground hidden sm:inline">
+                              {p.leanEst.toFixed(0)} lean
+                            </span>
+                            <span className="w-14 text-right text-muted-foreground hidden sm:inline">
+                              {p.fatEst.toFixed(0)} fat
+                            </span>
+                            {isCurrent && (
+                              <span className="text-[9px] text-[var(--primary)] font-bold shrink-0">NOW</span>
+                            )}
+                            {isTarget && !isCurrent && (
+                              <span className="text-[9px] text-green-400 font-bold shrink-0">GOAL</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="px-4 py-2 border-t border-border">
+                      <p className="text-[9px] font-mono text-muted-foreground/60">
+                        Projections update automatically as you log new measurements and weight. Muscle loss ratio is conservative — strength training during a cut can improve retention to 85–90%.
+                      </p>
                     </div>
                   </div>
-
-                  {/* ── Weight → BF% Projection Table ── */}
-                  {(() => {
-                    const leanMass = weightLbs - (composite / 100) * weightLbs;
-                    // Assume some muscle loss during cut: ~0.25 lb muscle lost per 1 lb total lost
-                    const muscleRetention = 0.75;
-                    const projections: { weight: number; bf: number; leanEst: number; fatEst: number }[] = [];
-                    for (let w = Math.ceil(weightLbs / 5) * 5; w >= 195; w -= 5) {
-                      const totalLost = weightLbs - w;
-                      const muscleLost = totalLost * (1 - muscleRetention);
-                      const adjLean = leanMass - muscleLost;
-                      const adjFat = w - adjLean;
-                      const bf = (adjFat / w) * 100;
-                      if (bf > 0) projections.push({ weight: w, bf, leanEst: adjLean, fatEst: adjFat });
-                    }
-                    return (
-                      <div className="border border-border bg-background">
-                        <div className="px-4 py-2 border-b border-border">
-                          <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
-                            Weight → BF% Projection
-                          </span>
-                          <span className="text-[9px] font-mono text-muted-foreground/60 ml-2">
-                            (assumes 75% fat / 25% muscle loss ratio)
-                          </span>
-                        </div>
-                        <div className="divide-y divide-border">
-                          {projections.map(p => {
-                            const pCat = getCategory(p.bf);
-                            const isCurrent = p.weight === Math.ceil(weightLbs / 5) * 5;
-                            const isTarget = p.weight === 205;
-                            return (
-                              <div
-                                key={p.weight}
-                                className={`px-4 py-2 flex items-center gap-3 text-xs font-mono ${
-                                  isCurrent ? "bg-[var(--primary)]/5" : isTarget ? "bg-green-500/5" : ""
-                                }`}
-                              >
-                                <span className={`w-14 shrink-0 font-bold ${
-                                  isCurrent ? "text-[var(--primary)]" : isTarget ? "text-green-400" : "text-foreground"
-                                }`}>
-                                  {p.weight} lb
-                                </span>
-                                <div className="flex-1 h-1.5 bg-zinc-800 overflow-hidden">
-                                  <div
-                                    className={`h-full ${pCat.barColor} transition-all`}
-                                    style={{ width: `${Math.min(p.bf / 30 * 100, 100)}%` }}
-                                  />
-                                </div>
-                                <span className={`w-12 text-right font-bold ${pCat.color}`}>
-                                  {p.bf.toFixed(1)}%
-                                </span>
-                                <span className="w-16 text-right text-muted-foreground hidden sm:inline">
-                                  {p.leanEst.toFixed(0)} lean
-                                </span>
-                                <span className="w-14 text-right text-muted-foreground hidden sm:inline">
-                                  {p.fatEst.toFixed(0)} fat
-                                </span>
-                                {isCurrent && (
-                                  <span className="text-[9px] text-[var(--primary)] font-bold shrink-0">NOW</span>
-                                )}
-                                {isTarget && !isCurrent && (
-                                  <span className="text-[9px] text-green-400 font-bold shrink-0">GOAL</span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                        <div className="px-4 py-2 border-t border-border">
-                          <p className="text-[9px] font-mono text-muted-foreground/60">
-                            Projections update automatically as you log new measurements and weight. Muscle loss ratio is conservative — strength training during a cut can improve retention to 85–90%.
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                </motion.div>
-              )}
+                );
+              })()}
 
               {/* Photo section */}
               <div>
