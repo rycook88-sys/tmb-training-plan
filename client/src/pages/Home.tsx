@@ -15,6 +15,9 @@ import TrainingAnalytics from "@/components/TrainingAnalytics";
 import { TMBRouteMap } from "@/components/TMBRouteMap";
 import ElevationProfile from "@/components/ElevationProfile";
 import GearChecklist from "@/components/GearChecklist";
+import DailyBudget from "@/components/DailyBudget";
+import WeatherForecast from "@/components/WeatherForecast";
+import TechniqueVideos from "@/components/TechniqueVideos";
 import elevationData from "@/lib/tmb_elevation_profile.json";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/hero-tmb-ridge-TA9BE2JzZxaxi68um9vvG9.webp";
@@ -740,6 +743,15 @@ export default function Home() {
 
       {/* GEAR CHECKLIST (Collapsible) */}
       <GearChecklist />
+
+      {/* DAILY BUDGET & FOOD STOPS */}
+      <DailyBudget />
+
+      {/* WEATHER AVERAGES */}
+      <WeatherForecast />
+
+      {/* TECHNIQUE VIDEO LIBRARY */}
+      <TechniqueVideos />
 
       {/* FOOT MOBILITY (Collapsible) */}
       <FootMobilitySection />
