@@ -1,23 +1,22 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Check, Package, AlertTriangle, Minus, Plus, RotateCcw } from "lucide-react";
+import { ChevronDown, Check, Package, AlertTriangle, Minus, Plus, RotateCcw, Trash2, PlusCircle, X } from "lucide-react";
 
 /* ── Types ─────────────────────────────────────────── */
 interface GearItem {
   id: string;
   name: string;
   category: string;
-  weightOz: number; // default estimated weight in oz
+  weightOz: number;
   packed: boolean;
-  worn: boolean; // worn items don't count toward pack weight
-  maybe: boolean; // tentative items
+  worn: boolean;
+  maybe: boolean;
 }
 
-const INITIAL_GEAR: GearItem[] = [
-  // Pack
-  { id: "pack", name: "Osprey Talon 34", category: "Pack", weightOz: 38, packed: true, worn: false, maybe: false },
+const CATEGORIES = ["Pack", "Clothing", "Sleep", "Water", "Navigation", "Safety", "Electronics", "Money", "Toiletries", "Worn"];
 
-  // Clothing — In Pack
+const INITIAL_GEAR: GearItem[] = [
+  { id: "pack", name: "Osprey Talon 34", category: "Pack", weightOz: 38, packed: true, worn: false, maybe: false },
   { id: "thermal", name: "Medium Wool Thermal Top", category: "Clothing", weightOz: 8, packed: true, worn: false, maybe: false },
   { id: "puffy", name: "Puffy Jacket", category: "Clothing", weightOz: 14, packed: true, worn: false, maybe: false },
   { id: "rain-coat", name: "Rain Coat", category: "Clothing", weightOz: 10, packed: true, worn: false, maybe: false },
@@ -26,33 +25,15 @@ const INITIAL_GEAR: GearItem[] = [
   { id: "beanie", name: "Beanie", category: "Clothing", weightOz: 2, packed: true, worn: false, maybe: false },
   { id: "socks-1", name: "Backup Socks (pair 1)", category: "Clothing", weightOz: 3, packed: true, worn: false, maybe: false },
   { id: "socks-2", name: "Backup Socks (pair 2)", category: "Clothing", weightOz: 3, packed: true, worn: false, maybe: false },
-
-  // Sleep
   { id: "sleep-liner", name: "Sleep Liner", category: "Sleep", weightOz: 8, packed: true, worn: false, maybe: false },
-
-  // Water
   { id: "water-1", name: "Smart Water Bottle #1", category: "Water", weightOz: 1.5, packed: true, worn: false, maybe: false },
   { id: "water-2", name: "Smart Water Bottle #2", category: "Water", weightOz: 1.5, packed: true, worn: false, maybe: false },
-
-  // Navigation
   { id: "map", name: "Map", category: "Navigation", weightOz: 3, packed: true, worn: false, maybe: false },
-
-  // Safety
   { id: "first-aid", name: "First Aid Kit", category: "Safety", weightOz: 6, packed: true, worn: false, maybe: false },
-
-  // Electronics
   { id: "electronics", name: "Electronics Bag", category: "Electronics", weightOz: 12, packed: true, worn: false, maybe: false },
-
-  // Money
   { id: "money", name: "Euros & Francs", category: "Money", weightOz: 2, packed: true, worn: false, maybe: false },
-
-  // Toiletries
   { id: "toiletries", name: "Toiletries", category: "Toiletries", weightOz: 6, packed: true, worn: false, maybe: false },
-
-  // Maybe
   { id: "water-filter", name: "Water Filter", category: "Water", weightOz: 5, packed: false, worn: false, maybe: true },
-
-  // Worn — not counted
   { id: "hiking-shoes", name: "Hiking Shoes", category: "Worn", weightOz: 44, packed: true, worn: true, maybe: false },
   { id: "zip-pants", name: "Zip-Off Pants", category: "Worn", weightOz: 14, packed: true, worn: true, maybe: false },
   { id: "compression", name: "Compression Shorts", category: "Worn", weightOz: 4, packed: true, worn: true, maybe: false },
@@ -64,8 +45,8 @@ const INITIAL_GEAR: GearItem[] = [
 ];
 
 const STORAGE_KEY = "tmb-gear-list";
-const TARGET_MIN = 12; // lbs
-const TARGET_MAX = 16; // lbs
+const TARGET_MIN = 12;
+const TARGET_MAX = 16;
 
 function loadGear(): GearItem[] {
   try {
@@ -79,10 +60,120 @@ function saveGear(items: GearItem[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
-/* ── Component ─────────────────────────────────────── */
+/* ── Add Item Form ─────────────────────────────────── */
+function AddItemForm({ onAdd, onCancel }: { onAdd: (item: GearItem) => void; onCancel: () => void }) {
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("Clothing");
+  const [weightOz, setWeightOz] = useState("");
+  const [isWorn, setIsWorn] = useState(false);
+  const [isMaybe, setIsMaybe] = useState(false);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { nameRef.current?.focus(); }, []);
+
+  // Auto-set worn when category is "Worn"
+  useEffect(() => { setIsWorn(category === "Worn"); }, [category]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+    onAdd({
+      id,
+      name: name.trim(),
+      category,
+      weightOz: parseFloat(weightOz) || 0,
+      packed: true,
+      worn: isWorn,
+      maybe: isMaybe,
+    });
+  };
+
+  return (
+    <motion.form
+      initial={{ height: 0, opacity: 0 }}
+      animate={{ height: "auto", opacity: 1 }}
+      exit={{ height: 0, opacity: 0 }}
+      transition={{ duration: 0.2 }}
+      onSubmit={handleSubmit}
+      className="overflow-hidden border border-[var(--primary)]/30 bg-card"
+    >
+      <div className="p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] uppercase tracking-[0.3em] text-[var(--primary)] font-mono font-bold">
+            Add New Item
+          </span>
+          <button type="button" onClick={onCancel} className="text-[var(--muted-foreground)] hover:text-foreground transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
+          {/* Name */}
+          <input
+            ref={nameRef}
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Item name"
+            className="bg-[var(--secondary)] border border-border px-3 py-2 text-xs font-mono text-foreground placeholder:text-[var(--muted-foreground)] focus:outline-none focus:border-[var(--primary)]/50"
+          />
+
+          {/* Category */}
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="bg-[var(--secondary)] border border-border px-3 py-2 text-xs font-mono text-foreground focus:outline-none focus:border-[var(--primary)]/50 appearance-none"
+          >
+            {CATEGORIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+
+          {/* Weight */}
+          <input
+            type="number"
+            value={weightOz}
+            onChange={(e) => setWeightOz(e.target.value)}
+            placeholder="oz"
+            step="0.5"
+            min="0"
+            className="bg-[var(--secondary)] border border-border px-3 py-2 text-xs font-mono text-foreground placeholder:text-[var(--muted-foreground)] focus:outline-none focus:border-[var(--primary)]/50 w-20"
+          />
+        </div>
+
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 text-xs font-mono text-[var(--muted-foreground)] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isMaybe}
+              onChange={(e) => setIsMaybe(e.target.checked)}
+              className="accent-yellow-500"
+            />
+            Maybe
+          </label>
+
+          <div className="flex-1" />
+
+          <button
+            type="submit"
+            disabled={!name.trim()}
+            className="px-4 py-1.5 text-xs font-mono font-bold uppercase tracking-wider bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90 transition-opacity disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            Add Item
+          </button>
+        </div>
+      </div>
+    </motion.form>
+  );
+}
+
+/* ── Main Component ────────────────────────────────── */
 export default function GearChecklist() {
   const [open, setOpen] = useState(false);
   const [gear, setGear] = useState<GearItem[]>(loadGear);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   useEffect(() => { saveGear(gear); }, [gear]);
 
@@ -94,8 +185,20 @@ export default function GearChecklist() {
     setGear((prev) => prev.map((g) => g.id === id ? { ...g, weightOz: Math.max(0, oz) } : g));
   };
 
+  const addItem = (item: GearItem) => {
+    setGear((prev) => [...prev, item]);
+    setShowAddForm(false);
+  };
+
+  const deleteItem = (id: string) => {
+    setGear((prev) => prev.filter((g) => g.id !== id));
+    setConfirmDelete(null);
+  };
+
   const resetAll = () => {
     setGear(INITIAL_GEAR);
+    setConfirmDelete(null);
+    setShowAddForm(false);
   };
 
   // Computed stats
@@ -118,20 +221,17 @@ export default function GearChecklist() {
       if (!cats[cat]) cats[cat] = [];
       cats[cat].push(g);
     }
-    // Order: Pack first, then clothing, etc., Worn last
     const order = ["Pack", "Clothing", "Sleep", "Water", "Navigation", "Safety", "Electronics", "Money", "Toiletries", "Worn (not counted)"];
     const sorted: [string, GearItem[]][] = [];
     for (const key of order) {
       if (cats[key]) sorted.push([key, cats[key]]);
     }
-    // Any remaining
     for (const [key, items] of Object.entries(cats)) {
       if (!order.includes(key)) sorted.push([key, items]);
     }
     return sorted;
   }, [gear]);
 
-  // Weight bar color
   const weightColor = stats.totalLbs <= TARGET_MAX ? (stats.totalLbs <= TARGET_MIN ? "#22c55e" : "#f59e0b") : "#ef4444";
   const weightPct = Math.min((stats.totalLbs / TARGET_MAX) * 100, 120);
 
@@ -183,7 +283,6 @@ export default function GearChecklist() {
                   </div>
                 </div>
 
-                {/* Weight bar */}
                 <div className="relative h-6 bg-[var(--secondary)] overflow-hidden mb-2">
                   <motion.div
                     className="absolute inset-y-0 left-0"
@@ -192,7 +291,6 @@ export default function GearChecklist() {
                     animate={{ width: `${Math.min(weightPct, 100)}%` }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
                   />
-                  {/* Target zone markers */}
                   <div
                     className="absolute inset-y-0 border-l border-dashed border-green-400/50"
                     style={{ left: `${(TARGET_MIN / TARGET_MAX) * 100}%` }}
@@ -240,7 +338,7 @@ export default function GearChecklist() {
                       {items.map((item) => (
                         <div
                           key={item.id}
-                          className={`flex items-center gap-3 px-4 py-2.5 transition-colors ${
+                          className={`flex items-center gap-3 px-4 py-2.5 transition-colors group/item ${
                             !item.packed ? "opacity-40" : ""
                           } ${item.maybe ? "border-l-2 border-l-yellow-500/50" : ""}`}
                         >
@@ -284,12 +382,55 @@ export default function GearChecklist() {
                               <Plus className="w-3 h-3" />
                             </button>
                           </div>
+
+                          {/* Delete button */}
+                          {confirmDelete === item.id ? (
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => deleteItem(item.id)}
+                                className="text-[9px] font-mono font-bold text-red-400 hover:text-red-300 px-1.5 py-0.5 border border-red-400/30 transition-colors"
+                              >
+                                YES
+                              </button>
+                              <button
+                                onClick={() => setConfirmDelete(null)}
+                                className="text-[9px] font-mono text-[var(--muted-foreground)] hover:text-foreground px-1.5 py-0.5 border border-border transition-colors"
+                              >
+                                NO
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setConfirmDelete(item.id)}
+                              className="w-5 h-5 flex items-center justify-center text-transparent group-hover/item:text-[var(--muted-foreground)] hover:!text-red-400 transition-colors"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
                   </div>
                 );
               })}
+
+              {/* Add Item Button / Form */}
+              <AnimatePresence mode="wait">
+                {showAddForm ? (
+                  <AddItemForm key="form" onAdd={addItem} onCancel={() => setShowAddForm(false)} />
+                ) : (
+                  <motion.button
+                    key="button"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setShowAddForm(true)}
+                    className="w-full border border-dashed border-border hover:border-[var(--primary)]/50 p-3 flex items-center justify-center gap-2 text-xs font-mono text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors"
+                  >
+                    <PlusCircle className="w-4 h-4" /> Add Item
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
         )}
