@@ -1,9 +1,11 @@
 // TMB Route Map — Leaflet + OpenTopoMap with real GPX trail data
 // Design: Alpine dark theme, topo map showing actual hiking trails
 // Trail segments colored by country (France/Italy/Switzerland)
+// Food stop markers appear when a specific day is selected
 import { useState, useEffect, useRef } from "react";
-import { ChevronDown, Map, Bus, CableCar, Layers, Mountain } from "lucide-react";
+import { ChevronDown, Map, Bus, CableCar, Layers, Mountain, UtensilsCrossed } from "lucide-react";
 import { TMB_ITINERARY } from "@/lib/data";
+import { FOOD_STOPS, DAY_MILES, getStopsForDay } from "@/lib/tmb-food-stops";
 import trailDataRaw from "@/lib/tmb-trail-data.json";
 import countrySegmentsRaw from "@/lib/tmb-country-segments.json";
 import "leaflet/dist/leaflet.css";
@@ -57,7 +59,6 @@ const ACCOMMODATIONS: Accommodation[] = [
     lat: 45.696411,
     lng: 6.733627,
     elevation: "1,593m",
-    // Note: marker at Les Chapieux (trail end). Bus takes you to BSM hotel.
     type: "hotel",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/base-camp-lodge_73fd4672.jpg",
     country: "France",
@@ -168,15 +169,9 @@ const BUS_ROUTE: [number, number][] = [
 ];
 
 const COUNTRY_COLORS: Record<string, string> = {
-  france: "#F97316",    // Orange for France
-  italy: "#22C55E",     // Green for Italy
-  switzerland: "#EF4444", // Red for Switzerland
-};
-
-const COUNTRY_LABELS: Record<string, string> = {
-  france: "FRANCE",
-  italy: "ITALY",
-  switzerland: "SWITZERLAND",
+  france: "#F97316",
+  italy: "#22C55E",
+  switzerland: "#EF4444",
 };
 
 function getTypeLabel(type: Accommodation["type"]): string {
@@ -196,13 +191,23 @@ const COUNTRY_DISPLAY_COLORS: Record<string, string> = {
   Switzerland: "#EF4444",
 };
 
+const STOP_TYPE_EMOJI: Record<string, string> = {
+  refuge: "🍽️",
+  restaurant: "🍕",
+  cafe: "☕",
+  supermarket: "🛒",
+  "food-truck": "🍟",
+};
+
 export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [showFoodStops, setShowFoodStops] = useState(true);
   const [mapLayer, setMapLayer] = useState<"topo" | "satellite">("topo");
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
+  const foodStopMarkersRef = useRef<L.Marker[]>([]);
   const trailLayersRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const LRef = useRef<typeof import("leaflet") | null>(null);
@@ -220,7 +225,6 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
 
       if (!mapContainerRef.current) return;
 
-      // Create map
       const map = L.map(mapContainerRef.current, {
         center: [45.88, 6.92],
         zoom: 10,
@@ -228,7 +232,6 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
         attributionControl: true,
       });
 
-      // OpenTopoMap tiles (shows hiking trails!)
       const topoLayer = L.tileLayer(
         "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
         {
@@ -241,7 +244,6 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
 
       mapInstanceRef.current = map;
 
-      // Create a layer group for trail segments
       const trailGroup = L.layerGroup().addTo(map);
       trailLayersRef.current = trailGroup;
 
@@ -250,14 +252,12 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
         const latLngs = seg.points.map(([lat, lon]: [number, number]) => L.latLng(lat, lon));
         const color = COUNTRY_COLORS[seg.country] || "#F97316";
 
-        // Trail shadow for depth
         L.polyline(latLngs, {
           color: "#000000",
           weight: 6,
           opacity: 0.3,
         }).addTo(trailGroup);
 
-        // Main trail line
         L.polyline(latLngs, {
           color,
           weight: 4,
@@ -276,11 +276,10 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
         dashArray: "10, 8",
       }).addTo(map);
 
-      // Create markers
+      // Create accommodation markers
       ACCOMMODATIONS.forEach((acc) => {
         const itDay = TMB_ITINERARY.find((d) => d.day === acc.day);
 
-        // Custom icon using divIcon
         const isStart = acc.day === 1;
         const isCableCar = acc.day === 11;
         const isFinish = acc.day === 12;
@@ -308,7 +307,6 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
 
         const marker = L.marker([acc.lat, acc.lng], { icon }).addTo(map);
 
-        // Popup content
         const popupHtml = `
           <div style="font-family:system-ui,-apple-system,sans-serif;width:260px;padding:0;margin:-14px -20px -14px -20px;">
             <img src="${acc.image}" alt="${acc.name}" 
@@ -357,7 +355,6 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
         map.fitBounds(bounds, { padding: [30, 30] });
       }
 
-      // Force a resize after render
       setTimeout(() => map.invalidateSize(), 100);
     };
 
@@ -395,6 +392,70 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
     }
   }, [mapLayer]);
 
+  // ── Add/remove food stop markers when selectedDay or showFoodStops changes ──
+  useEffect(() => {
+    if (!mapInstanceRef.current || !LRef.current) return;
+    const L = LRef.current;
+    const map = mapInstanceRef.current;
+
+    // Remove existing food stop markers
+    foodStopMarkersRef.current.forEach(m => m.remove());
+    foodStopMarkersRef.current = [];
+
+    // Only show food stops if a day is selected and toggle is on
+    if (!selectedDay || !showFoodStops) return;
+
+    const dayStops = getStopsForDay(selectedDay);
+    const dayMiles = DAY_MILES[selectedDay] || 0;
+
+    dayStops.forEach((stop) => {
+      const emoji = STOP_TYPE_EMOJI[stop.type] || "🍽️";
+      const isHighlight = stop.highlight;
+      const size = isHighlight ? 28 : 24;
+      const borderColor = isHighlight ? "#F59E0B" : "#64748B";
+      const bgColor = isHighlight ? "#451A03" : "#1E293B";
+
+      const icon = L.divIcon({
+        className: "tmb-food-marker",
+        html: `<div style="
+          display:flex;align-items:center;justify-content:center;
+          width:${size}px;height:${size}px;
+          border-radius:6px;
+          background:${bgColor};
+          border:2px solid ${borderColor};
+          font-size:${size - 10}px;
+          box-shadow:0 2px 6px rgba(0,0,0,0.4);
+          cursor:pointer;
+        ">${emoji}</div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size / 2],
+      });
+
+      const marker = L.marker([stop.lat, stop.lng], { icon, zIndexOffset: 1000 }).addTo(map);
+
+      const popupHtml = `
+        <div style="font-family:system-ui,-apple-system,sans-serif;width:220px;padding:8px 10px;margin:-14px -20px -14px -20px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+            <span style="font-size:16px;">${emoji}</span>
+            <span style="font-size:13px;font-weight:700;color:#1E293B;">${stop.name}</span>
+          </div>
+          <div style="display:flex;gap:8px;font-size:10px;color:#64748B;margin-bottom:4px;">
+            <span style="background:#F0FDF4;color:#16A34A;padding:1px 5px;border-radius:3px;font-weight:600;">mi ${stop.mileIn.toFixed(1)} of ${dayMiles}</span>
+            <span>${stop.type}</span>
+          </div>
+          ${isHighlight ? '<div style="font-size:10px;color:#D97706;font-weight:600;margin-bottom:2px;">⭐ Don\'t miss!</div>' : ""}
+        </div>
+      `;
+
+      marker.bindPopup(popupHtml, {
+        maxWidth: 240,
+        className: "tmb-popup",
+      });
+
+      foodStopMarkersRef.current.push(marker);
+    });
+  }, [selectedDay, showFoodStops]);
+
   const flyToDay = (day: number) => {
     if (!mapInstanceRef.current || !LRef.current) return;
     const map = mapInstanceRef.current;
@@ -402,7 +463,6 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
 
     setSelectedDay(day);
 
-    // If it's a trail day, zoom to that trail segment
     const typedTrailData = trailData as Record<string, [number, number][]>;
     const stagePoints = typedTrailData[day.toString()];
     if (stagePoints && stagePoints.length > 0) {
@@ -412,7 +472,6 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
       map.fitBounds(bounds, { padding: [50, 50] });
     }
 
-    // Open the marker popup
     const acc = ACCOMMODATIONS.find((a) => a.day === day);
     if (acc) {
       const markerIdx = ACCOMMODATIONS.findIndex((a) => a.day === day);
@@ -437,7 +496,6 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
     if (allPoints.length > 0) {
       map.fitBounds(L.latLngBounds(allPoints), { padding: [30, 30] });
     }
-    // Close any open popups
     map.closePopup();
   };
 
@@ -493,10 +551,9 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
                 {acc.day === 11 && <CableCar className="w-3 h-3" />}
               </button>
             ))}
-
           </div>
 
-          {/* Legend + Layer toggle */}
+          {/* Legend + Layer toggle + Food stops toggle */}
           <div className="flex flex-wrap items-center justify-between gap-3 px-1">
             <div className="flex flex-wrap gap-3 text-[10px] font-mono text-slate-500">
               <span className="flex items-center gap-1.5">
@@ -515,22 +572,61 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
                 <span className="w-6 h-0.5 border-t-2 border-dashed border-slate-400 inline-block" />
                 BUS
               </span>
+              {selectedDay && (
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-4 h-4 rounded bg-amber-900/80 border border-amber-500 text-center leading-4 text-[8px]">🍽️</span>
+                  FOOD STOPS
+                </span>
+              )}
             </div>
-            <button
-              onClick={() => setMapLayer(mapLayer === "topo" ? "satellite" : "topo")}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-400 hover:text-slate-200 transition-colors"
-            >
-              {mapLayer === "topo" ? (
+            <div className="flex items-center gap-2">
+              {/* Food stops toggle */}
+              <button
+                onClick={() => setShowFoodStops(!showFoodStops)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono transition-colors ${
+                  showFoodStops
+                    ? "bg-amber-500/15 border-amber-500/40 text-amber-400 hover:bg-amber-500/25"
+                    : "bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300"
+                }`}
+                title={showFoodStops ? "Hide food stops" : "Show food stops"}
+              >
+                <UtensilsCrossed className="w-3 h-3" />
+                {showFoodStops ? "FOOD STOPS ON" : "FOOD STOPS OFF"}
+              </button>
+              {/* Layer toggle */}
+              <button
+                onClick={() => setMapLayer(mapLayer === "topo" ? "satellite" : "topo")}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-400 hover:text-slate-200 transition-colors"
+              >
+                {mapLayer === "topo" ? (
+                  <>
+                    <Layers className="w-3 h-3" /> SATELLITE
+                  </>
+                ) : (
+                  <>
+                    <Mountain className="w-3 h-3" /> TOPO MAP
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Selected day info bar */}
+          {selectedDay && selectedDay <= 11 && (
+            <div className="flex flex-wrap items-center gap-3 px-3 py-2 bg-violet-500/10 border border-violet-500/20 text-[10px] font-mono">
+              <span className="text-violet-400 font-bold">Day {selectedDay}</span>
+              <span className="text-slate-400">·</span>
+              <span className="text-slate-300">{DAY_MILES[selectedDay] || 0} mi</span>
+              <span className="text-slate-400">·</span>
+              <span className="text-amber-400">{getStopsForDay(selectedDay).length} food stops</span>
+              {getStopsForDay(selectedDay).filter(s => s.highlight).length > 0 && (
                 <>
-                  <Layers className="w-3 h-3" /> SATELLITE
-                </>
-              ) : (
-                <>
-                  <Mountain className="w-3 h-3" /> TOPO MAP
+                  <span className="text-slate-400">·</span>
+                  <span className="text-amber-300">⭐ {getStopsForDay(selectedDay).filter(s => s.highlight).length} must-try</span>
                 </>
               )}
-            </button>
-          </div>
+            </div>
+          )}
 
           {/* Map Container */}
           <div className="rounded-xl overflow-hidden border border-slate-700/50">
@@ -591,6 +687,10 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
           background: white;
         }
         .tmb-marker {
+          background: transparent !important;
+          border: none !important;
+        }
+        .tmb-food-marker {
           background: transparent !important;
           border: none !important;
         }

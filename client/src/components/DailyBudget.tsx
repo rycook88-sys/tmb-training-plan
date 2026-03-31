@@ -13,7 +13,10 @@ import {
   Wallet,
   Info,
   Check,
+  Navigation,
 } from "lucide-react";
+import { TMB_ITINERARY } from "@/lib/data";
+import { FOOD_STOPS, DAY_MILES } from "@/lib/tmb-food-stops";
 
 /* ── types ── */
 interface FoodStop {
@@ -24,6 +27,7 @@ interface FoodStop {
   priceRange: string;
   payment: "card" | "cash" | "both";
   highlight?: boolean;
+  mileIn?: number; // miles into the day
 }
 
 interface DayBudget {
@@ -39,6 +43,12 @@ interface DayBudget {
   estimatedLow: number;
   estimatedHigh: number;
   notes?: string;
+}
+
+// Merge mileIn from shared food stops data
+function getMileIn(day: number, stopName: string): number | undefined {
+  const match = FOOD_STOPS.find(s => s.day === day && s.name === stopName);
+  return match?.mileIn;
 }
 
 /* ── data ── */
@@ -433,6 +443,13 @@ const DAYS: DayBudget[] = [
   },
 ];
 
+// Enrich food stops with mileIn from shared data
+DAYS.forEach(day => {
+  day.foodStops.forEach(stop => {
+    stop.mileIn = getMileIn(day.day, stop.name);
+  });
+});
+
 const COUNTRY_FLAG: Record<string, string> = {
   france: "\u{1F1EB}\u{1F1F7}",
   italy: "\u{1F1EE}\u{1F1F9}",
@@ -570,6 +587,8 @@ export default function DailyBudget() {
               <div className="border border-border bg-card divide-y divide-border">
                 {DAYS.map((day) => {
                   const isExpanded = expandedDay === day.day;
+                  const dayMiles = DAY_MILES[day.day] || 0;
+                  const itDay = TMB_ITINERARY.find(d => d.day === day.day);
                   return (
                     <div key={day.day}>
                       <button
@@ -584,6 +603,13 @@ export default function DailyBudget() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
+                          {/* Day total mileage */}
+                          {dayMiles > 0 && (
+                            <span className="text-[10px] font-mono bg-[var(--primary)]/15 text-[var(--primary)] px-2 py-0.5 flex items-center gap-1">
+                              <Navigation className="w-3 h-3" />
+                              {dayMiles} mi
+                            </span>
+                          )}
                           {day.transportCost && (
                             <span className="text-[10px] font-mono bg-blue-500/15 text-blue-400 px-2 py-0.5 flex items-center gap-1">
                               {day.transportCost.item.includes("Bus") ? <Bus className="w-3 h-3" /> : <CableCar className="w-3 h-3" />}
@@ -594,7 +620,7 @@ export default function DailyBudget() {
                             {day.currency === "EUR" ? "€" : "CHF "}{day.estimatedLow}–{day.estimatedHigh}
                           </span>
                           {day.foodStops.some((s) => s.highlight) && (
-                            <span className="text-[10px] font-mono bg-amber-500/15 text-amber-400 px-2 py-0.5">
+                            <span className="text-[10px] font-mono bg-amber-500/15 text-amber-400 px-2 py-0.5 hidden sm:inline">
                               Don't miss
                             </span>
                           )}
@@ -614,6 +640,18 @@ export default function DailyBudget() {
                             className="overflow-hidden"
                           >
                             <div className="px-4 pb-4 space-y-3">
+                              {/* Day summary bar */}
+                              {dayMiles > 0 && itDay && (
+                                <div className="flex flex-wrap items-center gap-3 py-2 px-3 bg-[var(--primary)]/5 border border-[var(--primary)]/20 text-[10px] font-mono">
+                                  <span className="text-[var(--primary)] font-bold">{dayMiles} mi total</span>
+                                  <span className="text-[var(--muted-foreground)]">·</span>
+                                  <span className="text-green-400">↑ {itDay.ascent.toLocaleString()} ft</span>
+                                  <span className="text-red-400">↓ {itDay.descent.toLocaleString()} ft</span>
+                                  <span className="text-[var(--muted-foreground)]">·</span>
+                                  <span className="text-[var(--muted-foreground)]">{itDay.duration}</span>
+                                </div>
+                              )}
+
                               {day.notes && (
                                 <p className="text-xs text-[var(--muted-foreground)] italic border-l-2 border-[var(--primary)]/30 pl-3">
                                   {day.notes}
@@ -637,6 +675,13 @@ export default function DailyBudget() {
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 flex-wrap">
                                         <span className="font-mono text-xs font-medium text-foreground">{stop.name}</span>
+                                        {/* Mile marker */}
+                                        {stop.mileIn !== undefined && stop.mileIn > 0 && (
+                                          <span className="text-[10px] font-mono bg-[var(--primary)]/10 text-[var(--primary)] px-1.5 py-0.5 flex items-center gap-0.5">
+                                            <Navigation className="w-2.5 h-2.5" />
+                                            mi {stop.mileIn.toFixed(1)}
+                                          </span>
+                                        )}
                                         <span className={`flex items-center gap-1 text-[10px] font-mono ${pay.color}`}>
                                           <PaymentIcon className="w-3 h-3" />
                                           {pay.label}

@@ -13,8 +13,9 @@ import {
   ReferenceDot,
   ResponsiveContainer,
 } from "recharts";
-import { ChevronDown, Mountain, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, MapPin, TrendingUp } from "lucide-react";
+import { ChevronDown, Mountain, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, MapPin, TrendingUp, UtensilsCrossed } from "lucide-react";
 import profileRaw from "@/lib/tmb_elevation_profile.json";
+import { FOOD_STOPS, type FoodStopGeo } from "@/lib/tmb-food-stops";
 
 // ── types ──────────────────────────────────────────────────────────
 interface ProfilePoint {
@@ -253,11 +254,37 @@ function SteepnessLegend() {
 }
 
 // ── main component ─────────────────────────────────────────────────
+// ── Food stop dot on chart ─────────────────────────────────────────
+function FoodStopDot({ cx, cy, stop }: { cx?: number; cy?: number; stop: FoodStopGeo }) {
+  if (!cx || !cy) return null;
+  const isHighlight = stop.highlight;
+  const fillColor = isHighlight ? "#F59E0B" : "#94A3B8";
+  const strokeColor = isHighlight ? "#FDE68A" : "#CBD5E1";
+  return (
+    <g>
+      {/* Vertical line from dot to chart */}
+      <line x1={cx} y1={cy} x2={cx} y2={cy + 15} stroke={fillColor} strokeWidth={1} strokeDasharray="2,2" opacity={0.6} />
+      {/* Diamond shape for food stop */}
+      <polygon
+        points={`${cx},${cy - 6} ${cx + 5},${cy} ${cx},${cy + 6} ${cx - 5},${cy}`}
+        fill={fillColor}
+        stroke={strokeColor}
+        strokeWidth={1}
+      />
+      {/* Name label below */}
+      <text x={cx} y={cy + 26} textAnchor="middle" fill={fillColor} fontSize={6} fontFamily="'JetBrains Mono', monospace" opacity={0.9}>
+        {stop.name.length > 16 ? stop.name.slice(0, 14) + "\u2026" : stop.name}
+      </text>
+    </g>
+  );
+}
+
 export default function ElevationProfile({ highlightDay, onDayHover }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void }) {
   const [open, setOpen] = useState(false);
   const [customScale, setCustomScale] = useState(1); // continuous zoom scale
   const [windowStart, setWindowStart] = useState(0);
   const [mode, setMode] = useState<ViewMode>("country");
+  const [showFoodStops, setShowFoodStops] = useState(true);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
   const totalDist = data.totalDistance;
@@ -306,6 +333,18 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
     const end = clampedStart + windowSize;
     return data.accommodations.filter((a) => a.dist >= clampedStart - 1 && a.dist <= end + 1);
   }, [clampedStart, windowSize]);
+
+  // Visible food stops (filtered by window and optionally by highlighted day)
+  const visibleFoodStops = useMemo(() => {
+    if (!showFoodStops) return [];
+    const end = clampedStart + windowSize;
+    let stops = FOOD_STOPS.filter(s => s.mileAbs >= clampedStart - 1 && s.mileAbs <= end + 1);
+    // If a day is highlighted, only show that day's stops
+    if (highlightDay) {
+      stops = stops.filter(s => s.day === highlightDay);
+    }
+    return stops;
+  }, [clampedStart, windowSize, showFoodStops, highlightDay]);
 
   // Day boundary lines
   const dayBoundaries = useMemo(() => {
@@ -467,6 +506,17 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
                 >
                   <TrendingUp className="w-3 h-3" />
                   Steepness
+                </button>
+                <button
+                  onClick={() => setShowFoodStops(!showFoodStops)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[0.65rem] font-mono uppercase tracking-wider transition-all ${
+                    showFoodStops
+                      ? "bg-amber-700/60 text-amber-300 shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                >
+                  <UtensilsCrossed className="w-3 h-3" />
+                  Stops
                 </button>
               </div>
 
@@ -666,6 +716,16 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
                       y={a.ele}
                       shape={<HotelDot accom={a} />}
                     />
+                ))}
+
+                {/* Food stop markers */}
+                {visibleFoodStops.map((s, i) => (
+                  <ReferenceDot
+                    key={`food-${s.day}-${i}`}
+                    x={s.mileAbs}
+                    y={s.ele}
+                    shape={<FoodStopDot stop={s} />}
+                  />
                 ))}
               </AreaChart>
             </ResponsiveContainer>
