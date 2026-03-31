@@ -54,8 +54,8 @@ function getMileIn(day: number, stopName: string): number | undefined {
 /* ── data ── */
 const DAYS: DayBudget[] = [
   {
-    day: 1,
-    label: "Rest Day",
+    day: 0,
+    label: "Arrival",
     from: "Arrive Chamonix",
     to: "RockyPop Hotel",
     country: "france",
@@ -91,8 +91,8 @@ const DAYS: DayBudget[] = [
     notes: "Explore Les Houches or take the bus to Chamonix. Stock up on snacks for the first few days.",
   },
   {
-    day: 2,
-    label: "Day 2",
+    day: 1,
+    label: "Day 1",
     from: "RockyPop",
     to: "Gîte Le Pontet",
     country: "france",
@@ -130,8 +130,8 @@ const DAYS: DayBudget[] = [
     notes: "Les Contamines has a supermarket — good restock point. Refuge de Miage is cash-only.",
   },
   {
-    day: 3,
-    label: "Day 3 (Bus)",
+    day: 2,
+    label: "Day 2 (Bus)",
     from: "Gîte Le Pontet",
     to: "Hotel Base Camp Lodge",
     country: "france",
@@ -161,8 +161,8 @@ const DAYS: DayBudget[] = [
     notes: "Bus day. Le Relais Montagnard pizza is legendary — order early, they sell out.",
   },
   {
-    day: 4,
-    label: "Day 4",
+    day: 3,
+    label: "Day 3",
     from: "Base Camp Lodge",
     to: "Rifugio Elisabetta",
     country: "france",
@@ -189,8 +189,8 @@ const DAYS: DayBudget[] = [
     notes: "Remote day crossing into Italy. Carry snacks — long gaps between stops. Water at Mottets.",
   },
   {
-    day: 5,
-    label: "Day 5",
+    day: 4,
+    label: "Day 4",
     from: "Rifugio Elisabetta",
     to: "Rifugio Maison Vieille",
     country: "italy",
@@ -219,8 +219,8 @@ const DAYS: DayBudget[] = [
     notes: "Cabane du Combal is a don't-miss stop. Maison Vieille accepts cards.",
   },
   {
-    day: 6,
-    label: "Day 6 (Town)",
+    day: 5,
+    label: "Day 5 (Town)",
     from: "Maison Vieille",
     to: "Rifugio Chapy",
     country: "italy",
@@ -257,8 +257,8 @@ const DAYS: DayBudget[] = [
     notes: "Courmayeur is a full town — ATM, supermarket, restaurants. Bertone is cash-only. Splurge day!",
   },
   {
-    day: 7,
-    label: "Day 7",
+    day: 6,
+    label: "Day 6",
     from: "Rifugio Chapy",
     to: "Gîte La Peule",
     country: "italy",
@@ -303,8 +303,8 @@ const DAYS: DayBudget[] = [
     notes: "Great food day. Bonatti and Val Ferret both accept cards. La Peule is cash-only.",
   },
   {
-    day: 8,
-    label: "Day 8 (CH)",
+    day: 7,
+    label: "Day 7 (CH)",
     from: "Gîte La Peule",
     to: "Relais D'Arpette",
     country: "switzerland",
@@ -350,8 +350,8 @@ const DAYS: DayBudget[] = [
     notes: "Switzerland is 20-30% pricier. La Fouly has an ATM for CHF. Many spots cash-only.",
   },
   {
-    day: 9,
-    label: "Day 9 (CH)",
+    day: 8,
+    label: "Day 8 (CH)",
     from: "Relais D'Arpette",
     to: "Auberge Mont Blanc",
     country: "switzerland",
@@ -381,8 +381,8 @@ const DAYS: DayBudget[] = [
     notes: "Last Swiss day. Bovine is cash-only. Forclaz accepts cards.",
   },
   {
-    day: 10,
-    label: "Day 10",
+    day: 9,
+    label: "Day 9",
     from: "Auberge Mont Blanc",
     to: "Gîte Grassonnet",
     country: "france",
@@ -404,8 +404,8 @@ const DAYS: DayBudget[] = [
     notes: "Back in France/EUR. Fewer food stops this day — carry snacks from breakfast.",
   },
   {
-    day: 11,
-    label: "Day 11 (Final)",
+    day: 10,
+    label: "Day 10 (Final)",
     from: "Grassonnet",
     to: "Planpraz → Chamonix",
     country: "france",
@@ -579,7 +579,7 @@ export default function DailyBudget() {
                 </div>
                 <div className="mt-3 flex items-start gap-2 text-[10px] font-mono text-[var(--muted-foreground)]">
                   <Info className="w-3.5 h-3.5 mt-0.5 shrink-0 text-[var(--primary)]" />
-                  <span>ATMs available in Chamonix (D1), Les Contamines (D2), Courmayeur (D6), La Fouly (D8), and Chamonix (D11).</span>
+                  <span>ATMs available in Chamonix (Arrival), Les Contamines (D1), Courmayeur (D5), La Fouly (D7), and Chamonix (D10).</span>
                 </div>
               </div>
 
@@ -598,7 +598,7 @@ export default function DailyBudget() {
                         <div className="flex items-center gap-3">
                           <span className="text-sm">{COUNTRY_FLAG[day.country]}</span>
                           <div className="text-left">
-                            <span className="font-mono text-xs font-bold text-foreground">D{day.day}</span>
+                            <span className="font-mono text-xs font-bold text-foreground">{day.day === 0 ? "ARR" : `D${day.day}`}</span>
                             <span className="text-xs text-[var(--muted-foreground)] ml-2">{day.from} → {day.to}</span>
                           </div>
                         </div>

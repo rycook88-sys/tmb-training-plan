@@ -547,7 +547,7 @@ function ElevationChart() {
   const bw = 100 / TMB_ITINERARY.length;
   return (
     <div className="border border-border bg-card p-4">
-      <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)] mb-3">Elevation Profile — 11 Days</h3>
+      <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)] mb-3">Elevation Profile — 10 Hiking Days</h3>
       <svg viewBox="0 0 100 40" className="w-full h-24" preserveAspectRatio="none">
         {TMB_ITINERARY.map((day, i) => {
           const aH = (day.ascent / maxA) * 18;
@@ -585,7 +585,7 @@ function ItinerarySection() {
         <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
         <div className="absolute inset-0 flex items-center justify-center gap-3">
           <h2 className="text-xs uppercase tracking-[0.4em] text-white font-mono flex items-center gap-2">
-            <Mountain className="w-4 h-4" /> 11-Day Itinerary — July 25 to August 4, 2026
+            <Mountain className="w-4 h-4" /> 10-Day Itinerary — July 25 to August 4, 2026
           </h2>
           <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3 }}>
             <ChevronDown className="w-4 h-4 text-white" />

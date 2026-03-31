@@ -11,7 +11,7 @@ export const ATHLETE = {
   goalWeight: 205,
   tripDate: "2026-07-25",
   tripName: "Tour du Mont Blanc",
-  tripDays: 11,
+  tripDays: 10,
   tripStyle: "Hut-to-Hut",
   packWeight: "12–16 lbs",
 };
@@ -31,17 +31,17 @@ export interface ItineraryDay {
 }
 
 export const TMB_ITINERARY: ItineraryDay[] = [
-  { day: 1, date: "Jul 25", from: "Chamonix", to: "RockyPop Hotel", distance: "0 km", distanceMi: 0, duration: "—", ascent: 0, descent: 0, difficulty: "easy", note: "Arrive at RockyPop. Rest, prep gear, and get ready for tomorrow." },
-  { day: 2, date: "Jul 26", from: "Les Houches", to: "Gîte Le Pontet", distance: "20.5 km", distanceMi: 12.8, duration: "10:00", ascent: 4587, descent: 4031, difficulty: "brutal", note: "Opening day — massive elevation. Set a conservative pace." },
-  { day: 3, date: "Jul 27", from: "Les Contamines", to: "Les Chapieux", distance: "16.4 km", distanceMi: 10.2, duration: "08:45", ascent: 4204, descent: 2855, difficulty: "hard", note: "Col du Bonhomme. Big climb, moderate descent." },
-  { day: 4, date: "Jul 28", from: "Bourg Saint Maurice", to: "Rifugio Elisabetta", distance: "14.2 km", distanceMi: 8.8, duration: "05:35", ascent: 3140, descent: 1182, difficulty: "moderate", note: "Shuttle start. Mostly climbing — good for your engine." },
-  { day: 5, date: "Jul 29", from: "Rifugio Elisabetta", to: "Rifugio Maison Vieille", distance: "10.1 km", distanceMi: 6.3, duration: "04:30", ascent: 1460, descent: 2050, difficulty: "easy", note: "Short day. Recovery opportunity. Descent-heavy — practice mechanics." },
-  { day: 6, date: "Jul 30", from: "Rifugio Maison Vieille", to: "Rifugio Chapy Mont Blanc", distance: "16.0 km", distanceMi: 9.9, duration: "07:10", ascent: 2770, descent: 4471, difficulty: "hard", note: "Welcome to Courmayeur. 4,471 ft descent — KNEE DAY #1." },
-  { day: 7, date: "Jul 31", from: "Rifugio Chapy", to: "Gîte Alpage de La Peule", distance: "23.0 km", distanceMi: 14.3, duration: "10:15", ascent: 5071, descent: 2910, difficulty: "brutal", note: "Col Ferret — longest day. 5,071 ft climb. Manage energy." },
-  { day: 8, date: "Aug 01", from: "Gîte Alpage de La Peule", to: "Relais D'Arpette", distance: "22.2 km", distanceMi: 13.8, duration: "07:50", ascent: 2046, descent: 3426, difficulty: "hard", note: "Long distance, net downhill. 3,426 ft descent." },
-  { day: 9, date: "Aug 02", from: "Relais D'Arpette", to: "Auberge Mont Blanc", distance: "15.3 km", distanceMi: 9.5, duration: "07:15", ascent: 2317, descent: 3345, difficulty: "hard", note: "Another descent-heavy day. 3,345 ft down. Protect knees." },
-  { day: 10, date: "Aug 03", from: "Trient", to: "Gîte Le Nouveau Grassonnet", distance: "19.8 km", distanceMi: 12.3, duration: "08:15", ascent: 3667, descent: 3999, difficulty: "hard", note: "Biggest descent day: 3,999 ft. KNEE DAY #2." },
-  { day: 11, date: "Aug 04", from: "Grassonnet", to: "Planpraz Cable Car", distance: "16.9 km", distanceMi: 10.5, duration: "07:55", ascent: 4724, descent: 1928, difficulty: "hard", note: "Final push. Huge climb to Planpraz, then cable car down to Chamonix!" },
+  { day: 0, date: "Jul 25", from: "Chamonix", to: "RockyPop Hotel", distance: "0 km", distanceMi: 0, duration: "—", ascent: 0, descent: 0, difficulty: "easy", note: "Arrive at RockyPop. Rest, prep gear, and get ready for tomorrow." },
+  { day: 1, date: "Jul 26", from: "Les Houches", to: "Gîte Le Pontet", distance: "20.5 km", distanceMi: 12.8, duration: "10:00", ascent: 4587, descent: 4031, difficulty: "brutal", note: "Opening day — massive elevation. Set a conservative pace." },
+  { day: 2, date: "Jul 27", from: "Les Contamines", to: "Les Chapieux", distance: "16.4 km", distanceMi: 10.2, duration: "08:45", ascent: 4204, descent: 2855, difficulty: "hard", note: "Col du Bonhomme. Big climb, moderate descent." },
+  { day: 3, date: "Jul 28", from: "Bourg Saint Maurice", to: "Rifugio Elisabetta", distance: "14.2 km", distanceMi: 8.8, duration: "05:35", ascent: 3140, descent: 1182, difficulty: "moderate", note: "Shuttle start. Mostly climbing — good for your engine." },
+  { day: 4, date: "Jul 29", from: "Rifugio Elisabetta", to: "Rifugio Maison Vieille", distance: "10.1 km", distanceMi: 6.3, duration: "04:30", ascent: 1460, descent: 2050, difficulty: "easy", note: "Short day. Recovery opportunity. Descent-heavy — practice mechanics." },
+  { day: 5, date: "Jul 30", from: "Rifugio Maison Vieille", to: "Rifugio Chapy Mont Blanc", distance: "16.0 km", distanceMi: 9.9, duration: "07:10", ascent: 2770, descent: 4471, difficulty: "hard", note: "Welcome to Courmayeur. 4,471 ft descent — KNEE DAY #1." },
+  { day: 6, date: "Jul 31", from: "Rifugio Chapy", to: "Gîte Alpage de La Peule", distance: "23.0 km", distanceMi: 14.3, duration: "10:15", ascent: 5071, descent: 2910, difficulty: "brutal", note: "Col Ferret — longest day. 5,071 ft climb. Manage energy." },
+  { day: 7, date: "Aug 01", from: "Gîte Alpage de La Peule", to: "Relais D'Arpette", distance: "22.2 km", distanceMi: 13.8, duration: "07:50", ascent: 2046, descent: 3426, difficulty: "hard", note: "Long distance, net downhill. 3,426 ft descent." },
+  { day: 8, date: "Aug 02", from: "Relais D'Arpette", to: "Auberge Mont Blanc", distance: "15.3 km", distanceMi: 9.5, duration: "07:15", ascent: 2317, descent: 3345, difficulty: "hard", note: "Another descent-heavy day. 3,345 ft down. Protect knees." },
+  { day: 9, date: "Aug 03", from: "Trient", to: "Gîte Le Nouveau Grassonnet", distance: "19.8 km", distanceMi: 12.3, duration: "08:15", ascent: 3667, descent: 3999, difficulty: "hard", note: "Biggest descent day: 3,999 ft. KNEE DAY #2." },
+  { day: 10, date: "Aug 04", from: "Grassonnet", to: "Planpraz → Chamonix", distance: "16.9 km", distanceMi: 10.5, duration: "07:55", ascent: 4724, descent: 1928, difficulty: "hard", note: "Final push. Huge climb to Planpraz, then cable car down to Chamonix. You made it!" },
 ];
 
 export interface Exercise {

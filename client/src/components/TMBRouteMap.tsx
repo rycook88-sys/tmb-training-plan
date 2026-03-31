@@ -33,7 +33,7 @@ interface Accommodation {
 
 const ACCOMMODATIONS: Accommodation[] = [
   {
-    day: 1,
+    day: 0,
     name: "RockyPop Hotel",
     lat: 45.8972406,
     lng: 6.8152178,
@@ -44,7 +44,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     note: "Starting point — walk west to Les Houches trailhead",
   },
   {
-    day: 2,
+    day: 1,
     name: "Gîte Le Pontet",
     lat: 45.802991,
     lng: 6.722181,
@@ -54,7 +54,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     country: "France",
   },
   {
-    day: 3,
+    day: 2,
     name: "Hotel Base Camp Lodge",
     lat: 45.696411,
     lng: 6.733627,
@@ -65,7 +65,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     note: "Bus from Les Chapieux to Bourg-Saint-Maurice",
   },
   {
-    day: 4,
+    day: 3,
     name: "Rifugio Elisabetta",
     lat: 45.767213,
     lng: 6.837629,
@@ -75,7 +75,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     country: "Italy",
   },
   {
-    day: 5,
+    day: 4,
     name: "Rifugio Maison Vieille",
     lat: 45.79085,
     lng: 6.93129,
@@ -85,7 +85,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     country: "Italy",
   },
   {
-    day: 6,
+    day: 5,
     name: "Rifugio Chapy Mont Blanc",
     lat: 45.82309,
     lng: 6.96586,
@@ -95,7 +95,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     country: "Italy",
   },
   {
-    day: 7,
+    day: 6,
     name: "Gîte Alpage de La Peule",
     lat: 45.89864,
     lng: 7.11268,
@@ -105,7 +105,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     country: "Switzerland",
   },
   {
-    day: 8,
+    day: 7,
     name: "Relais D'Arpette",
     lat: 46.02985,
     lng: 7.09294,
@@ -115,7 +115,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     country: "Switzerland",
   },
   {
-    day: 9,
+    day: 8,
     name: "Auberge Mont Blanc",
     lat: 46.05623,
     lng: 6.99534,
@@ -125,7 +125,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     country: "Switzerland",
   },
   {
-    day: 10,
+    day: 9,
     name: "Gîte Le Nouveau Grassonnet",
     lat: 45.96998,
     lng: 6.91680,
@@ -135,26 +135,15 @@ const ACCOMMODATIONS: Accommodation[] = [
     country: "France",
   },
   {
-    day: 11,
-    name: "Planpraz Cable Car (Top)",
-    lat: 45.93500,
-    lng: 6.84800,
-    elevation: "2,000m",
-    type: "cable-car" as any,
-    image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rockypop_e77608f8.jpg",
-    country: "France",
-    note: "End of walking — take the Planpraz cable car down to Chamonix",
-  },
-  {
-    day: 12,
-    name: "Chamonix",
+    day: 10,
+    name: "Planpraz → Chamonix",
     lat: 45.92375,
     lng: 6.86972,
     elevation: "1,035m",
     type: "finish" as any,
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rockypop_e77608f8.jpg",
     country: "France",
-    note: "You made it! Cable car descent to Chamonix",
+    note: "Final push to Planpraz, then cable car down to Chamonix. You made it!",
   },
 ];
 
@@ -280,14 +269,13 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
       ACCOMMODATIONS.forEach((acc) => {
         const itDay = TMB_ITINERARY.find((d) => d.day === acc.day);
 
-        const isStart = acc.day === 1;
-        const isCableCar = acc.day === 11;
-        const isFinish = acc.day === 12;
-        const isSpecial = isStart || isCableCar || isFinish;
+        const isStart = acc.day === 0;
+        const isFinish = acc.day === 10;
+        const isSpecial = isStart || isFinish;
         const markerSize = isSpecial ? 36 : 30;
-        const markerLabel = isFinish ? "\u{1F3C1}" : isCableCar ? "\u{1F6A1}" : `D${acc.day}`;
-        const markerBg = isFinish ? "#10B981" : isCableCar ? "#8B5CF6" : isStart ? "#F97316" : "#0F172A";
-        const markerBorder = isFinish ? "#6EE7B7" : isCableCar ? "#C4B5FD" : isStart ? "#FED7AA" : "#F97316";
+        const markerLabel = isFinish ? "\u{1F3C1}" : acc.day === 0 ? "ARR" : `D${acc.day}`;
+        const markerBg = isFinish ? "#10B981" : isStart ? "#F97316" : "#0F172A";
+        const markerBorder = isFinish ? "#6EE7B7" : isStart ? "#FED7AA" : "#F97316";
         const icon = L.divIcon({
           className: "tmb-marker",
           html: `<div style="
@@ -296,7 +284,7 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
             border-radius:50%;
             background:${markerBg};
             border:3px solid ${markerBorder};
-            color:white;font-weight:700;font-size:${isFinish || isCableCar ? 16 : 12}px;
+            color:white;font-weight:700;font-size:${isFinish ? 16 : 12}px;
             font-family:'JetBrains Mono',monospace;
             box-shadow:0 2px 8px rgba(0,0,0,0.5);
             cursor:pointer;
@@ -510,7 +498,7 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
           <span className="text-xl">🗺️</span> TMB Route Map
         </h2>
         <div className="flex items-center gap-3">
-          <span className="text-xs font-mono text-[var(--muted-foreground)]">10 days · 3 countries · real trail data</span>
+          <span className="text-xs font-mono text-[var(--muted-foreground)]">10 hiking days · 3 countries · real trail data</span>
           <ChevronDown
             className={`w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-all duration-300 ${
               isOpen ? "rotate-180" : ""
@@ -546,9 +534,8 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
                     : "bg-slate-800 text-slate-400 hover:bg-slate-700"
                 }`}
               >
-                {acc.day === 12 ? "\u{1F3C1}" : acc.day === 11 ? "\u{1F6A1}" : `D${acc.day}`}
-                {acc.day === 3 && <Bus className="w-3 h-3" />}
-                {acc.day === 11 && <CableCar className="w-3 h-3" />}
+                {acc.day === 10 ? "\u{1F3C1}" : acc.day === 0 ? "ARR" : `D${acc.day}`}
+                {acc.day === 2 && <Bus className="w-3 h-3" />}
               </button>
             ))}
           </div>
@@ -612,7 +599,7 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
           </div>
 
           {/* Selected day info bar */}
-          {selectedDay && selectedDay <= 11 && (
+          {selectedDay !== null && selectedDay >= 1 && selectedDay <= 10 && (
             <div className="flex flex-wrap items-center gap-3 px-3 py-2 bg-violet-500/10 border border-violet-500/20 text-[10px] font-mono">
               <span className="text-violet-400 font-bold">Day {selectedDay}</span>
               <span className="text-slate-400">·</span>
@@ -658,8 +645,8 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-1.5">
-                  <span className={`text-[10px] font-mono font-bold ${acc.day === 12 ? 'text-emerald-400' : acc.day === 11 ? 'text-violet-400' : 'text-violet-400'}`}>
-                    {acc.day === 12 ? "\u{1F3C1} FINISH" : acc.day === 11 ? "\u{1F6A1} CABLE CAR" : `DAY ${acc.day}`}
+                  <span className={`text-[10px] font-mono font-bold ${acc.day === 10 ? 'text-emerald-400' : 'text-violet-400'}`}>
+                    {acc.day === 10 ? "\u{1F3C1} FINISH" : acc.day === 0 ? "ARRIVE" : `DAY ${acc.day}`}
                   </span>
                   <p className="text-[10px] text-white font-medium leading-tight truncate">
                     {acc.name}

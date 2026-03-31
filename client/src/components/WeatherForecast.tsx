@@ -23,7 +23,7 @@ interface DayWeather {
 
 const WEATHER: DayWeather[] = [
   {
-    day: 1,
+    day: 0,
     location: "RockyPop, Les Houches",
     elevation: 1008,
     country: "france",
@@ -33,7 +33,7 @@ const WEATHER: DayWeather[] = [
     note: "Valley town. Warm days, cool evenings. Afternoon thunderstorms possible.",
   },
   {
-    day: 2,
+    day: 1,
     location: "Gîte Le Pontet",
     elevation: 1150,
     country: "france",
@@ -43,7 +43,7 @@ const WEATHER: DayWeather[] = [
     note: "Low altitude, similar to valley. Sun hoodie weather during the day.",
   },
   {
-    day: 3,
+    day: 2,
     location: "Hotel Base Camp Lodge",
     elevation: 1549,
     country: "france",
@@ -53,7 +53,7 @@ const WEATHER: DayWeather[] = [
     note: "Mid-altitude. Noticeably cooler than valley. Bus day — less exposure.",
   },
   {
-    day: 4,
+    day: 3,
     location: "Rifugio Elisabetta",
     elevation: 2197,
     country: "france",
@@ -63,7 +63,7 @@ const WEATHER: DayWeather[] = [
     note: "High refuge. Cold at night — beanie and thermal needed. Wind at Col de la Seigne.",
   },
   {
-    day: 5,
+    day: 4,
     location: "Rifugio Maison Vieille",
     elevation: 1956,
     country: "italy",
@@ -73,7 +73,7 @@ const WEATHER: DayWeather[] = [
     note: "Italian side often warmer. Afternoon thunderstorms common in the Aosta valley.",
   },
   {
-    day: 6,
+    day: 5,
     location: "Rifugio Chapy",
     elevation: 2000,
     country: "italy",
@@ -83,7 +83,7 @@ const WEATHER: DayWeather[] = [
     note: "Courmayeur valley will be warm (25°C+), but the climb back up cools fast.",
   },
   {
-    day: 7,
+    day: 6,
     location: "Gîte La Peule",
     elevation: 1990,
     country: "italy",
@@ -93,7 +93,7 @@ const WEATHER: DayWeather[] = [
     note: "Grand Col Ferret (2537m) will be cold and windy. Layer up for the pass.",
   },
   {
-    day: 8,
+    day: 7,
     location: "Relais D'Arpette",
     elevation: 1627,
     country: "switzerland",
@@ -103,7 +103,7 @@ const WEATHER: DayWeather[] = [
     note: "Swiss valleys can be warm. Champex Lac is pleasant. Fenêtre d'Arpette variant is exposed.",
   },
   {
-    day: 9,
+    day: 8,
     location: "Auberge Mont Blanc",
     elevation: 1370,
     country: "switzerland",
@@ -113,7 +113,7 @@ const WEATHER: DayWeather[] = [
     note: "Lower altitude, warmer. Road walking sections can be hot — hydrate well.",
   },
   {
-    day: 10,
+    day: 9,
     location: "Gîte Grassonnet",
     elevation: 1820,
     country: "france",
@@ -123,7 +123,7 @@ const WEATHER: DayWeather[] = [
     note: "Col de Balme (2204m) can be foggy and cold. Back in France.",
   },
   {
-    day: 11,
+    day: 10,
     location: "Planpraz → Chamonix",
     elevation: 2000,
     country: "france",
@@ -221,7 +221,7 @@ export default function WeatherForecast() {
                           <td className="py-2.5 px-3">
                             <div className="flex items-center gap-2">
                               <span className="text-sm">{COUNTRY_FLAG[w.country]}</span>
-                              <span className="font-mono text-xs font-bold text-foreground">D{w.day}</span>
+                              <span className="font-mono text-xs font-bold text-foreground">{w.day === 0 ? "ARR" : `D${w.day}`}</span>
                             </div>
                           </td>
                           <td className="py-2.5 px-3 text-xs text-[var(--muted-foreground)]">{w.location}</td>

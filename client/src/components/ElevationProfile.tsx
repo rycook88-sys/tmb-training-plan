@@ -165,8 +165,8 @@ function SmartTooltip({ active, payload, coordinate, viewBox, mode }: any) {
 // ── hotel marker on chart ──────────────────────────────────────────
 function HotelDot({ cx, cy, accom }: { cx?: number; cy?: number; accom: typeof data.accommodations[0] }) {
   if (!cx || !cy) return null;
-  const isCableCar = accom.day === 11;
-  const isFinish = accom.day === 12;
+  const isCableCar = false;
+  const isFinish = accom.day === 10 && accom.name.includes("Chamonix");
   const label = isFinish ? "\u{1F3C1}" : isCableCar ? "\u{1F6A1}" : `D${accom.day}`;
   const name = accom.name;
   const strokeColor = isFinish ? "#10B981" : "#8B5CF6";
@@ -765,13 +765,13 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
                   <div
                     className="w-6 h-6 rounded-full flex items-center justify-center font-bold mb-1 border transition-colors group-hover:border-violet-400 group-hover:text-violet-300"
                     style={{
-                      borderColor: highlightDay === a.day ? "#C4B5FD" : a.day === 12 ? "#10B981" : "#8B5CF6",
-                      color: highlightDay === a.day ? "#C4B5FD" : a.day === 12 ? "#10B981" : "#8B5CF6",
+                      borderColor: highlightDay === a.day ? "#C4B5FD" : (a.day === 10 && a.name.includes("Chamonix")) ? "#10B981" : "#8B5CF6",
+                      color: highlightDay === a.day ? "#C4B5FD" : (a.day === 10 && a.name.includes("Chamonix")) ? "#10B981" : "#8B5CF6",
                       background: "#1c1917",
-                      fontSize: a.day >= 11 ? "0.7rem" : "0.55rem",
+                      fontSize: "0.55rem",
                     }}
                   >
-                    {a.day === 12 ? "\u{1F3C1}" : a.day === 11 ? "\u{1F6A1}" : `D${a.day}`}
+                    {(a.day === 10 && a.name.includes("Chamonix")) ? "\u{1F3C1}" : `D${a.day}`}
                   </div>
                   <span
                     className="text-zinc-500 group-hover:text-zinc-300 transition-colors leading-tight whitespace-nowrap"
