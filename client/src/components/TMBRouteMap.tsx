@@ -390,23 +390,18 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
     };
   }, [isOpen]);
 
-  // Fix black tiles when section is collapsed and reopened
+  // Destroy map when section closes so it reinitializes cleanly on reopen
   useEffect(() => {
-    if (!isOpen || !mapInstanceRef.current) return;
-    const map = mapInstanceRef.current;
-    // Multiple invalidateSize calls at increasing intervals to handle CSS transitions
-    const timers = [50, 150, 300, 600, 1000, 1500].map(ms =>
-      setTimeout(() => {
-        if (map && mapContainerRef.current) {
-          map.invalidateSize({ animate: false });
-          // Force tile layer to re-render
-          if (tileLayerRef.current) {
-            tileLayerRef.current.redraw();
-          }
-        }
-      }, ms)
-    );
-    return () => timers.forEach(clearTimeout);
+    if (!isOpen && mapInstanceRef.current) {
+      mapInstanceRef.current.remove();
+      mapInstanceRef.current = null;
+      tileLayerRef.current = null;
+      trailLayersRef.current = null;
+      markersRef.current = [];
+      foodStopMarkersRef.current = [];
+      gpsMarkerRef.current = null;
+      gpsCircleRef.current = null;
+    }
   }, [isOpen]);
 
   // Handle layer switching
