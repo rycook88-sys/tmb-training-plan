@@ -554,15 +554,14 @@ export default function BodyFatEstimator() {
                     {[
                       { pct: 12, label: "12%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-12pct-v2-oZ7gNPdoBbdGFN9ETdmSpM.webp" },
                       { pct: 15, label: "15%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-15pct-v2-jXdPPQgp357BVcdMWWBuQL.webp" },
-                      { pct: 18, label: "18%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-18pct-v2-KKboZMNFsiB8L3ernzhYQb.webp" },
+                      { pct: 18, label: "18%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-18pct-v3-SHkY3qWQneC8NK9UrKWzGi.webp" },
                       { pct: 22, label: "22%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-22pct-v2-TVFGkneCg3g7uh24oRx7Ms.webp" },
                       { pct: 25, label: "25%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-25pct-v2-AhFBKktUxNKtu6SJ4P4GnK.webp" },
                     ].map(ref => {
                       // Use composite if available, otherwise default visual estimate of 22%
                       const activeBf = composite ?? 22;
                       const isClosest = Math.abs(activeBf - ref.pct) <= 3;
-                      // Calculate lean mass at this BF% for current weight
-                      const leanAtPct = Math.round(weightLbs * (1 - ref.pct / 100));
+
                       return (
                         <div
                           key={ref.pct}
@@ -587,9 +586,7 @@ export default function BodyFatEstimator() {
                             }`}>
                               {ref.label}
                             </span>
-                            <span className="text-[9px] font-mono text-muted-foreground">
-                              {leanAtPct} lb lean
-                            </span>
+
                           </div>
                         </div>
                       );
