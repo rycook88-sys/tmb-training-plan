@@ -214,7 +214,10 @@ export default function BodyFatEstimator() {
 
   // History
   const [entries, setEntries] = useState<BFEntry[]>([]);
-  const [retentionPct, setRetentionPct] = useState(75);
+  const [retentionPct, setRetentionPct] = useState(() => {
+    const saved = localStorage.getItem("tmb-bf-retention");
+    return saved ? Number(saved) : 75;
+  });
   useEffect(() => {
     const loaded = loadEntries();
     setEntries(loaded);
@@ -637,7 +640,11 @@ export default function BodyFatEstimator() {
                         max={95}
                         step={5}
                         value={retentionPct}
-                        onChange={e => setRetentionPct(Number(e.target.value))}
+                        onChange={e => {
+                          const val = Number(e.target.value);
+                          setRetentionPct(val);
+                          localStorage.setItem("tmb-bf-retention", String(val));
+                        }}
                         className="flex-1 h-1 accent-[var(--primary)] cursor-pointer"
                       />
                       <span className="text-xs font-mono text-[var(--primary)] font-bold w-10 text-right">{retentionPct}%</span>
