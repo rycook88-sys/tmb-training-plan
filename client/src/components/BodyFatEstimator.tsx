@@ -200,7 +200,7 @@ export default function BodyFatEstimator() {
 
   // Inputs
   const [heightFt, setHeightFt] = useState("6");
-  const [heightInR, setHeightInR] = useState("1");
+  const [heightInR, setHeightInR] = useState("2");
   const [measurements, setMeasurements] = useState<Record<FieldKey, string>>({
     neck: "", chest: "", bicep: "", forearm: "", waist: "", hip: "", thigh: "",
   });
