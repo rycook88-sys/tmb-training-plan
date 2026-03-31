@@ -214,6 +214,7 @@ export default function BodyFatEstimator() {
 
   // History
   const [entries, setEntries] = useState<BFEntry[]>([]);
+  const [retentionPct, setRetentionPct] = useState(75);
   useEffect(() => {
     const loaded = loadEntries();
     setEntries(loaded);
@@ -490,25 +491,6 @@ export default function BodyFatEstimator() {
                       </span>
                     </div>
 
-                    {/* Category bar */}
-                    <div className="flex h-2 w-full gap-0.5 mb-2">
-                      {CATEGORIES.map(c => (
-                        <div
-                          key={c.label}
-                          className={`flex-1 ${c.barColor} ${
-                            compositeCat!.label === c.label ? "opacity-100" : "opacity-20"
-                          } transition-opacity`}
-                        />
-                      ))}
-                    </div>
-                    <div className="flex justify-between text-[9px] font-mono text-muted-foreground">
-                      {CATEGORIES.map(c => (
-                        <span key={c.label} className={compositeCat!.label === c.label ? "text-foreground font-bold" : ""}>
-                          {c.range}
-                        </span>
-                      ))}
-                    </div>
-
                     {/* Lean / Fat mass */}
                     <div className="mt-3 pt-3 border-t border-border grid grid-cols-2 gap-4">
                       <div>
@@ -570,11 +552,11 @@ export default function BodyFatEstimator() {
                 <div className="p-3">
                   <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
                     {[
-                      { pct: 12, label: "12%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-12pct-kxzsgTLAShW84J8YQjumFw.webp" },
-                      { pct: 15, label: "15%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-15pct-AVt3dujjwjR3NNcyDncKDK.webp" },
+                      { pct: 12, label: "12%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-12pct-v2-oZ7gNPdoBbdGFN9ETdmSpM.webp" },
+                      { pct: 15, label: "15%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-15pct-v2-jXdPPQgp357BVcdMWWBuQL.webp" },
                       { pct: 18, label: "18%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-18pct-v2-KKboZMNFsiB8L3ernzhYQb.webp" },
                       { pct: 22, label: "22%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-22pct-v2-TVFGkneCg3g7uh24oRx7Ms.webp" },
-                      { pct: 25, label: "25%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-25pct-oM3m9EWEP5HkjoKz7aukUf.webp" },
+                      { pct: 25, label: "25%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-25pct-v2-AhFBKktUxNKtu6SJ4P4GnK.webp" },
                     ].map(ref => {
                       // Use composite if available, otherwise default visual estimate of 22%
                       const activeBf = composite ?? 22;
@@ -628,7 +610,7 @@ export default function BodyFatEstimator() {
                 const activeBf = composite ?? 22;
                 const leanMass = weightLbs - (activeBf / 100) * weightLbs;
                 // Assume some muscle loss during cut: ~0.25 lb muscle lost per 1 lb total lost
-                const muscleRetention = 0.75;
+                const muscleRetention = retentionPct / 100;
                 const projections: { weight: number; bf: number; leanEst: number; fatEst: number }[] = [];
                 for (let w = Math.ceil(weightLbs / 5) * 5; w >= 195; w -= 5) {
                   const totalLost = weightLbs - w;
@@ -644,11 +626,26 @@ export default function BodyFatEstimator() {
                       <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
                         Weight → BF% Projection
                       </span>
-                      <span className="text-[9px] font-mono text-muted-foreground/60 ml-2">
-                        {composite !== null
-                          ? "(assumes 75% fat / 25% muscle loss ratio)"
-                          : "(using visual estimate ~22% — enter measurements for precision)"
-                        }
+                      {composite === null && (
+                        <span className="text-[9px] font-mono text-muted-foreground/60 ml-2">
+                          (using visual estimate ~22% — enter measurements for precision)
+                        </span>
+                      )}
+                    </div>
+                    <div className="px-4 py-2 border-b border-border flex items-center gap-3">
+                      <span className="text-[9px] font-mono text-muted-foreground shrink-0">Muscle Retention</span>
+                      <input
+                        type="range"
+                        min={50}
+                        max={95}
+                        step={5}
+                        value={retentionPct}
+                        onChange={e => setRetentionPct(Number(e.target.value))}
+                        className="flex-1 h-1 accent-[var(--primary)] cursor-pointer"
+                      />
+                      <span className="text-xs font-mono text-[var(--primary)] font-bold w-10 text-right">{retentionPct}%</span>
+                      <span className="text-[9px] font-mono text-muted-foreground/60 hidden sm:inline">
+                        ({100 - retentionPct}% muscle loss)
                       </span>
                     </div>
                     <div className="divide-y divide-border">
