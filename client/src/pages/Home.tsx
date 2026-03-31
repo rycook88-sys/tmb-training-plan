@@ -385,9 +385,10 @@ function SummaryModal({ session, allSessions, onClose }: {
   );
 }
 
-// ── Workout History Calendar ──────────────────────────────
+// ── Workout History Calendar ─────────────────────────────
 function WorkoutCalendar({ sessions, onDelete }: { sessions: WorkoutSession[]; onDelete: (date: string, dayId: string, sessionIndex: number) => void }) {
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ date: string; dayId: string; sessionIndex: number } | null>(null);
   if (sessions.length === 0) return null;
 
   const grouped: Record<string, WorkoutSession[]> = {};
@@ -433,7 +434,7 @@ function WorkoutCalendar({ sessions, onDelete }: { sessions: WorkoutSession[]; o
                         <div className="flex items-center justify-between mb-1">
                           <div className="text-[10px] font-mono text-[var(--primary)] uppercase tracking-wider">{s.dayTitle}</div>
                           <button
-                            onClick={(e) => { e.stopPropagation(); onDelete(s.date, s.dayId, si); }}
+                            onClick={(e) => { e.stopPropagation(); setConfirmDelete({ date: s.date, dayId: s.dayId, sessionIndex: si }); }}
                             className="text-[var(--muted-foreground)] hover:text-red-400 transition-colors p-1"
                             title="Delete this session"
                           >
@@ -464,6 +465,44 @@ function WorkoutCalendar({ sessions, onDelete }: { sessions: WorkoutSession[]; o
           );
         })}
       </div>
+      {/* Delete confirmation modal */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => setConfirmDelete(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="bg-card border border-border p-6 max-w-xs w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-sm font-mono uppercase tracking-[0.15em] text-foreground font-semibold mb-2">Delete Workout?</h3>
+              <p className="text-xs font-mono text-muted-foreground mb-4">This workout session will be permanently removed. This cannot be undone.</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmDelete(null)}
+                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => { onDelete(confirmDelete.date, confirmDelete.dayId, confirmDelete.sessionIndex); setConfirmDelete(null); }}
+                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer font-bold"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

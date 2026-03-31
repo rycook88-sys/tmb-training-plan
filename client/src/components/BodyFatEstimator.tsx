@@ -18,7 +18,7 @@ const GUIDE_IMAGES: Record<string, string> = {
 };
 
 // ── Measurement fields ──────────────────────────────────────
-type FieldKey = "neck" | "waist" | "hip" | "chest" | "bicep" | "thigh" | "forearm";
+type FieldKey = "neck" | "waist" | "hip" | "chest" | "bicep" | "thigh" | "forearm" | "wrist";
 
 interface MeasurementField {
   key: FieldKey;
@@ -36,6 +36,7 @@ const FIELDS: MeasurementField[] = [
   { key: "waist", label: "Waist", hint: "Measure at navel level, relaxed (don't suck in)", guideImage: GUIDE_IMAGES.waist, required: true },
   { key: "hip", label: "Hip", hint: "Measure at the widest point of the buttocks", guideImage: GUIDE_IMAGES.hip, required: false },
   { key: "thigh", label: "Thigh", hint: "Measure at the widest point of the upper thigh, just below the glute fold", guideImage: GUIDE_IMAGES.thigh, required: false },
+  { key: "wrist", label: "Wrist", hint: "Measure at the narrowest point, just above the wrist bone (below the bump)", guideImage: "", required: false },
 ];
 
 // ── Body fat categories ─────────────────────────────────────
@@ -70,22 +71,19 @@ function navyBodyFat(neck: number, waist: number, heightIn: number): number | nu
 }
 
 // YMCA (male): BF% = (-98.42 + 4.15 × waist − 0.082 × weight) / weight × 100
-// We use current weight from localStorage if available
+// Published formula from YMCA fitness testing protocol
 function ymcaBodyFat(waist: number, weightLbs: number): number | null {
   if (waist <= 0 || weightLbs <= 0) return null;
-  const leanBody = (weightLbs * 1.082) + (waist * -4.15) + 94.42;
-  const bf = ((weightLbs - leanBody) / weightLbs) * 100;
+  const bf = (-98.42 + 4.15 * waist - 0.082 * weightLbs) / weightLbs * 100;
   return bf > 0 ? bf : null;
 }
 
-// Covert Bailey (male) adapted formula:
-// Uses waist, hip, forearm, neck circumferences
-// Original: waist + 0.5*hip - 3*forearm - wrist
-// Adapted without wrist: uses neck as proxy
-function covertBaileyBodyFat(waist: number, hip: number, forearm: number, neck: number): number | null {
-  if (waist <= 0 || hip <= 0 || forearm <= 0 || neck <= 0) return null;
-  // Covert Bailey male adapted formula
-  const bf = (waist * 1.0) + (hip * 0.5) - (forearm * 3.0) - neck + 10.0;
+// Covert Bailey (male) from "Fit or Fat?" by Covert Bailey
+// Men: BF% = waist + (0.5 × hip) − (3.0 × forearm) − wrist
+// All measurements in inches
+function covertBaileyBodyFat(waist: number, hip: number, forearm: number, wrist: number): number | null {
+  if (waist <= 0 || hip <= 0 || forearm <= 0 || wrist <= 0) return null;
+  const bf = waist + (0.5 * hip) - (3.0 * forearm) - wrist;
   return bf > 0 ? bf : null;
 }
 
@@ -202,8 +200,9 @@ export default function BodyFatEstimator() {
   const [heightFt, setHeightFt] = useState("6");
   const [heightInR, setHeightInR] = useState("2");
   const [measurements, setMeasurements] = useState<Record<FieldKey, string>>({
-    neck: "", chest: "", bicep: "", forearm: "", waist: "", hip: "", thigh: "",
+    neck: "", chest: "", bicep: "", forearm: "", waist: "", hip: "", thigh: "", wrist: "",
   });
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [unit, setUnit] = useState<"in" | "cm">("in");
   const [weightInput, setWeightInput] = useState("");
   const [prefilled, setPrefilled] = useState(false);
@@ -233,6 +232,7 @@ export default function BodyFatEstimator() {
         waist: m.waist ? String(m.waist) : "",
         hip: m.hip ? String(m.hip) : "",
         thigh: m.thigh ? String(m.thigh) : "",
+        wrist: (m as any).wrist ? String((m as any).wrist) : "",
       });
       if (last.weightLbs) setWeightInput(String(last.weightLbs));
       setPrefilled(true);
@@ -257,7 +257,7 @@ export default function BodyFatEstimator() {
   // Run all formulas
   const navyResult = navyBodyFat(vals.neck, vals.waist, heightIn);
   const ymcaResult = ymcaBodyFat(vals.waist, weightLbs);
-  const cbResult = covertBaileyBodyFat(vals.waist, vals.hip, vals.forearm, vals.neck);
+  const cbResult = covertBaileyBodyFat(vals.waist, vals.hip, vals.forearm, vals.wrist);
 
   const formulas: FormulaResult[] = [
     {
@@ -279,7 +279,7 @@ export default function BodyFatEstimator() {
       shortName: "C. Bailey",
       bf: cbResult ?? 0,
       available: cbResult !== null && cbResult > 0,
-      note: "Uses waist, hip, forearm, neck",
+      note: "Uses waist, hip, forearm, wrist",
     },
   ];
 
@@ -333,7 +333,7 @@ export default function BodyFatEstimator() {
   }, [entries]);
 
   const handleReset = useCallback(() => {
-    setMeasurements({ neck: "", chest: "", bicep: "", forearm: "", waist: "", hip: "", thigh: "" });
+    setMeasurements({ neck: "", chest: "", bicep: "", forearm: "", waist: "", hip: "", thigh: "", wrist: "" });
     setWeightInput("");
     setPhotos([]);
   }, []);
@@ -786,7 +786,7 @@ export default function BodyFatEstimator() {
                             <Camera className="w-3 h-3 text-muted-foreground" />
                           )}
                           <button
-                            onClick={() => handleDelete(entry.id)}
+                            onClick={() => setConfirmDeleteId(entry.id)}
                             className="text-muted-foreground/50 hover:text-red-400 transition-all cursor-pointer ml-1"
                             title="Delete entry"
                           >
@@ -800,6 +800,45 @@ export default function BodyFatEstimator() {
               )}
 
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete confirmation modal */}
+      <AnimatePresence>
+        {confirmDeleteId && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => setConfirmDeleteId(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="bg-card border border-border p-6 max-w-xs w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-sm font-mono uppercase tracking-[0.15em] text-foreground font-semibold mb-2">Delete Entry?</h3>
+              <p className="text-xs font-mono text-muted-foreground mb-4">This measurement entry will be permanently removed. This cannot be undone.</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmDeleteId(null)}
+                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => { handleDelete(confirmDeleteId); setConfirmDeleteId(null); }}
+                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer font-bold"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
