@@ -603,13 +603,6 @@ export default function DailyBudget() {
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
-                          {/* Day total mileage */}
-                          {dayMiles > 0 && (
-                            <span className="text-[10px] font-mono bg-[var(--primary)]/15 text-[var(--primary)] px-2 py-0.5 flex items-center gap-1">
-                              <Navigation className="w-3 h-3" />
-                              {dayMiles} mi
-                            </span>
-                          )}
                           {day.transportCost && (
                             <span className="text-[10px] font-mono bg-blue-500/15 text-blue-400 px-2 py-0.5 flex items-center gap-1">
                               {day.transportCost.item.includes("Bus") ? <Bus className="w-3 h-3" /> : <CableCar className="w-3 h-3" />}

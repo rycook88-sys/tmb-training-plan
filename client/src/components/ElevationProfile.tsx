@@ -285,6 +285,7 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
   const [windowStart, setWindowStart] = useState(0);
   const [mode, setMode] = useState<ViewMode>("country");
   const [showFoodStops, setShowFoodStops] = useState(true);
+  const [zoomedDay, setZoomedDay] = useState<number | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
   const totalDist = data.totalDistance;
@@ -334,17 +335,12 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
     return data.accommodations.filter((a) => a.dist >= clampedStart - 1 && a.dist <= end + 1);
   }, [clampedStart, windowSize]);
 
-  // Visible food stops (filtered by window and optionally by highlighted day)
+  // Visible food stops (always show all stops in window when toggled on)
   const visibleFoodStops = useMemo(() => {
     if (!showFoodStops) return [];
     const end = clampedStart + windowSize;
-    let stops = FOOD_STOPS.filter(s => s.mileAbs >= clampedStart - 1 && s.mileAbs <= end + 1);
-    // If a day is highlighted, only show that day's stops
-    if (highlightDay) {
-      stops = stops.filter(s => s.day === highlightDay);
-    }
-    return stops;
-  }, [clampedStart, windowSize, showFoodStops, highlightDay]);
+    return FOOD_STOPS.filter(s => s.mileAbs >= clampedStart - 1 && s.mileAbs <= end + 1);
+  }, [clampedStart, windowSize, showFoodStops]);
 
   // Day boundary lines
   const dayBoundaries = useMemo(() => {
@@ -541,15 +537,7 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
                 <span className="px-2 py-1 text-[0.65rem] font-mono text-amber-400 bg-zinc-800/60 rounded border border-zinc-700/30 min-w-[2.5rem] text-center">
                   {zoomLabel}
                 </span>
-                {customScale > 1.05 && (
-                  <button
-                    onClick={() => { setCustomScale(1); setWindowStart(0); }}
-                    className="px-2 h-8 flex items-center justify-center rounded bg-zinc-800/80 border border-zinc-700/50 text-zinc-400 hover:text-white hover:border-zinc-600 transition-colors active:scale-95 text-[0.6rem] font-mono"
-                    title="Reset to full view"
-                  >
-                    1x
-                  </button>
-                )}
+
                 <button
                   onClick={handleZoomIn}
                   disabled={customScale >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1].scale - 0.05}
@@ -743,8 +731,15 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
                 <button
                   key={i}
                   onClick={() => {
-                    // Find the day's distance range and zoom so it fills 96% of x-axis
                     const dayNum = a.day;
+                    // Toggle: if already zoomed to this day, reset to 1x
+                    if (zoomedDay === dayNum) {
+                      setCustomScale(1);
+                      setWindowStart(0);
+                      setZoomedDay(null);
+                      return;
+                    }
+                    // Zoom into the day
                     const dayPts = data.points.filter(p => p.day === dayNum);
                     if (dayPts.length > 0) {
                       const dayStart = dayPts[0].dist;
@@ -758,6 +753,7 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
                       const dayCenter = (dayStart + dayEnd) / 2;
                       const newStart = Math.max(0, Math.min(dayCenter - actualWindowSize / 2, totalDist - actualWindowSize));
                       setWindowStart(newStart);
+                      setZoomedDay(dayNum);
                     }
                   }}
                   onMouseEnter={() => onDayHover?.(a.day)}
