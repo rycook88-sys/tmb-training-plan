@@ -49,11 +49,11 @@ interface BFCategory {
 }
 
 const CATEGORIES: BFCategory[] = [
-  { label: "Essential", range: "2–5%", min: 2, max: 5, color: "text-red-400", barColor: "bg-red-500" },
-  { label: "Athletic", range: "6–13%", min: 6, max: 13, color: "text-[var(--primary)]", barColor: "bg-[var(--primary)]" },
-  { label: "Fitness", range: "14–17%", min: 14, max: 17, color: "text-green-400", barColor: "bg-green-500" },
-  { label: "Average", range: "18–24%", min: 18, max: 24, color: "text-yellow-400", barColor: "bg-yellow-500" },
-  { label: "Above Avg", range: "25%+", min: 25, max: 40, color: "text-zinc-400", barColor: "bg-zinc-500" },
+  { label: "Essential", range: "2–5%", min: 0, max: 5.99, color: "text-red-400", barColor: "bg-red-500" },
+  { label: "Athletic", range: "6–13%", min: 6, max: 13.99, color: "text-[var(--primary)]", barColor: "bg-[var(--primary)]" },
+  { label: "Fitness", range: "14–17%", min: 14, max: 17.99, color: "text-green-400", barColor: "bg-green-500" },
+  { label: "Average", range: "18–24%", min: 18, max: 24.99, color: "text-yellow-400", barColor: "bg-yellow-500" },
+  { label: "Above Avg", range: "25%+", min: 25, max: 100, color: "text-red-300", barColor: "bg-red-400" },
 ];
 
 function getCategory(bf: number): BFCategory {
