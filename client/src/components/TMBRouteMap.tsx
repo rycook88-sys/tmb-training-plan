@@ -3,7 +3,7 @@
 // Trail segments colored by country (France/Italy/Switzerland)
 // Food stop markers appear when a specific day is selected
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ChevronDown, Map, Bus, Layers, Mountain, UtensilsCrossed, LocateFixed, Navigation, Play, Square } from "lucide-react";
+import { ChevronDown, Map, Bus, Layers, Mountain, UtensilsCrossed, LocateFixed, Navigation, Play, Square, MoreHorizontal, X } from "lucide-react";
 import { TMB_ITINERARY } from "@/lib/data";
 import { FOOD_STOPS, DAY_MILES, getStopsForDay } from "@/lib/tmb-food-stops";
 import { OfflineMapManager } from "@/components/OfflineMapManager";
@@ -223,6 +223,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
   const simIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const simIndexRef = useRef(0);
   const [avatarCropperOpen, setAvatarCropperOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState(getAvatarUrl);
 
   // Listen for avatar changes
@@ -816,7 +817,18 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
               )}
             </div>
             <div className="flex items-center gap-2">
-              {/* Food stops toggle */}
+              {/* 1. Layer toggle — leftmost */}
+              <button
+                onClick={() => setMapLayer(mapLayer === "topo" ? "satellite" : "topo")}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-400 hover:text-slate-200 transition-colors"
+              >
+                {mapLayer === "topo" ? (
+                  <><Layers className="w-3 h-3" /> SATELLITE</>
+                ) : (
+                  <><Mountain className="w-3 h-3" /> TOPO MAP</>
+                )}
+              </button>
+              {/* 2. Food stops toggle */}
               <button
                 onClick={() => setShowFoodStops(!showFoodStops)}
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono transition-colors ${
@@ -827,21 +839,9 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                 title={showFoodStops ? "Hide food stops" : "Show food stops"}
               >
                 <UtensilsCrossed className="w-3 h-3" />
-                {showFoodStops ? "FOOD STOPS ON" : "FOOD STOPS OFF"}
+                {showFoodStops ? "FOOD STOPS" : "FOOD STOPS"}
               </button>
-              {/* GPS locate me */}
-              <button
-                onClick={toggleGps}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono transition-colors ${
-                  gpsActive
-                    ? "bg-blue-500/15 border-blue-500/40 text-blue-400 hover:bg-blue-500/25"
-                    : "bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300"
-                }`}
-                title={gpsActive ? "Stop GPS tracking" : "Show my location"}
-              >
-                <LocateFixed className="w-3 h-3" />
-                {gpsActive ? "GPS ON" : "LOCATE ME"}
-              </button>
+              {/* 3. GPS center button (only when GPS active) */}
               {gpsActive && gpsPosition && (
                 <button
                   onClick={centerOnGps}
@@ -851,47 +851,62 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                   <Navigation className="w-3 h-3" /> CENTER
                 </button>
               )}
-              {/* Trail simulation */}
-              <button
-                onClick={simulating ? stopSimulation : startSimulation}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono transition-colors ${
-                  simulating
-                    ? "bg-green-500/15 border-green-500/40 text-green-400 hover:bg-green-500/25 animate-pulse"
-                    : "bg-slate-800 border-slate-700 text-emerald-500 hover:text-emerald-300"
-                }`}
-                title={simulating ? "Stop simulation" : "Simulate hiking the trail"}
-              >
-                {simulating ? (
-                  <><Square className="w-3 h-3" /> STOP SIM</>
-                ) : (
-                  <><Play className="w-3 h-3" /> SIMULATE TRAIL</>
+              {/* 4. More menu — contains Locate Me, Simulate, Download Maps, Avatar */}
+              <div className="relative">
+                <button
+                  onClick={() => setMoreMenuOpen(!moreMenuOpen)}
+                  className={`flex items-center justify-center w-8 h-8 rounded-md border text-[10px] font-mono transition-colors ${
+                    moreMenuOpen
+                      ? "bg-slate-700 border-slate-500 text-slate-200"
+                      : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"
+                  }`}
+                  title="More options"
+                >
+                  {moreMenuOpen ? <X className="w-4 h-4" /> : <MoreHorizontal className="w-4 h-4" />}
+                </button>
+                {moreMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1 z-[100] w-56 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
+                    {/* GPS locate me */}
+                    <button
+                      onClick={() => { toggleGps(); setMoreMenuOpen(false); }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-[11px] font-mono transition-colors border-b border-slate-800 ${
+                        gpsActive
+                          ? "text-blue-400 bg-blue-500/10"
+                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                      }`}
+                    >
+                      <LocateFixed className="w-3.5 h-3.5" />
+                      {gpsActive ? "GPS ON — TAP TO STOP" : "LOCATE ME"}
+                    </button>
+                    {/* Trail simulation */}
+                    <button
+                      onClick={() => { simulating ? stopSimulation() : startSimulation(); setMoreMenuOpen(false); }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-[11px] font-mono transition-colors border-b border-slate-800 ${
+                        simulating
+                          ? "text-green-400 bg-green-500/10"
+                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                      }`}
+                    >
+                      {simulating ? <Square className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
+                      {simulating ? "STOP SIMULATION" : "SIMULATE TRAIL"}
+                    </button>
+                    {/* Offline map download */}
+                    <div className="px-3 py-2.5 border-b border-slate-800">
+                      <OfflineMapManager />
+                    </div>
+                    {/* Avatar photo */}
+                    <button
+                      onClick={() => { setAvatarCropperOpen(true); setMoreMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 text-[11px] font-mono text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+                    >
+                      <div className="w-5 h-5 rounded-full border border-slate-600 overflow-hidden flex-shrink-0">
+                        <img src={avatarUrl} className="w-full h-full object-cover" alt="" />
+                      </div>
+                      GPS AVATAR PHOTO
+                    </button>
+                  </div>
                 )}
-              </button>
-              {/* Offline map download */}
-              <OfflineMapManager />
-              {/* Layer toggle */}
-              <button
-                onClick={() => setMapLayer(mapLayer === "topo" ? "satellite" : "topo")}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-400 hover:text-slate-200 transition-colors"
-              >
-                {mapLayer === "topo" ? (
-                  <>
-                    <Layers className="w-3 h-3" /> SATELLITE
-                  </>
-                ) : (
-                  <>
-                    <Mountain className="w-3 h-3" /> TOPO MAP
-                  </>
-                )}
-              </button>
-              {/* Avatar photo button — small, out of the way */}
-              <button
-                onClick={() => setAvatarCropperOpen(true)}
-                className="w-7 h-7 rounded-full border border-slate-600 bg-slate-800 overflow-hidden hover:border-blue-500/50 transition-colors flex-shrink-0"
-                title="Set GPS avatar photo"
-              >
-                <img src={avatarUrl} className="w-full h-full object-cover" alt="" />
-              </button>
+              </div>
             </div>
           </div>
 
