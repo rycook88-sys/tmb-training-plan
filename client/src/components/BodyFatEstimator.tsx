@@ -15,6 +15,7 @@ const GUIDE_IMAGES: Record<string, string> = {
   bicep: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-bicep-Muxh72Tr95FUMMwDzBTuLP.webp",
   thigh: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-thigh-JBYcKqeDhaVBtZvBeNMZU2.webp",
   forearm: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-forearm-EUt7rSkBaSmnR67bnLJfEo.webp",
+  wrist: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-wrist-56qTtqsbwSNQTeySyrUDji.webp",
 };
 
 // ── Measurement fields ──────────────────────────────────────
@@ -36,7 +37,7 @@ const FIELDS: MeasurementField[] = [
   { key: "waist", label: "Waist", hint: "Measure at navel level, relaxed (don't suck in)", guideImage: GUIDE_IMAGES.waist, required: true },
   { key: "hip", label: "Hip", hint: "Measure at the widest point of the buttocks", guideImage: GUIDE_IMAGES.hip, required: false },
   { key: "thigh", label: "Thigh", hint: "Measure at the widest point of the upper thigh, just below the glute fold", guideImage: GUIDE_IMAGES.thigh, required: false },
-  { key: "wrist", label: "Wrist", hint: "Measure at the narrowest point, just above the wrist bone (below the bump)", guideImage: "", required: false },
+  { key: "wrist", label: "Wrist", hint: "Measure at the narrowest point, just above the wrist bone (below the bump)", guideImage: GUIDE_IMAGES.wrist, required: false },
 ];
 
 // ── Body fat categories ─────────────────────────────────────
@@ -555,8 +556,8 @@ export default function BodyFatEstimator() {
                 <div className="p-3">
                   <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
                     {[
-                      { pct: 12, label: "12%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-12pct-v2-oZ7gNPdoBbdGFN9ETdmSpM.webp" },
-                      { pct: 15, label: "15%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-15pct-v2-jXdPPQgp357BVcdMWWBuQL.webp" },
+                      { pct: 12, label: "12%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-silhouette-12pct-Sh2eTgfhftWgEmKzevuzAQ.webp" },
+                      { pct: 15, label: "15%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-silhouette-15pct-2FL65UkjtYQ4hhHNkxoxw9.webp" },
                       { pct: 18, label: "18%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-18pct-v3-SHkY3qWQneC8NK9UrKWzGi.webp" },
                       { pct: 22, label: "22%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-22pct-v2-TVFGkneCg3g7uh24oRx7Ms.webp" },
                       { pct: 25, label: "25%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-25pct-v2-AhFBKktUxNKtu6SJ4P4GnK.webp" },
