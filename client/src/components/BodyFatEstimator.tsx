@@ -653,36 +653,32 @@ export default function BodyFatEstimator() {
                         return (
                           <div
                             key={p.weight}
-                            className={`px-4 py-2 flex items-center gap-3 text-xs font-mono ${
+                            className={`px-4 py-2 flex items-center text-xs font-mono ${
                               isCurrent ? "bg-[var(--primary)]/5" : isTarget ? "bg-green-500/5" : ""
                             }`}
                           >
-                            <span className={`w-14 shrink-0 font-bold ${
+                            <span className={`w-16 shrink-0 font-bold ${
                               isCurrent ? "text-[var(--primary)]" : isTarget ? "text-green-400" : "text-foreground"
                             }`}>
                               {p.weight} lb
                             </span>
-                            <div className="flex-1 h-1.5 bg-zinc-800 overflow-hidden">
-                              <div
-                                className={`h-full ${pCat.barColor} transition-all`}
-                                style={{ width: `${Math.min(p.bf / 30 * 100, 100)}%` }}
-                              />
-                            </div>
-                            <span className={`w-12 text-right font-bold ${pCat.color}`}>
+                            <span className={`w-14 text-right font-bold ${pCat.color}`}>
                               {p.bf.toFixed(1)}%
                             </span>
-                            <span className="w-16 text-right text-muted-foreground hidden sm:inline">
+                            <span className="w-20 text-right text-cyan-400 font-semibold">
                               {p.leanEst.toFixed(0)} lean
                             </span>
-                            <span className="w-14 text-right text-muted-foreground hidden sm:inline">
+                            <span className="w-16 text-right text-muted-foreground">
                               {p.fatEst.toFixed(0)} fat
                             </span>
-                            {isCurrent && (
-                              <span className="text-[9px] text-[var(--primary)] font-bold shrink-0">NOW</span>
-                            )}
-                            {isTarget && !isCurrent && (
-                              <span className="text-[9px] text-green-400 font-bold shrink-0">GOAL</span>
-                            )}
+                            <span className="flex-1 text-right">
+                              {isCurrent && (
+                                <span className="text-[9px] text-[var(--primary)] font-bold">NOW</span>
+                              )}
+                              {isTarget && !isCurrent && (
+                                <span className="text-[9px] text-green-400 font-bold">GOAL</span>
+                              )}
+                            </span>
                           </div>
                         );
                       })}
