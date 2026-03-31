@@ -851,7 +851,20 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                 <UtensilsCrossed className="w-3 h-3" />
                 {showFoodStops ? "FOOD STOPS" : "FOOD STOPS"}
               </button>
-              {/* 3. GPS center button (only when GPS active) */}
+              {/* 3. GPS locate me — main row */}
+              <button
+                onClick={toggleGps}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono transition-colors ${
+                  gpsActive
+                    ? "bg-blue-500/15 border-blue-500/40 text-blue-400 hover:bg-blue-500/25"
+                    : "bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300"
+                }`}
+                title={gpsActive ? "Stop GPS tracking" : "Show my location"}
+              >
+                <LocateFixed className="w-3 h-3" />
+                {gpsActive ? "GPS ON" : "LOCATE ME"}
+              </button>
+              {/* GPS center button (only when GPS active) */}
               {gpsActive && gpsPosition && (
                 <button
                   onClick={centerOnGps}
@@ -878,18 +891,6 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                   <>
                   <div className="fixed inset-0 z-[999]" onClick={() => setMoreMenuOpen(false)} />
                   <div className="absolute right-0 top-full mt-1 z-[1000] w-56 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
-                    {/* GPS locate me */}
-                    <button
-                      onClick={() => { toggleGps(); setMoreMenuOpen(false); }}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-[11px] font-mono transition-colors border-b border-slate-800 ${
-                        gpsActive
-                          ? "text-blue-400 bg-blue-500/10"
-                          : "text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-                      }`}
-                    >
-                      <LocateFixed className="w-3.5 h-3.5" />
-                      {gpsActive ? "GPS ON — TAP TO STOP" : "LOCATE ME"}
-                    </button>
                     {/* Trail simulation */}
                     <button
                       onClick={() => { simulating ? stopSimulation() : startSimulation(); setMoreMenuOpen(false); }}
