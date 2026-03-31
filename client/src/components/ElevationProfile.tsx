@@ -256,7 +256,13 @@ function SteepnessLegend() {
 }
 
 // ── GPS "You Are Here" bubble on chart ────────────────────────────
-const FACE_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/face-marker-small_211355dc.png";
+function getFaceUrl(): string {
+  try {
+    return localStorage.getItem("tmb-gps-avatar") || "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/face-marker-small_852b6cb1.png";
+  } catch {
+    return "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/face-marker-small_852b6cb1.png";
+  }
+}
 
 function GpsDot({ cx, cy }: { cx?: number; cy?: number }) {
   if (!cx || !cy) return null;
@@ -280,7 +286,7 @@ function GpsDot({ cx, cy }: { cx?: number; cy?: number }) {
         </clipPath>
       </defs>
       <image
-        href={FACE_URL}
+        href={getFaceUrl()}
         x={cx - r}
         y={cy - r}
         width={r * 2}

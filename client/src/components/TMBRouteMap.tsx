@@ -7,6 +7,7 @@ import { ChevronDown, Map, Bus, Layers, Mountain, UtensilsCrossed, LocateFixed, 
 import { TMB_ITINERARY } from "@/lib/data";
 import { FOOD_STOPS, DAY_MILES, getStopsForDay } from "@/lib/tmb-food-stops";
 import { OfflineMapManager } from "@/components/OfflineMapManager";
+import AvatarCropper, { getAvatarUrl, onAvatarChange } from "@/components/AvatarCropper";
 import { watchPosition, clearWatch, haversineMeters, metersToMiles, type GpsPosition } from "@/lib/gps-tracker";
 import trailDataRaw from "@/lib/tmb-trail-data.json";
 import countrySegmentsRaw from "@/lib/tmb-country-segments.json";
@@ -221,6 +222,20 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
   const [simulating, setSimulating] = useState(false);
   const simIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const simIndexRef = useRef(0);
+  const [avatarCropperOpen, setAvatarCropperOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState(getAvatarUrl);
+
+  // Listen for avatar changes
+  useEffect(() => {
+    return onAvatarChange(() => {
+      setAvatarUrl(getAvatarUrl());
+      // Force recreate the marker with new image
+      if (gpsMarkerRef.current && mapInstanceRef.current) {
+        mapInstanceRef.current.removeLayer(gpsMarkerRef.current);
+        gpsMarkerRef.current = null;
+      }
+    });
+  }, []);
 
   // Initialize map when section opens
   useEffect(() => {
@@ -526,7 +541,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
       const icon = L.divIcon({
         className: "gps-marker",
         html: `<div style="width:36px;height:36px;border-radius:50%;border:3px solid #3b82f6;box-shadow:0 0 12px rgba(59,130,246,0.6);overflow:hidden;background:#1c1917">
-          <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/face-marker_7c471987.png" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />
+          <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />
         </div>`,
         iconSize: [36, 36],
         iconAnchor: [18, 18],
@@ -576,7 +591,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
       const mi = metersToMiles(minDist);
       setDistanceToNext(`${mi.toFixed(1)} mi to ${closestAcc.name.split("–")[0].trim()}`);
     }
-  }, [gpsActive, gpsPosition, selectedDay, simulating]);
+  }, [gpsActive, gpsPosition, selectedDay, simulating, avatarUrl]);
 
   // Cleanup GPS on unmount
   useEffect(() => {
@@ -869,8 +884,19 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                   </>
                 )}
               </button>
+              {/* Avatar photo button — small, out of the way */}
+              <button
+                onClick={() => setAvatarCropperOpen(true)}
+                className="w-7 h-7 rounded-full border border-slate-600 bg-slate-800 overflow-hidden hover:border-blue-500/50 transition-colors flex-shrink-0"
+                title="Set GPS avatar photo"
+              >
+                <img src={avatarUrl} className="w-full h-full object-cover" alt="" />
+              </button>
             </div>
           </div>
+
+          {/* Avatar cropper modal */}
+          <AvatarCropper open={avatarCropperOpen} onClose={() => setAvatarCropperOpen(false)} />
 
           {/* GPS info bar */}
           {gpsActive && (
