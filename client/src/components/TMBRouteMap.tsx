@@ -224,6 +224,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
   const simIndexRef = useRef(0);
   const [avatarCropperOpen, setAvatarCropperOpen] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
   const [avatarUrl, setAvatarUrl] = useState(getAvatarUrl);
 
   // Listen for avatar changes
@@ -392,11 +393,20 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
   // Fix black tiles when section is collapsed and reopened
   useEffect(() => {
     if (!isOpen || !mapInstanceRef.current) return;
-    // Give the DOM time to render the container, then tell Leaflet to recalculate
-    const t1 = setTimeout(() => mapInstanceRef.current?.invalidateSize(), 50);
-    const t2 = setTimeout(() => mapInstanceRef.current?.invalidateSize(), 200);
-    const t3 = setTimeout(() => mapInstanceRef.current?.invalidateSize(), 500);
-    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    const map = mapInstanceRef.current;
+    // Multiple invalidateSize calls at increasing intervals to handle CSS transitions
+    const timers = [50, 150, 300, 600, 1000, 1500].map(ms =>
+      setTimeout(() => {
+        if (map && mapContainerRef.current) {
+          map.invalidateSize({ animate: false });
+          // Force tile layer to re-render
+          if (tileLayerRef.current) {
+            tileLayerRef.current.redraw();
+          }
+        }
+      }, ms)
+    );
+    return () => timers.forEach(clearTimeout);
   }, [isOpen]);
 
   // Handle layer switching
@@ -852,7 +862,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                 </button>
               )}
               {/* 4. More menu — contains Locate Me, Simulate, Download Maps, Avatar */}
-              <div className="relative">
+              <div className="relative" ref={moreMenuRef}>
                 <button
                   onClick={() => setMoreMenuOpen(!moreMenuOpen)}
                   className={`flex items-center justify-center w-8 h-8 rounded-md border text-[10px] font-mono transition-colors ${
@@ -865,7 +875,9 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                   {moreMenuOpen ? <X className="w-4 h-4" /> : <MoreHorizontal className="w-4 h-4" />}
                 </button>
                 {moreMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1 z-[100] w-56 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
+                  <>
+                  <div className="fixed inset-0 z-[999]" onClick={() => setMoreMenuOpen(false)} />
+                  <div className="absolute right-0 top-full mt-1 z-[1000] w-56 bg-slate-900 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
                     {/* GPS locate me */}
                     <button
                       onClick={() => { toggleGps(); setMoreMenuOpen(false); }}
@@ -905,6 +917,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                       GPS AVATAR PHOTO
                     </button>
                   </div>
+                  </>
                 )}
               </div>
             </div>
