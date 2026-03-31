@@ -2,8 +2,8 @@
 // Design: Alpine dark theme, topo map showing actual hiking trails
 // Trail segments colored by country (France/Italy/Switzerland)
 // Food stop markers appear when a specific day is selected
-import { useState, useEffect, useRef } from "react";
-import { ChevronDown, Map, Bus, Layers, Mountain, UtensilsCrossed, LocateFixed, Navigation } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { ChevronDown, Map, Bus, Layers, Mountain, UtensilsCrossed, LocateFixed, Navigation, Play, Square } from "lucide-react";
 import { TMB_ITINERARY } from "@/lib/data";
 import { FOOD_STOPS, DAY_MILES, getStopsForDay } from "@/lib/tmb-food-stops";
 import { OfflineMapManager } from "@/components/OfflineMapManager";
@@ -218,6 +218,9 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
   const gpsMarkerRef = useRef<L.Marker | null>(null);
   const gpsCircleRef = useRef<L.Circle | null>(null);
   const [distanceToNext, setDistanceToNext] = useState<string | null>(null);
+  const [simulating, setSimulating] = useState(false);
+  const simIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const simIndexRef = useRef(0);
 
   // Initialize map when section opens
   useEffect(() => {
@@ -531,6 +534,11 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
       gpsMarkerRef.current.setLatLng([lat, lng]);
     }
 
+    // Pan map to follow during simulation
+    if (simulating) {
+      map.panTo([lat, lng], { animate: true, duration: 0.1 });
+    }
+
     // Create or update accuracy circle
     if (!gpsCircleRef.current) {
       gpsCircleRef.current = L.circle([lat, lng], {
@@ -566,7 +574,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
       const mi = metersToMiles(minDist);
       setDistanceToNext(`${mi.toFixed(1)} mi to ${closestAcc.name.split("–")[0].trim()}`);
     }
-  }, [gpsActive, gpsPosition, selectedDay]);
+  }, [gpsActive, gpsPosition, selectedDay, simulating]);
 
   // Cleanup GPS on unmount
   useEffect(() => {
@@ -625,6 +633,93 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
       mapInstanceRef.current.setView([gpsPosition.lat, gpsPosition.lng], 14);
     }
   };
+
+  // ── Trail Simulation ──────────────────────────────────────────────
+  // Builds a flat array of all trail points across all days
+  const allTrailPoints = useRef<[number, number][]>([]);
+  if (allTrailPoints.current.length === 0) {
+    for (let d = 1; d <= 10; d++) {
+      const pts = trailData[String(d)];
+      if (pts) allTrailPoints.current.push(...pts);
+    }
+  }
+
+  const startSimulation = useCallback(() => {
+    // Stop real GPS if active
+    if (gpsWatchRef.current !== null) {
+      clearWatch(gpsWatchRef.current);
+      gpsWatchRef.current = null;
+    }
+
+    const pts = allTrailPoints.current;
+    if (pts.length === 0) return;
+
+    // 100 mph over ~110 miles = ~66 minutes of trail
+    // We want to cover it in 5 minutes = compress by ~13x
+    // Trail has ~2519 points. At 100mph, covering 110mi takes 66min.
+    // In 5 min (300s), we need to step through all 2519 points.
+    // That's ~8.4 points per second, or one point every ~119ms.
+    const INTERVAL_MS = 120; // ~8 points/sec
+    const TOTAL_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+
+    simIndexRef.current = 0;
+    setSimulating(true);
+    setGpsActive(true);
+
+    const startTime = Date.now();
+
+    simIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= TOTAL_DURATION_MS || simIndexRef.current >= pts.length) {
+        stopSimulation();
+        return;
+      }
+
+      const pt = pts[simIndexRef.current];
+      const fakePos: GpsPosition = {
+        lat: pt[0],
+        lng: pt[1],
+        accuracy: 10,
+        altitude: null,
+        speed: 44.7, // ~100 mph in m/s
+        heading: null,
+        timestamp: Date.now(),
+      };
+      setGpsPosition(fakePos);
+      onGpsUpdate?.(fakePos);
+      simIndexRef.current++;
+    }, INTERVAL_MS);
+  }, [onGpsUpdate]);
+
+  const stopSimulation = useCallback(() => {
+    if (simIntervalRef.current) {
+      clearInterval(simIntervalRef.current);
+      simIntervalRef.current = null;
+    }
+    // Remove marker and circle
+    if (gpsMarkerRef.current) {
+      gpsMarkerRef.current.remove();
+      gpsMarkerRef.current = null;
+    }
+    if (gpsCircleRef.current) {
+      gpsCircleRef.current.remove();
+      gpsCircleRef.current = null;
+    }
+    setSimulating(false);
+    setGpsActive(false);
+    setGpsPosition(null);
+    setDistanceToNext(null);
+    onGpsUpdate?.(null);
+  }, [onGpsUpdate]);
+
+  // Cleanup simulation on unmount
+  useEffect(() => {
+    return () => {
+      if (simIntervalRef.current) {
+        clearInterval(simIntervalRef.current);
+      }
+    };
+  }, []);
 
   return (
     <section className="container py-6">
@@ -741,6 +836,22 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                   <Navigation className="w-3 h-3" /> CENTER
                 </button>
               )}
+              {/* Trail simulation */}
+              <button
+                onClick={simulating ? stopSimulation : startSimulation}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono transition-colors ${
+                  simulating
+                    ? "bg-green-500/15 border-green-500/40 text-green-400 hover:bg-green-500/25 animate-pulse"
+                    : "bg-slate-800 border-slate-700 text-emerald-500 hover:text-emerald-300"
+                }`}
+                title={simulating ? "Stop simulation" : "Simulate hiking the trail"}
+              >
+                {simulating ? (
+                  <><Square className="w-3 h-3" /> STOP SIM</>
+                ) : (
+                  <><Play className="w-3 h-3" /> SIMULATE TRAIL</>
+                )}
+              </button>
               {/* Offline map download */}
               <OfflineMapManager />
               {/* Layer toggle */}
@@ -766,8 +877,16 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
             <div className="flex flex-wrap items-center gap-3 px-3 py-2 bg-blue-500/10 border border-blue-500/20 text-[10px] font-mono">
               <span className="flex items-center gap-1.5 text-blue-400">
                 <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                GPS ACTIVE
+                {simulating ? "SIMULATING TRAIL" : "GPS ACTIVE"}
               </span>
+              {simulating && (
+                <>
+                  <span className="text-slate-400">·</span>
+                  <span className="text-green-400">Point {simIndexRef.current} / {allTrailPoints.current.length}</span>
+                  <span className="text-slate-400">·</span>
+                  <span className="text-emerald-400">~100 mph</span>
+                </>
+              )}
               {gpsPosition && (
                 <>
                   <span className="text-slate-400">·</span>
