@@ -97,9 +97,9 @@ interface FormulaResult {
   note: string;
 }
 
-function getWeight(): number {
+function getWeightFromGauge(): number {
   try {
-    const raw = localStorage.getItem("tmb-weight-entries");
+    const raw = localStorage.getItem("tmb-weight-log");
     if (!raw) return 226;
     const entries = JSON.parse(raw);
     if (entries.length > 0) return entries[entries.length - 1].weight || 226;
@@ -205,6 +205,8 @@ export default function BodyFatEstimator() {
     neck: "", chest: "", bicep: "", forearm: "", waist: "", hip: "", thigh: "",
   });
   const [unit, setUnit] = useState<"in" | "cm">("in");
+  const [weightInput, setWeightInput] = useState("");
+  const [prefilled, setPrefilled] = useState(false);
 
   // Photos
   const [photos, setPhotos] = useState<string[]>([]);
@@ -212,7 +214,26 @@ export default function BodyFatEstimator() {
 
   // History
   const [entries, setEntries] = useState<BFEntry[]>([]);
-  useEffect(() => { setEntries(loadEntries()); }, []);
+  useEffect(() => {
+    const loaded = loadEntries();
+    setEntries(loaded);
+    // Pre-populate from last saved entry
+    if (loaded.length > 0 && !prefilled) {
+      const last = loaded[0];
+      const m = last.measurements;
+      setMeasurements({
+        neck: m.neck ? String(m.neck) : "",
+        chest: m.chest ? String(m.chest) : "",
+        bicep: m.bicep ? String(m.bicep) : "",
+        forearm: m.forearm ? String(m.forearm) : "",
+        waist: m.waist ? String(m.waist) : "",
+        hip: m.hip ? String(m.hip) : "",
+        thigh: m.thigh ? String(m.thigh) : "",
+      });
+      if (last.weightLbs) setWeightInput(String(last.weightLbs));
+      setPrefilled(true);
+    }
+  }, []);
 
   // Computed
   const heightIn = (parseInt(heightFt) || 0) * 12 + (parseInt(heightInR) || 0);
@@ -226,7 +247,8 @@ export default function BodyFatEstimator() {
     vals[f.key] = toIn(measurements[f.key]);
   }
 
-  const weightLbs = getWeight();
+  const gaugeWeight = getWeightFromGauge();
+  const weightLbs = weightInput ? (parseFloat(weightInput) || gaugeWeight) : gaugeWeight;
 
   // Run all formulas
   const navyResult = navyBodyFat(vals.neck, vals.waist, heightIn);
@@ -308,6 +330,7 @@ export default function BodyFatEstimator() {
 
   const handleReset = useCallback(() => {
     setMeasurements({ neck: "", chest: "", bicep: "", forearm: "", waist: "", hip: "", thigh: "" });
+    setWeightInput("");
     setPhotos([]);
   }, []);
 
@@ -396,9 +419,16 @@ export default function BodyFatEstimator() {
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground block mb-1.5">Weight</label>
-                  <span className="text-sm font-mono text-foreground">{weightLbs} lb</span>
-                  <span className="text-[9px] font-mono text-muted-foreground ml-1">(from gauge)</span>
+                  <label className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground block mb-1.5">Weight (lb)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={weightInput}
+                    onChange={e => setWeightInput(e.target.value)}
+                    placeholder={String(gaugeWeight)}
+                    className="w-20 bg-background border border-border text-foreground text-sm font-mono px-2 py-1.5 text-center focus:outline-none focus:border-[var(--primary)] transition-colors"
+                  />
+                  <span className="text-[9px] font-mono text-muted-foreground ml-1">{weightInput ? '' : `(gauge: ${gaugeWeight})` }</span>
                 </div>
               </div>
 
@@ -758,9 +788,10 @@ export default function BodyFatEstimator() {
                           )}
                           <button
                             onClick={() => handleDelete(entry.id)}
-                            className="opacity-0 group-hover/entry:opacity-100 text-muted-foreground hover:text-red-400 transition-all cursor-pointer"
+                            className="text-muted-foreground/50 hover:text-red-400 transition-all cursor-pointer ml-1"
+                            title="Delete entry"
                           >
-                            <Trash2 className="w-3 h-3" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </button>
                         </div>
                       );
