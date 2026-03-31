@@ -31,6 +31,7 @@ interface Accommodation {
   note?: string;
 }
 
+// D# = where you WAKE UP and START that day's hike
 const ACCOMMODATIONS: Accommodation[] = [
   {
     day: 0,
@@ -41,21 +42,32 @@ const ACCOMMODATIONS: Accommodation[] = [
     type: "start",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rockypop_e77608f8.jpg",
     country: "France",
-    note: "Starting point — walk west to Les Houches trailhead",
+    note: "Arrive & rest — walk to Les Houches trailhead tomorrow",
   },
   {
     day: 1,
-    name: "Gîte Le Pontet",
+    name: "Les Houches Trailhead",
     lat: 45.8910,
     lng: 6.7980,
     elevation: "1,008m",
-    type: "gite",
-    image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/gite-le-pontet_3f84378c.jpg",
+    type: "start",
+    image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rockypop_e77608f8.jpg",
     country: "France",
-    note: "Les Houches trailhead — start of the TMB",
+    note: "Day 1 start — hike to Gîte Le Pontet",
   },
   {
     day: 2,
+    name: "Gîte Le Pontet",
+    lat: 45.802991,
+    lng: 6.722181,
+    elevation: "1,183m",
+    type: "gite",
+    image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/gite-le-pontet_3f84378c.jpg",
+    country: "France",
+    note: "Day 2 start — hike to Les Chapieux, bus to BSM",
+  },
+  {
+    day: 3,
     name: "Hotel Base Camp Lodge",
     lat: 45.696411,
     lng: 6.733627,
@@ -63,10 +75,10 @@ const ACCOMMODATIONS: Accommodation[] = [
     type: "hotel",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/base-camp-lodge_73fd4672.jpg",
     country: "France",
-    note: "Bus from Les Chapieux to Bourg-Saint-Maurice",
+    note: "Day 3 start — bus back, hike to Rifugio Elisabetta",
   },
   {
-    day: 3,
+    day: 4,
     name: "Rifugio Elisabetta",
     lat: 45.767213,
     lng: 6.837629,
@@ -74,9 +86,10 @@ const ACCOMMODATIONS: Accommodation[] = [
     type: "rifugio",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rifugio-elisabetta_66a22f61.jpg",
     country: "Italy",
+    note: "Day 4 start — hike to Rifugio Maison Vieille",
   },
   {
-    day: 4,
+    day: 5,
     name: "Rifugio Maison Vieille",
     lat: 45.79085,
     lng: 6.93129,
@@ -84,9 +97,10 @@ const ACCOMMODATIONS: Accommodation[] = [
     type: "rifugio",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/maison-vieille_fa54cb04.jpg",
     country: "Italy",
+    note: "Day 5 start — hike to Rifugio Chapy",
   },
   {
-    day: 5,
+    day: 6,
     name: "Rifugio Chapy Mont Blanc",
     lat: 45.82309,
     lng: 6.96586,
@@ -94,9 +108,10 @@ const ACCOMMODATIONS: Accommodation[] = [
     type: "rifugio",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rifugio-chapy_59cb8b94.jpg",
     country: "Italy",
+    note: "Day 6 start — hike to Gîte La Peule",
   },
   {
-    day: 6,
+    day: 7,
     name: "Gîte Alpage de La Peule",
     lat: 45.89864,
     lng: 7.11268,
@@ -104,9 +119,10 @@ const ACCOMMODATIONS: Accommodation[] = [
     type: "gite",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/alpage-la-peule_f059aaa4.jpg",
     country: "Switzerland",
+    note: "Day 7 start — hike to Relais D'Arpette",
   },
   {
-    day: 7,
+    day: 8,
     name: "Relais D'Arpette",
     lat: 46.02985,
     lng: 7.09294,
@@ -114,9 +130,10 @@ const ACCOMMODATIONS: Accommodation[] = [
     type: "gite",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/relais-arpette_f7e434cb.jpg",
     country: "Switzerland",
+    note: "Day 8 start — hike to Auberge Mont Blanc",
   },
   {
-    day: 8,
+    day: 9,
     name: "Auberge Mont Blanc",
     lat: 46.05623,
     lng: 6.99534,
@@ -124,16 +141,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     type: "auberge",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/auberge-mont-blanc_4ef2c0b7.jpg",
     country: "Switzerland",
-  },
-  {
-    day: 9,
-    name: "Gîte Le Nouveau Grassonnet",
-    lat: 45.96998,
-    lng: 6.91680,
-    elevation: "1,193m",
-    type: "gite",
-    image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/nouveau-grassonnet_51afd809.jpg",
-    country: "France",
+    note: "Day 9 start — hike to Grassonnet",
   },
   {
     day: 10,
@@ -144,7 +152,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     type: "gite",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/nouveau-grassonnet_51afd809.jpg",
     country: "France",
-    note: "Final day — Planpraz cable car down to Chamonix. You made it!",
+    note: "Day 10 start — final push to Planpraz, cable car to Chamonix!",
   },
 ];
 
