@@ -361,6 +361,16 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
     };
   }, [isOpen]);
 
+  // Fix black tiles when section is collapsed and reopened
+  useEffect(() => {
+    if (!isOpen || !mapInstanceRef.current) return;
+    // Give the DOM time to render the container, then tell Leaflet to recalculate
+    const t1 = setTimeout(() => mapInstanceRef.current?.invalidateSize(), 50);
+    const t2 = setTimeout(() => mapInstanceRef.current?.invalidateSize(), 200);
+    const t3 = setTimeout(() => mapInstanceRef.current?.invalidateSize(), 500);
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+  }, [isOpen]);
+
   // Handle layer switching
   useEffect(() => {
     if (!mapInstanceRef.current || !LRef.current || !tileLayerRef.current) return;
