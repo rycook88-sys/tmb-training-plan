@@ -525,9 +525,11 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
     if (!gpsMarkerRef.current) {
       const icon = L.divIcon({
         className: "gps-marker",
-        html: `<div style="width:16px;height:16px;background:#3b82f6;border:3px solid white;border-radius:50%;box-shadow:0 0 8px rgba(59,130,246,0.6)"></div>`,
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
+        html: `<div style="width:36px;height:36px;border-radius:50%;border:3px solid #3b82f6;box-shadow:0 0 12px rgba(59,130,246,0.6);overflow:hidden;background:#1c1917">
+          <img src="https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/face-marker_7c471987.png" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />
+        </div>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
       });
       gpsMarkerRef.current = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(map);
     } else {
@@ -654,12 +656,10 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
     const pts = allTrailPoints.current;
     if (pts.length === 0) return;
 
-    // 100 mph over ~110 miles = ~66 minutes of trail
-    // We want to cover it in 5 minutes = compress by ~13x
-    // Trail has ~2519 points. At 100mph, covering 110mi takes 66min.
-    // In 5 min (300s), we need to step through all 2519 points.
+    // ~110 miles in 5 minutes (~22 mph)
+    // Trail has ~2519 points over 5 min (300s)
     // That's ~8.4 points per second, or one point every ~119ms.
-    const INTERVAL_MS = 120; // ~8 points/sec
+    const INTERVAL_MS = 120; // ~8 points/sec — smooth movement
     const TOTAL_DURATION_MS = 5 * 60 * 1000; // 5 minutes
 
     simIndexRef.current = 0;
@@ -681,7 +681,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
         lng: pt[1],
         accuracy: 10,
         altitude: null,
-        speed: 44.7, // ~100 mph in m/s
+        speed: 9.8, // ~22 mph in m/s (110mi / 5min)
         heading: null,
         timestamp: Date.now(),
       };
@@ -884,7 +884,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                   <span className="text-slate-400">·</span>
                   <span className="text-green-400">Point {simIndexRef.current} / {allTrailPoints.current.length}</span>
                   <span className="text-slate-400">·</span>
-                  <span className="text-emerald-400">~100 mph</span>
+                  <span className="text-emerald-400">110 mi / 5 min</span>
                 </>
               )}
               {gpsPosition && (

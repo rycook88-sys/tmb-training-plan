@@ -256,24 +256,38 @@ function SteepnessLegend() {
 }
 
 // ── GPS "You Are Here" bubble on chart ────────────────────────────
+const FACE_URL = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/face-marker-small_211355dc.png";
+
 function GpsDot({ cx, cy }: { cx?: number; cy?: number }) {
   if (!cx || !cy) return null;
+  const r = 12;
+  const clipId = "gps-face-clip";
   return (
     <g>
       {/* Pulsing outer ring */}
-      <circle cx={cx} cy={cy} r={14} fill="none" stroke="#3b82f6" strokeWidth={1.5} opacity={0.4}>
-        <animate attributeName="r" from="10" to="20" dur="1.5s" repeatCount="indefinite" />
+      <circle cx={cx} cy={cy} r={r + 6} fill="none" stroke="#3b82f6" strokeWidth={1.5} opacity={0.4}>
+        <animate attributeName="r" from={r + 3} to={r + 12} dur="1.5s" repeatCount="indefinite" />
         <animate attributeName="opacity" from="0.6" to="0" dur="1.5s" repeatCount="indefinite" />
       </circle>
       {/* Vertical line down to chart */}
-      <line x1={cx} y1={cy} x2={cx} y2={cy + 30} stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="3,2" opacity={0.5} />
-      {/* Blue dot */}
-      <circle cx={cx} cy={cy} r={7} fill="#3b82f6" stroke="white" strokeWidth={2.5} />
-      {/* Label above */}
-      <rect x={cx - 16} y={cy - 26} width={32} height={14} rx={3} fill="#1e3a5f" stroke="#3b82f6" strokeWidth={1} />
-      <text x={cx} y={cy - 16} textAnchor="middle" fill="#93c5fd" fontSize={7} fontFamily="'JetBrains Mono', monospace" fontWeight="bold">
-        YOU
-      </text>
+      <line x1={cx} y1={cy + r} x2={cx} y2={cy + r + 20} stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="3,2" opacity={0.5} />
+      {/* Blue border ring */}
+      <circle cx={cx} cy={cy} r={r + 2} fill="#1e3a5f" stroke="#3b82f6" strokeWidth={2} />
+      {/* Face photo clipped to circle */}
+      <defs>
+        <clipPath id={clipId}>
+          <circle cx={cx} cy={cy} r={r} />
+        </clipPath>
+      </defs>
+      <image
+        href={FACE_URL}
+        x={cx - r}
+        y={cy - r}
+        width={r * 2}
+        height={r * 2}
+        clipPath={`url(#${clipId})`}
+        preserveAspectRatio="xMidYMid slice"
+      />
     </g>
   );
 }
