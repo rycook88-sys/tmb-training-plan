@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import TrainingAnalytics from "@/components/TrainingAnalytics";
 import { TMBRouteMap } from "@/components/TMBRouteMap";
+import type { GpsPosition } from "@/lib/gps-tracker";
 import ElevationProfile from "@/components/ElevationProfile";
 import GearChecklist from "@/components/GearChecklist";
 import DailyBudget from "@/components/DailyBudget";
@@ -692,6 +693,7 @@ export default function Home() {
   const wl = useWorkoutLog();
   const [showSummary, setShowSummary] = useState<WorkoutSession | null>(null);
   const [highlightDay, setHighlightDay] = useState<number | null>(null);
+  const [gpsPosition, setGpsPosition] = useState<GpsPosition | null>(null);
   // Compute exact totals from stitched GPX elevation profile data
   const totalMi = elevationData.totalDistance;
   const { totalAscent, totalDescent } = useMemo(() => {
@@ -776,10 +778,10 @@ export default function Home() {
       <ItinerarySection />
 
       {/* TMB ROUTE MAP */}
-      <TMBRouteMap highlightDay={highlightDay} onDayHover={setHighlightDay} />
+      <TMBRouteMap highlightDay={highlightDay} onDayHover={setHighlightDay} onGpsUpdate={setGpsPosition} />
 
       {/* ELEVATION PROFILE */}
-      <ElevationProfile highlightDay={highlightDay} onDayHover={setHighlightDay} />
+      <ElevationProfile highlightDay={highlightDay} onDayHover={setHighlightDay} gpsPosition={gpsPosition} />
 
       {/* BODY FAT ESTIMATOR */}
       <BodyFatEstimator />

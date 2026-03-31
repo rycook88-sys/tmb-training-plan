@@ -16,6 +16,8 @@ import {
 import { ChevronDown, Mountain, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, MapPin, TrendingUp, UtensilsCrossed } from "lucide-react";
 import profileRaw from "@/lib/tmb_elevation_profile.json";
 import { FOOD_STOPS, type FoodStopGeo } from "@/lib/tmb-food-stops";
+import { haversineMeters } from "@/lib/gps-tracker";
+import trailGpsProfile from "@/lib/tmb-trail-gps-profile.json";
 
 // ── types ──────────────────────────────────────────────────────────
 interface ProfilePoint {
@@ -253,6 +255,38 @@ function SteepnessLegend() {
   );
 }
 
+// ── GPS "You Are Here" bubble on chart ────────────────────────────
+function GpsDot({ cx, cy }: { cx?: number; cy?: number }) {
+  if (!cx || !cy) return null;
+  return (
+    <g>
+      {/* Pulsing outer ring */}
+      <circle cx={cx} cy={cy} r={14} fill="none" stroke="#3b82f6" strokeWidth={1.5} opacity={0.4}>
+        <animate attributeName="r" from="10" to="20" dur="1.5s" repeatCount="indefinite" />
+        <animate attributeName="opacity" from="0.6" to="0" dur="1.5s" repeatCount="indefinite" />
+      </circle>
+      {/* Vertical line down to chart */}
+      <line x1={cx} y1={cy} x2={cx} y2={cy + 30} stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="3,2" opacity={0.5} />
+      {/* Blue dot */}
+      <circle cx={cx} cy={cy} r={7} fill="#3b82f6" stroke="white" strokeWidth={2.5} />
+      {/* Label above */}
+      <rect x={cx - 16} y={cy - 26} width={32} height={14} rx={3} fill="#1e3a5f" stroke="#3b82f6" strokeWidth={1} />
+      <text x={cx} y={cy - 16} textAnchor="middle" fill="#93c5fd" fontSize={7} fontFamily="'JetBrains Mono', monospace" fontWeight="bold">
+        YOU
+      </text>
+    </g>
+  );
+}
+
+// Pre-built trail points with GPS coords + profile dist/ele for snapping
+interface TrailGpsPoint {
+  lat: number;
+  lng: number;
+  dist: number; // miles along profile
+  ele: number;  // feet elevation
+}
+const gpsProfilePoints = trailGpsProfile as TrailGpsPoint[];
+
 // ── main component ─────────────────────────────────────────────────
 // ── Food stop dot on chart ─────────────────────────────────────────
 function FoodStopDot({ cx, cy, stop }: { cx?: number; cy?: number; stop: FoodStopGeo }) {
@@ -279,7 +313,7 @@ function FoodStopDot({ cx, cy, stop }: { cx?: number; cy?: number; stop: FoodSto
   );
 }
 
-export default function ElevationProfile({ highlightDay, onDayHover }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void }) {
+export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void; gpsPosition?: { lat: number; lng: number } | null }) {
   const [open, setOpen] = useState(false);
   const [customScale, setCustomScale] = useState(1); // continuous zoom scale
   const [windowStart, setWindowStart] = useState(0);
@@ -287,6 +321,32 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
   const [showFoodStops, setShowFoodStops] = useState(true);
   const [zoomedDay, setZoomedDay] = useState<number | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
+
+  // GPS position projected onto the elevation profile
+  const gpsOnChart = useMemo(() => {
+    if (!gpsPosition) return null;
+    const { lat, lng } = gpsPosition;
+    
+    // Find nearest trail point by haversine distance
+    let minDist = Infinity;
+    let nearestIdx = 0;
+    for (let i = 0; i < gpsProfilePoints.length; i++) {
+      const d = haversineMeters(lat, lng, gpsProfilePoints[i].lat, gpsProfilePoints[i].lng);
+      if (d < minDist) {
+        minDist = d;
+        nearestIdx = i;
+      }
+    }
+    
+    // If user is more than 2km from trail, don't show the dot
+    if (minDist > 2000) return null;
+    
+    const nearest = gpsProfilePoints[nearestIdx];
+    return {
+      dist: nearest.dist,  // miles along profile (x-axis)
+      ele: nearest.ele,    // elevation in feet (y-axis)
+    };
+  }, [gpsPosition]);
 
   const totalDist = data.totalDistance;
   const windowSize = totalDist / customScale;
@@ -311,7 +371,7 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
 
   // ── Navigate to highlighted day ──────────────────────────────────
   useEffect(() => {
-    if (highlightDay && highlightDay >= 1 && highlightDay <= 12 && open) {
+    if (highlightDay && highlightDay >= 1 && highlightDay <= 10 && open) {
       const dayPts = data.points.filter(p => p.day === highlightDay);
       if (dayPts.length > 0) {
         const dayStart = dayPts[0].dist;
@@ -715,6 +775,15 @@ export default function ElevationProfile({ highlightDay, onDayHover }: { highlig
                     shape={<FoodStopDot stop={s} />}
                   />
                 ))}
+
+                {/* GPS "You Are Here" bubble */}
+                {gpsOnChart && (
+                  <ReferenceDot
+                    x={gpsOnChart.dist}
+                    y={gpsOnChart.ele}
+                    shape={<GpsDot />}
+                  />
+                )}
               </AreaChart>
             </ResponsiveContainer>
           </div>

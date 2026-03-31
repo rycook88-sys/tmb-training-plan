@@ -3,9 +3,11 @@
 // Trail segments colored by country (France/Italy/Switzerland)
 // Food stop markers appear when a specific day is selected
 import { useState, useEffect, useRef } from "react";
-import { ChevronDown, Map, Bus, Layers, Mountain, UtensilsCrossed } from "lucide-react";
+import { ChevronDown, Map, Bus, Layers, Mountain, UtensilsCrossed, LocateFixed, Navigation } from "lucide-react";
 import { TMB_ITINERARY } from "@/lib/data";
 import { FOOD_STOPS, DAY_MILES, getStopsForDay } from "@/lib/tmb-food-stops";
+import { OfflineMapManager } from "@/components/OfflineMapManager";
+import { watchPosition, clearWatch, haversineMeters, metersToMiles, type GpsPosition } from "@/lib/gps-tracker";
 import trailDataRaw from "@/lib/tmb-trail-data.json";
 import countrySegmentsRaw from "@/lib/tmb-country-segments.json";
 import "leaflet/dist/leaflet.css";
@@ -197,7 +199,7 @@ const STOP_TYPE_EMOJI: Record<string, string> = {
   "food-truck": "🍟",
 };
 
-export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void }) {
+export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void; onGpsUpdate?: (pos: GpsPosition | null) => void }) {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [showFoodStops, setShowFoodStops] = useState(true);
@@ -209,6 +211,13 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
   const trailLayersRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const LRef = useRef<typeof import("leaflet") | null>(null);
+  const [gpsActive, setGpsActive] = useState(false);
+  const [gpsPosition, setGpsPosition] = useState<GpsPosition | null>(null);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const gpsWatchRef = useRef<number | null>(null);
+  const gpsMarkerRef = useRef<L.Marker | null>(null);
+  const gpsCircleRef = useRef<L.Circle | null>(null);
+  const [distanceToNext, setDistanceToNext] = useState<string | null>(null);
 
   // Initialize map when section opens
   useEffect(() => {
@@ -502,6 +511,121 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
     map.closePopup();
   };
 
+  // GPS tracking — update marker and accuracy circle on map
+  useEffect(() => {
+    if (!gpsActive || !gpsPosition || !mapInstanceRef.current || !LRef.current) return;
+    const L = LRef.current;
+    const map = mapInstanceRef.current;
+    const { lat, lng, accuracy } = gpsPosition;
+
+    // Create or update the blue dot marker
+    if (!gpsMarkerRef.current) {
+      const icon = L.divIcon({
+        className: "gps-marker",
+        html: `<div style="width:16px;height:16px;background:#3b82f6;border:3px solid white;border-radius:50%;box-shadow:0 0 8px rgba(59,130,246,0.6)"></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8],
+      });
+      gpsMarkerRef.current = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(map);
+    } else {
+      gpsMarkerRef.current.setLatLng([lat, lng]);
+    }
+
+    // Create or update accuracy circle
+    if (!gpsCircleRef.current) {
+      gpsCircleRef.current = L.circle([lat, lng], {
+        radius: accuracy,
+        color: "#3b82f6",
+        fillColor: "#3b82f6",
+        fillOpacity: 0.1,
+        weight: 1,
+        opacity: 0.3,
+      }).addTo(map);
+    } else {
+      gpsCircleRef.current.setLatLng([lat, lng]);
+      gpsCircleRef.current.setRadius(accuracy);
+    }
+
+    // Calculate distance to next accommodation
+    if (selectedDay !== null && selectedDay >= 1 && selectedDay <= 10) {
+      const nextDay = ACCOMMODATIONS.find(a => a.day === selectedDay + 1) || ACCOMMODATIONS.find(a => a.day === selectedDay);
+      if (nextDay) {
+        const dist = haversineMeters(lat, lng, nextDay.lat, nextDay.lng);
+        const mi = metersToMiles(dist);
+        setDistanceToNext(`${mi.toFixed(1)} mi to ${nextDay.name.split("–")[0].trim()}`);
+      }
+    } else {
+      // Find closest accommodation and show distance
+      let minDist = Infinity;
+      let closestAcc = ACCOMMODATIONS[0];
+      for (const acc of ACCOMMODATIONS) {
+        if (acc.day === 0) continue;
+        const d = haversineMeters(lat, lng, acc.lat, acc.lng);
+        if (d < minDist) { minDist = d; closestAcc = acc; }
+      }
+      const mi = metersToMiles(minDist);
+      setDistanceToNext(`${mi.toFixed(1)} mi to ${closestAcc.name.split("–")[0].trim()}`);
+    }
+  }, [gpsActive, gpsPosition, selectedDay]);
+
+  // Cleanup GPS on unmount
+  useEffect(() => {
+    return () => {
+      if (gpsWatchRef.current !== null) {
+        clearWatch(gpsWatchRef.current);
+      }
+    };
+  }, []);
+
+  const toggleGps = () => {
+    if (gpsActive) {
+      // Stop tracking
+      if (gpsWatchRef.current !== null) {
+        clearWatch(gpsWatchRef.current);
+        gpsWatchRef.current = null;
+      }
+      // Remove marker and circle
+      if (gpsMarkerRef.current) {
+        gpsMarkerRef.current.remove();
+        gpsMarkerRef.current = null;
+      }
+      if (gpsCircleRef.current) {
+        gpsCircleRef.current.remove();
+        gpsCircleRef.current = null;
+      }
+      setGpsActive(false);
+      setGpsPosition(null);
+      setGpsError(null);
+      setDistanceToNext(null);
+      onGpsUpdate?.(null);
+    } else {
+      // Start tracking
+      setGpsError(null);
+      const id = watchPosition(
+        (pos) => {
+          setGpsPosition(pos);
+          setGpsError(null);
+          onGpsUpdate?.(pos);
+        },
+        (err) => {
+          setGpsError(err.code === 1 ? "Location access denied" : err.code === 2 ? "Position unavailable" : "GPS timeout");
+        }
+      );
+      if (id !== null) {
+        gpsWatchRef.current = id;
+        setGpsActive(true);
+      } else {
+        setGpsError("GPS not available");
+      }
+    }
+  };
+
+  const centerOnGps = () => {
+    if (gpsPosition && mapInstanceRef.current) {
+      mapInstanceRef.current.setView([gpsPosition.lat, gpsPosition.lng], 14);
+    }
+  };
+
   return (
     <section className="container py-6">
       {/* Section Header */}
@@ -595,6 +719,30 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
                 <UtensilsCrossed className="w-3 h-3" />
                 {showFoodStops ? "FOOD STOPS ON" : "FOOD STOPS OFF"}
               </button>
+              {/* GPS locate me */}
+              <button
+                onClick={toggleGps}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono transition-colors ${
+                  gpsActive
+                    ? "bg-blue-500/15 border-blue-500/40 text-blue-400 hover:bg-blue-500/25"
+                    : "bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300"
+                }`}
+                title={gpsActive ? "Stop GPS tracking" : "Show my location"}
+              >
+                <LocateFixed className="w-3 h-3" />
+                {gpsActive ? "GPS ON" : "LOCATE ME"}
+              </button>
+              {gpsActive && gpsPosition && (
+                <button
+                  onClick={centerOnGps}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-blue-500/40 bg-blue-500/10 text-[10px] font-mono text-blue-400 hover:bg-blue-500/20"
+                  title="Center map on my location"
+                >
+                  <Navigation className="w-3 h-3" /> CENTER
+                </button>
+              )}
+              {/* Offline map download */}
+              <OfflineMapManager />
               {/* Layer toggle */}
               <button
                 onClick={() => setMapLayer(mapLayer === "topo" ? "satellite" : "topo")}
@@ -612,6 +760,39 @@ export function TMBRouteMap({ highlightDay, onDayHover }: { highlightDay?: numbe
               </button>
             </div>
           </div>
+
+          {/* GPS info bar */}
+          {gpsActive && (
+            <div className="flex flex-wrap items-center gap-3 px-3 py-2 bg-blue-500/10 border border-blue-500/20 text-[10px] font-mono">
+              <span className="flex items-center gap-1.5 text-blue-400">
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                GPS ACTIVE
+              </span>
+              {gpsPosition && (
+                <>
+                  <span className="text-slate-400">·</span>
+                  <span className="text-slate-300">{gpsPosition.lat.toFixed(5)}, {gpsPosition.lng.toFixed(5)}</span>
+                  <span className="text-slate-400">·</span>
+                  <span className="text-slate-500">±{Math.round(gpsPosition.accuracy)}m</span>
+                  {gpsPosition.altitude && (
+                    <>
+                      <span className="text-slate-400">·</span>
+                      <span className="text-emerald-400">{Math.round(gpsPosition.altitude * 3.281)}ft</span>
+                    </>
+                  )}
+                  {distanceToNext && (
+                    <>
+                      <span className="text-slate-400">·</span>
+                      <span className="text-orange-400">{distanceToNext}</span>
+                    </>
+                  )}
+                </>
+              )}
+              {gpsError && (
+                <span className="text-red-400">{gpsError}</span>
+              )}
+            </div>
+          )}
 
           {/* Selected day info bar */}
           {selectedDay !== null && selectedDay >= 1 && selectedDay <= 10 && (
