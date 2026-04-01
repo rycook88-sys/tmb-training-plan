@@ -374,13 +374,6 @@ export default function BodyFatEstimator() {
           >
             <div className="mt-4 border border-border bg-card p-4 space-y-6">
 
-              {/* Muscle caveat */}
-              <div className="flex items-start gap-3 bg-[var(--primary)]/5 border border-[var(--primary)]/20 p-3">
-                <Info className="w-4 h-4 text-[var(--primary)] mt-0.5 shrink-0" />
-                <p className="text-xs font-mono text-muted-foreground leading-relaxed">
-                  <span className="text-foreground font-semibold">Multi-formula approach:</span> We run 3 different formulas and average the results for a more reliable estimate. Individual formulas can vary by 3–5% — the composite narrows the range. For muscular builds, treat this as a <span className="text-[var(--primary)]">trend tracker</span> rather than an absolute number.
-                </p>
-              </div>
 
               {/* Height + Unit toggle */}
               <div className="flex flex-wrap items-end gap-4">
