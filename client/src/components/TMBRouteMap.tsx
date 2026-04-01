@@ -542,15 +542,14 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
     const map = mapInstanceRef.current;
     const { lat, lng, accuracy } = gpsPosition;
 
-    // Create or update the blue dot marker
+    // Create or update the face marker
     if (!gpsMarkerRef.current) {
+      const markerSize = 44;
       const icon = L.divIcon({
         className: "gps-marker",
-        html: `<div style="width:36px;height:36px;border-radius:50%;border:3px solid #3b82f6;box-shadow:0 0 12px rgba(59,130,246,0.6);overflow:hidden;background:#1c1917">
-          <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:contain;border-radius:50%" />
-        </div>`,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18],
+        html: `<div style="width:${markerSize}px;height:${markerSize}px;border-radius:50%;border:3px solid #3b82f6;box-shadow:0 0 12px rgba(59,130,246,0.6);background-image:url('${avatarUrl}');background-size:cover;background-position:center;background-repeat:no-repeat;background-color:#1c1917"></div>`,
+        iconSize: [markerSize, markerSize],
+        iconAnchor: [markerSize / 2, markerSize / 2],
       });
       gpsMarkerRef.current = L.marker([lat, lng], { icon, zIndexOffset: 1000 }).addTo(map);
     } else {
