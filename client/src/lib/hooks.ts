@@ -48,7 +48,19 @@ export function useWorkoutLog() {
   const [sessions, setSessions] = useState<WorkoutSession[]>(() => {
     try {
       const saved = localStorage.getItem("tmb-workout-sessions");
-      return saved ? JSON.parse(saved) : [];
+      let parsed: WorkoutSession[] = saved ? JSON.parse(saved) : [];
+      // One-time migration: move Day C on 2026-03-31 to 2026-03-30
+      const migKey = "tmb-migrate-c-date-done";
+      if (!localStorage.getItem(migKey)) {
+        parsed = parsed.map((s) =>
+          s.date === "2026-03-31" && s.dayId === "day-c"
+            ? { ...s, date: "2026-03-30" }
+            : s
+        );
+        localStorage.setItem("tmb-workout-sessions", JSON.stringify(parsed));
+        localStorage.setItem(migKey, "1");
+      }
+      return parsed;
     } catch {
       return [];
     }
