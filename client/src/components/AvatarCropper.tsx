@@ -135,31 +135,38 @@ export default function AvatarCropper({ open, onClose }: Props) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const size = 128;
-    canvas.width = size;
-    canvas.height = size;
+    const outputSize = 256; // Higher res for crisp display
+    canvas.width = outputSize;
+    canvas.height = outputSize;
 
     const img = new Image();
     img.crossOrigin = "anonymous";
     img.onload = () => {
-      ctx.clearRect(0, 0, size, size);
+      ctx.clearRect(0, 0, outputSize, outputSize);
 
       // Clip to circle
       ctx.beginPath();
-      ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+      ctx.arc(outputSize / 2, outputSize / 2, outputSize / 2, 0, Math.PI * 2);
       ctx.clip();
 
-      // The crop area is 280x280 in the UI, mapping to 128x128 output
-      const cropSize = 280;
-      const ratio = size / cropSize;
+      // Match the preview exactly:
+      // In the preview, the image is displayed at width=280px, then scaled by `scale`,
+      // and offset by `offset.x/y` pixels within the 280px circle.
+      // We map this to the output canvas.
+      const previewSize = 280;
+      const canvasRatio = outputSize / previewSize;
 
-      // Calculate image draw position based on scale and offset
-      const imgW = img.width * scale * ratio;
-      const imgH = img.height * scale * ratio;
-      const drawX = (size / 2) + (offset.x * ratio) - (imgW / 2);
-      const drawY = (size / 2) + (offset.y * ratio) - (imgH / 2);
+      // The preview renders the image at 280px width (maintaining aspect ratio)
+      const displayW = 280 * scale;
+      const displayH = (img.height / img.width) * 280 * scale;
 
-      ctx.drawImage(img, drawX, drawY, imgW, imgH);
+      // Map to canvas coordinates
+      const drawW = displayW * canvasRatio;
+      const drawH = displayH * canvasRatio;
+      const drawX = (outputSize / 2) + (offset.x * canvasRatio) - (drawW / 2);
+      const drawY = (outputSize / 2) + (offset.y * canvasRatio) - (drawH / 2);
+
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
 
       // Save as data URL
       const dataUrl = canvas.toDataURL("image/png", 0.9);

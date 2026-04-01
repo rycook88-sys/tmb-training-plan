@@ -547,7 +547,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
       const markerSize = 44;
       const icon = L.divIcon({
         className: "gps-marker",
-        html: `<div style="width:${markerSize}px;height:${markerSize}px;border-radius:50%;border:3px solid #3b82f6;box-shadow:0 0 12px rgba(59,130,246,0.6);background-image:url('${avatarUrl}');background-size:cover;background-position:center;background-repeat:no-repeat;background-color:#1c1917"></div>`,
+        html: `<div style="width:${markerSize}px;height:${markerSize}px;border-radius:50%;border:3px solid #3b82f6;box-shadow:0 0 12px rgba(59,130,246,0.6);background-image:url('${avatarUrl}');background-size:100% 100%;background-position:center;background-repeat:no-repeat;background-color:#1c1917"></div>`,
         iconSize: [markerSize, markerSize],
         iconAnchor: [markerSize / 2, markerSize / 2],
       });
