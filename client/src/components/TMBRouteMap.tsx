@@ -547,7 +547,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
       const icon = L.divIcon({
         className: "gps-marker",
         html: `<div style="width:36px;height:36px;border-radius:50%;border:3px solid #3b82f6;box-shadow:0 0 12px rgba(59,130,246,0.6);overflow:hidden;background:#1c1917">
-          <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" />
+          <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:contain;border-radius:50%" />
         </div>`,
         iconSize: [36, 36],
         iconAnchor: [18, 18],
