@@ -1009,7 +1009,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-1.5">
-                  <span className={`text-[10px] font-mono font-bold text-violet-400`}>
+                  <span className={`text-[10px] font-mono font-bold text-violet-400 bg-black/70 px-1.5 py-0.5 rounded`}>
                     {acc.day === 0 ? "ARRIVE" : `DAY ${acc.day}`}
                   </span>
                   <p className="text-[10px] text-white font-medium leading-tight truncate">
