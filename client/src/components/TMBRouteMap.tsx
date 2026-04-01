@@ -239,9 +239,12 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
     });
   }, []);
 
-  // Initialize map when section opens
+  // Track whether map has been initialized (once, never destroyed)
+  const mapInitializedRef = useRef(false);
+
+  // Initialize map ONCE on first open — never destroy it
   useEffect(() => {
-    if (!isOpen || mapInstanceRef.current) return;
+    if (!isOpen || mapInitializedRef.current) return;
 
     let cancelled = false;
 
@@ -381,6 +384,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
       }
 
       setTimeout(() => map.invalidateSize(), 100);
+      mapInitializedRef.current = true;
     };
 
     initMap();
@@ -390,17 +394,14 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
     };
   }, [isOpen]);
 
-  // Destroy map when section closes so it reinitializes cleanly on reopen
+  // When section reopens, tell Leaflet to recalculate its size
   useEffect(() => {
-    if (!isOpen && mapInstanceRef.current) {
-      mapInstanceRef.current.remove();
-      mapInstanceRef.current = null;
-      tileLayerRef.current = null;
-      trailLayersRef.current = null;
-      markersRef.current = [];
-      foodStopMarkersRef.current = [];
-      gpsMarkerRef.current = null;
-      gpsCircleRef.current = null;
+    if (isOpen && mapInstanceRef.current) {
+      // Multiple invalidateSize calls to handle CSS transition timing
+      const timers = [50, 150, 300, 500].map(ms =>
+        setTimeout(() => mapInstanceRef.current?.invalidateSize(), ms)
+      );
+      return () => timers.forEach(clearTimeout);
     }
   }, [isOpen]);
 
@@ -761,9 +762,8 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
         </div>
       </button>
 
-      {/* Map Content */}
-      {isOpen && (
-        <div className="space-y-3 pb-6">
+      {/* Map Content — always in DOM, hidden via CSS so Leaflet stays alive */}
+      <div className="space-y-3 pb-6" style={{ display: isOpen ? 'block' : 'none' }}>
           {/* Day selector pills */}
           <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide">
             <button
@@ -1019,8 +1019,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
               </button>
             ))}
           </div>
-        </div>
-      )}
+      </div>
 
       {/* Leaflet popup styling */}
       <style>{`
