@@ -225,7 +225,7 @@ function SteepnessLegend() {
           <div key={i} className="flex items-end">
             {/* Threshold number before this block (except first which is 0) */}
             {i === 0 && (
-              <span className="text-zinc-400 px-0.5 leading-none" style={{ fontSize: "0.6rem", fontFamily: "'JetBrains Mono', monospace" }}>
+              <span className="text-[0.55rem] text-zinc-500 px-0.5 leading-none tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                 {STEEPNESS_THRESHOLDS[i]}
               </span>
             )}
@@ -240,11 +240,11 @@ function SteepnessLegend() {
             />
             {/* Threshold number after this block */}
             {i < STEEPNESS_SCALE.length - 1 ? (
-              <span className="text-zinc-400 px-0.5 leading-none" style={{ fontSize: "0.6rem", fontFamily: "'JetBrains Mono', monospace" }}>
+              <span className="text-[0.55rem] text-zinc-500 px-0.5 leading-none tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                 {STEEPNESS_THRESHOLDS[i + 1]}
               </span>
             ) : (
-              <span className="text-zinc-400 px-0.5 leading-none" style={{ fontSize: "0.6rem", fontFamily: "'JetBrains Mono', monospace" }}>
+              <span className="text-[0.55rem] text-zinc-500 px-0.5 leading-none tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
                 +
               </span>
             )}
