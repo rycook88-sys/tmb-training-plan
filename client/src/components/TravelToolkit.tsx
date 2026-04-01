@@ -494,7 +494,7 @@ function Phrasebook() {
       </div>
 
       {/* Phrase list */}
-      <div className="space-y-1.5 max-h-[500px] overflow-y-auto pr-1">
+      <div className="space-y-1.5">
         {filtered.map((p, i) => (
           <PhraseCard key={`${lang}-${i}`} phrase={p} lang={lang} onShowBig={setBigPhrase} />
         ))}
