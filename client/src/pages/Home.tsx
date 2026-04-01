@@ -19,6 +19,7 @@ import GearChecklist from "@/components/GearChecklist";
 import DailyBudget from "@/components/DailyBudget";
 import WeatherForecast from "@/components/WeatherForecast";
 import TechniqueVideos from "@/components/TechniqueVideos";
+import TravelToolkit from "@/components/TravelToolkit";
 import BodyFatEstimator from "@/components/BodyFatEstimator";
 import elevationData from "@/lib/tmb_elevation_profile.json";
 
@@ -791,6 +792,9 @@ export default function Home() {
 
       {/* DAILY BUDGET & FOOD STOPS */}
       <DailyBudget />
+
+      {/* TRAVEL TOOLKIT — Currency, Phrasebook, Cultural Etiquette */}
+      <TravelToolkit />
 
       {/* WEATHER AVERAGES */}
       <WeatherForecast />
