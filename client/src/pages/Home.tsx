@@ -509,62 +509,35 @@ function WorkoutCalendar({ sessions, onDelete }: { sessions: WorkoutSession[]; o
   );
 }
 
-// ── Itinerary Day Card ────────────────────────────────────
-function ItineraryDayCard({ day }: { day: ItineraryDay }) {
+// ── Itinerary Row ─────────────────────────────────────────
+function ItineraryRow({ day }: { day: ItineraryDay }) {
   const diffColor: Record<string, string> = {
     easy: "text-green-400", moderate: "text-yellow-400",
     hard: "text-[var(--primary)]", brutal: "text-red-400",
   };
   const diffBg: Record<string, string> = {
-    easy: "bg-green-400/10 border-green-500/30", moderate: "bg-yellow-400/10 border-yellow-500/30",
-    hard: "bg-[var(--primary)]/10 border-[var(--primary)]/30", brutal: "bg-red-400/10 border-red-500/30",
+    easy: "bg-green-400/10", moderate: "bg-yellow-400/10",
+    hard: "bg-[var(--primary)]/10", brutal: "bg-red-400/10",
   };
-  const diffBorder: Record<string, string> = {
-    easy: "border-l-green-500", moderate: "border-l-yellow-500",
-    hard: "border-l-[var(--primary)]", brutal: "border-l-red-500",
-  };
-  const isRest = day.day === 0;
   return (
-    <div className={`border border-border border-l-4 ${diffBorder[day.difficulty]} bg-card hover:bg-[var(--secondary)] transition-colors p-4`}>
-      {/* Header row */}
-      <div className="flex items-start justify-between mb-2">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-lg font-bold text-foreground">{isRest ? "ARRIVE" : `Day ${day.day}`}</span>
-            <span className={`font-mono text-[10px] uppercase tracking-wider px-2 py-0.5 border ${diffBg[day.difficulty]} ${diffColor[day.difficulty]}`}>
-              {day.difficulty}
-            </span>
-          </div>
-          <div className="text-[11px] text-[var(--muted-foreground)] font-mono mt-0.5">{day.date}</div>
-        </div>
-      </div>
-      {/* Route */}
-      <div className="font-mono text-sm text-foreground mb-3">
-        {day.from} <span className="text-[var(--muted-foreground)]">→</span> {day.to}
-      </div>
-      {/* Stats row */}
-      {!isRest && (
-        <div className="grid grid-cols-4 gap-2 mb-3">
-          <div className="text-center p-2 bg-[var(--secondary)] border border-border">
-            <div className="font-mono text-sm font-bold text-foreground">{day.distanceMi}</div>
-            <div className="text-[9px] uppercase tracking-wider text-[var(--muted-foreground)] font-mono">miles</div>
-          </div>
-          <div className="text-center p-2 bg-[var(--secondary)] border border-border">
-            <div className="font-mono text-sm font-bold text-green-400 flex items-center justify-center gap-0.5"><ArrowUp className="w-3 h-3" />{day.ascent}'</div>
-            <div className="text-[9px] uppercase tracking-wider text-[var(--muted-foreground)] font-mono">ascent</div>
-          </div>
-          <div className="text-center p-2 bg-[var(--secondary)] border border-border">
-            <div className="font-mono text-sm font-bold text-red-400 flex items-center justify-center gap-0.5"><ArrowDown className="w-3 h-3" />{day.descent}'</div>
-            <div className="text-[9px] uppercase tracking-wider text-[var(--muted-foreground)] font-mono">descent</div>
-          </div>
-          <div className="text-center p-2 bg-[var(--secondary)] border border-border">
-            <div className="font-mono text-sm font-bold text-foreground">{day.duration}</div>
-            <div className="text-[9px] uppercase tracking-wider text-[var(--muted-foreground)] font-mono">time</div>
+    <div className="border-b border-border hover:bg-[var(--secondary)] transition-colors">
+      <div className="grid grid-cols-[3rem_1fr_auto] sm:grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_6rem] gap-2 p-3 items-center">
+        <span className="font-mono text-xs text-[var(--muted-foreground)]">D{day.day}</span>
+        <div className="min-w-0">
+          <div className="font-mono text-xs text-foreground truncate">{day.from} → {day.to}</div>
+          <div className="text-[10px] text-[var(--muted-foreground)] sm:hidden mt-0.5">
+            {day.distanceMi} mi · ↑{day.ascent}' · ↓{day.descent}' · {day.duration}
           </div>
         </div>
-      )}
-      {/* Note */}
-      <p className="text-[11px] text-[var(--muted-foreground)] leading-relaxed italic">{day.note}</p>
+        <span className="hidden sm:block font-mono text-xs text-[var(--muted-foreground)] text-right">{day.distanceMi} mi</span>
+        <span className="hidden sm:flex font-mono text-xs text-green-400 items-center justify-end gap-0.5"><ArrowUp className="w-3 h-3" />{day.ascent}'</span>
+        <span className="hidden sm:flex font-mono text-xs text-red-400 items-center justify-end gap-0.5"><ArrowDown className="w-3 h-3" />{day.descent}'</span>
+        <span className="hidden sm:block font-mono text-xs text-[var(--muted-foreground)] text-right">{day.duration}</span>
+        <span className={`font-mono text-[10px] uppercase tracking-wider text-right px-2 py-0.5 ${diffColor[day.difficulty]} ${diffBg[day.difficulty]} justify-self-end`}>
+          {day.difficulty}
+        </span>
+      </div>
+      <div className="px-3 pb-2 text-[11px] text-[var(--muted-foreground)] italic">{day.note}</div>
     </div>
   );
 }
@@ -630,10 +603,15 @@ function ItinerarySection() {
             transition={{ duration: 0.4, ease: "easeInOut" }}
             className="overflow-hidden"
           >
-            <div className="container py-6">
+            <div className="container py-4">
               <ElevationChart />
-              <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {TMB_ITINERARY.map((day) => <ItineraryDayCard key={day.day} day={day} />)}
+              <div className="mt-4 border border-border bg-card">
+                <div className="hidden sm:grid grid-cols-[3rem_1fr_5rem_5rem_5rem_5rem_6rem] gap-2 p-3 border-b border-border text-[10px] uppercase tracking-wider font-mono text-[var(--muted-foreground)]">
+                  <span>Day</span><span>Route</span><span className="text-right">Dist</span>
+                  <span className="text-right">Ascent</span><span className="text-right">Descent</span>
+                  <span className="text-right">Time</span><span className="text-right">Rating</span>
+                </div>
+                {TMB_ITINERARY.map((day) => <ItineraryRow key={day.day} day={day} />)}
               </div>
             </div>
           </motion.div>
