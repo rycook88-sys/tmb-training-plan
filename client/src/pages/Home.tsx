@@ -287,8 +287,8 @@ function WorkoutCard({ day, onStart, hasHitGoal, getBestPerformance }: {
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="border border-border bg-card">
-      <button onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between p-4 text-left hover:bg-[var(--secondary)] transition-colors">
+      <div onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-[var(--secondary)] transition-colors cursor-pointer">
         <div className="flex items-center gap-3">
           <span className="text-xl">{day.icon}</span>
           <div>
@@ -303,7 +303,7 @@ function WorkoutCard({ day, onStart, hasHitGoal, getBestPerformance }: {
           </button>
           {expanded ? <ChevronUp className="w-4 h-4 text-[var(--muted-foreground)]" /> : <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)]" />}
         </div>
-      </button>
+      </div>
       <AnimatePresence>
         {expanded && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
@@ -688,6 +688,43 @@ function FootMobilitySection() {
   );
 }
 
+// ── Mode Toggle ──────────────────────────────────────────
+type AppMode = "training" | "trail";
+
+function ModeToggle({ mode, setMode }: { mode: AppMode; setMode: (m: AppMode) => void }) {
+  return (
+    <div className="container py-6">
+      <div className="flex items-center gap-1 p-1 bg-[var(--secondary)] border border-border w-full sm:w-auto sm:inline-flex">
+        <button
+          onClick={() => setMode("training")}
+          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-mono uppercase tracking-[0.2em] transition-all duration-200 ${
+            mode === "training"
+              ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-bold"
+              : "text-[var(--muted-foreground)] hover:text-foreground"
+          }`}
+        >
+          <Dumbbell className="w-3.5 h-3.5" />
+          Training
+        </button>
+        <button
+          onClick={() => setMode("trail")}
+          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-mono uppercase tracking-[0.2em] transition-all duration-200 ${
+            mode === "trail"
+              ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-bold"
+              : "text-[var(--muted-foreground)] hover:text-foreground"
+          }`}
+        >
+          <Mountain className="w-3.5 h-3.5" />
+          Trail
+        </button>
+      </div>
+      <p className="text-[10px] font-mono text-[var(--muted-foreground)] mt-2 tracking-wide">
+        {mode === "training" ? "Body composition, gear prep, analytics & mobility" : "Route map, itinerary, budget, phrasebook & weather"}
+      </p>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────
 export default function Home() {
   const wt = useWeightTracker();
@@ -695,6 +732,19 @@ export default function Home() {
   const [showSummary, setShowSummary] = useState<WorkoutSession | null>(null);
   const [highlightDay, setHighlightDay] = useState<number | null>(null);
   const [gpsPosition, setGpsPosition] = useState<GpsPosition | null>(null);
+  // Auto-default to trail mode within 7 days of trip
+  const daysLeft = getDaysUntilTrip();
+  const [mode, setMode] = useState<AppMode>(() => {
+    try {
+      const saved = localStorage.getItem("tmb-app-mode");
+      if (saved === "training" || saved === "trail") return saved;
+    } catch {}
+    return daysLeft <= 7 ? "trail" : "training";
+  });
+  const handleModeChange = (m: AppMode) => {
+    setMode(m);
+    localStorage.setItem("tmb-app-mode", m);
+  };
   // Compute exact totals from stitched GPX elevation profile data
   const totalMi = elevationData.totalDistance;
   const { totalAscent, totalDescent } = useMemo(() => {
@@ -708,6 +758,9 @@ export default function Home() {
   }, []);
   const totalA = totalAscent;
   const totalD = totalDescent;
+
+  // Workout history collapsed state
+  const [workoutOpen, setWorkoutOpen] = useState(false);
 
   const handleSave = () => {
     const session = wl.saveSession();
@@ -750,60 +803,81 @@ export default function Home() {
         </div>
       </section>
 
-      {/* WORKOUT PLAN */}
+      {/* WORKOUT PLAN — Collapsible */}
       <section className="container py-6">
-        <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={() => setWorkoutOpen(!workoutOpen)}
+          className="w-full flex items-center justify-between group cursor-pointer"
+        >
           <h2 className="text-sm uppercase tracking-[0.2em] text-foreground font-mono flex items-center gap-3 font-semibold">
             <span className="text-xl">🏋️</span> Training Protocol
           </h2>
-        </div>
-
-
-        {/* Browse cards (always visible) */}
-        <div className="space-y-2">
-          {WORKOUT_PLAN.map((day) => (
-            <WorkoutCard key={day.id} day={day} onStart={wl.startSession} hasHitGoal={wl.hasHitGoal} getBestPerformance={wl.getBestPerformance} />
-          ))}
-        </div>
-
-        {/* Workout History */}
-        <div className="mt-6">
-          <WorkoutCalendar sessions={wl.sessions} onDelete={wl.deleteSession} />
-        </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{wl.sessions.length} sessions logged</span>
+            <motion.div animate={{ rotate: workoutOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>
+              <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-colors" />
+            </motion.div>
+          </div>
+        </button>
+        <AnimatePresence>
+          {workoutOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.4, ease: "easeInOut" }}
+              className="overflow-hidden"
+            >
+              <div className="mt-4 space-y-2">
+                {WORKOUT_PLAN.map((day) => (
+                  <WorkoutCard key={day.id} day={day} onStart={wl.startSession} hasHitGoal={wl.hasHitGoal} getBestPerformance={wl.getBestPerformance} />
+                ))}
+              </div>
+              <div className="mt-6">
+                <WorkoutCalendar sessions={wl.sessions} onDelete={wl.deleteSession} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
 
-      {/* TRAINING ANALYTICS */}
-      <TrainingAnalytics />
+      {/* MODE TOGGLE */}
+      <div className="border-t border-border">
+        <ModeToggle mode={mode} setMode={handleModeChange} />
+      </div>
 
-      {/* TMB ITINERARY */}
-      <ItinerarySection />
+      {/* ═══ TRAINING MODE ═══ */}
+      {mode === "training" && (
+        <motion.div
+          key="training"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <TrainingAnalytics />
+          <BodyFatEstimator />
+          <GearChecklist />
+          <TechniqueVideos />
+          <FootMobilitySection />
+        </motion.div>
+      )}
 
-      {/* TMB ROUTE MAP */}
-      <TMBRouteMap highlightDay={highlightDay} onDayHover={setHighlightDay} onGpsUpdate={setGpsPosition} />
-
-      {/* ELEVATION PROFILE */}
-      <ElevationProfile highlightDay={highlightDay} onDayHover={setHighlightDay} gpsPosition={gpsPosition} />
-
-      {/* BODY FAT ESTIMATOR */}
-      <BodyFatEstimator />
-
-      {/* GEAR CHECKLIST (Collapsible) */}
-      <GearChecklist />
-
-      {/* DAILY BUDGET & FOOD STOPS */}
-      <DailyBudget />
-
-      {/* TRAVEL TOOLKIT — Currency, Phrasebook, Cultural Etiquette */}
-      <TravelToolkit />
-
-      {/* WEATHER AVERAGES */}
-      <WeatherForecast />
-
-      {/* TECHNIQUE VIDEO LIBRARY */}
-      <TechniqueVideos />
-
-      {/* FOOT MOBILITY (Collapsible) */}
-      <FootMobilitySection />
+      {/* ═══ TRAIL MODE ═══ */}
+      {mode === "trail" && (
+        <motion.div
+          key="trail"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <ItinerarySection />
+          <TMBRouteMap highlightDay={highlightDay} onDayHover={setHighlightDay} onGpsUpdate={setGpsPosition} />
+          <ElevationProfile highlightDay={highlightDay} onDayHover={setHighlightDay} gpsPosition={gpsPosition} />
+          <DailyBudget />
+          <TravelToolkit />
+          <WeatherForecast />
+        </motion.div>
+      )}
 
       {/* FOOTER */}
       <footer className="border-t border-border py-6">
