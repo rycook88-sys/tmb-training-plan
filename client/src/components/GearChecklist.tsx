@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUnits } from "@/contexts/UnitContext";
 import { ChevronDown, Check, Package, AlertTriangle, Minus, Plus, RotateCcw, Trash2, PlusCircle, X, ExternalLink } from "lucide-react";
 
 /* ── Types ─────────────────────────────────────────── */
@@ -69,6 +70,7 @@ function saveGear(items: GearItem[]) {
 
 /* ── Add Item Form ─────────────────────────────────── */
 function AddItemForm({ onAdd, onCancel }: { onAdd: (item: GearItem) => void; onCancel: () => void }) {
+  const u = useUnits();
   const [name, setName] = useState("");
   const [category, setCategory] = useState("Clothing");
   const [weightOz, setWeightOz] = useState("");
@@ -89,7 +91,7 @@ function AddItemForm({ onAdd, onCancel }: { onAdd: (item: GearItem) => void; onC
       id,
       name: name.trim(),
       category,
-      weightOz: parseFloat(weightOz) || 0,
+      weightOz: u.isMetric ? (parseFloat(weightOz) || 0) / 28.3495 : parseFloat(weightOz) || 0,
       packed: true,
       worn: isWorn,
       maybe: isMaybe,
@@ -142,7 +144,7 @@ function AddItemForm({ onAdd, onCancel }: { onAdd: (item: GearItem) => void; onC
             type="number"
             value={weightOz}
             onChange={(e) => setWeightOz(e.target.value)}
-            placeholder="oz"
+            placeholder={u.isMetric ? 'g' : 'oz'}
             step="0.5"
             min="0"
             className="bg-[var(--secondary)] border border-border px-3 py-2 text-xs font-mono text-foreground placeholder:text-[var(--muted-foreground)] focus:outline-none focus:border-[var(--primary)]/50 w-20"
@@ -239,8 +241,14 @@ export default function GearChecklist() {
     return sorted;
   }, [gear]);
 
+  const u = useUnits();
   const weightColor = stats.totalLbs <= TARGET_MAX ? (stats.totalLbs <= TARGET_MIN ? "#22c55e" : "#f59e0b") : "#ef4444";
   const weightPct = Math.min((stats.totalLbs / TARGET_MAX) * 100, 120);
+  const dLbs = (lbs: number, dec = 1) => u.isMetric ? (lbs * 0.453592).toFixed(dec) : lbs.toFixed(dec);
+  const dOz = (oz: number) => u.isMetric ? `${(oz * 28.3495).toFixed(0)} g` : `${oz % 1 === 0 ? oz : oz.toFixed(1)} oz`;
+  const wL = u.isMetric ? 'kg' : 'lbs';
+  const tmn = u.isMetric ? (TARGET_MIN * 0.453592).toFixed(1) : String(TARGET_MIN);
+  const tmx = u.isMetric ? (TARGET_MAX * 0.453592).toFixed(1) : String(TARGET_MAX);
 
   return (
     <section className="container py-6">
@@ -249,11 +257,11 @@ export default function GearChecklist() {
         className="w-full flex items-center justify-between group cursor-pointer"
       >
         <h2 className="text-sm uppercase tracking-[0.2em] text-foreground font-mono flex items-center gap-3 font-semibold">
-          <span className="text-xl">🎒</span> Gear Checklist — Pack Weight Target: {TARGET_MIN}–{TARGET_MAX} lbs
+          <span className="text-xl">🎒</span> Gear Checklist — Pack Weight Target: {tmn}–{tmx} {wL}
         </h2>
         <div className="flex items-center gap-3">
           <span className="text-xs font-mono font-bold" style={{ color: weightColor }}>
-            {stats.totalLbs.toFixed(1)} lbs
+            {dLbs(stats.totalLbs)} {wL}
           </span>
           <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3 }}>
             <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-colors" />
@@ -308,21 +316,21 @@ export default function GearChecklist() {
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="text-xs font-mono font-bold text-foreground drop-shadow-md">
-                      {stats.totalLbs.toFixed(1)} lbs ({stats.totalOz.toFixed(0)} oz)
+                      {dLbs(stats.totalLbs)} {wL} ({dOz(stats.totalOz)})
                     </span>
                   </div>
                 </div>
 
                 <div className="flex justify-between text-[10px] font-mono text-[var(--muted-foreground)]">
-                  <span>0 lbs</span>
-                  <span className="text-green-400">{TARGET_MIN} lbs</span>
-                  <span className="text-red-400">{TARGET_MAX} lbs</span>
+                  <span>0 {wL}</span>
+                  <span className="text-green-400">{tmn} {wL}</span>
+                  <span className="text-red-400">{tmx} {wL}</span>
                 </div>
 
                 {stats.totalLbs > TARGET_MAX && (
                   <div className="flex items-center gap-2 mt-2 text-[10px] font-mono text-red-400">
                     <AlertTriangle className="w-3 h-3" />
-                    {(stats.totalLbs - TARGET_MAX).toFixed(1)} lbs over target — consider removing items
+                    {dLbs(stats.totalLbs - TARGET_MAX)} {wL} over target — consider removing items
                   </div>
                 )}
               </div>
@@ -338,7 +346,7 @@ export default function GearChecklist() {
                         {category}
                       </span>
                       <span className="text-[10px] font-mono text-[var(--muted-foreground)]">
-                        {isWorn ? `${(catOz / 16).toFixed(1)} lbs (on body)` : `${(catOz / 16).toFixed(1)} lbs`}
+                        {isWorn ? `${dLbs(catOz / 16)} ${wL} (on body)` : `${dLbs(catOz / 16)} ${wL}`}
                       </span>
                     </div>
                     <div className="divide-y divide-border">
@@ -391,7 +399,7 @@ export default function GearChecklist() {
                               <Minus className="w-3 h-3" />
                             </button>
                             <span className="text-[11px] font-mono text-[var(--muted-foreground)] w-12 text-center tabular-nums">
-                              {item.weightOz % 1 === 0 ? item.weightOz : item.weightOz.toFixed(1)} oz
+                              {dOz(item.weightOz)}
                             </span>
                             <button
                               onClick={() => updateWeight(item.id, item.weightOz + 0.5)}

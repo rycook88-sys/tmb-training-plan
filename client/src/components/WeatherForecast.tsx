@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useUnits } from "@/contexts/UnitContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown,
@@ -147,6 +148,7 @@ const COUNTRY_FLAG: Record<string, string> = {
 /* ── component ── */
 export default function WeatherForecast() {
   const [open, setOpen] = useState(false);
+  const u = useUnits();
 
   return (
     <section className="container py-6">
@@ -179,7 +181,7 @@ export default function WeatherForecast() {
               <div className="border border-border bg-card p-4 flex items-start gap-3">
                 <CloudLightning className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
                 <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
-                  <span className="text-foreground font-medium">Late July on the TMB:</span> Warm in valleys (68–80°F), cool at altitude (45–60°F), cold at passes and at night (32–45°F). Afternoon thunderstorms are common — plan to be below treeline by 2pm when possible. Rain gear every day.
+                  <span className="text-foreground font-medium">Late July on the TMB:</span> Warm in valleys ({u.isMetric ? '20–27°C' : '68–80°F'}), cool at altitude ({u.isMetric ? '7–15°C' : '45–60°F'}), cold at passes and at night ({u.isMetric ? '0–7°C' : '32–45°F'}). Afternoon thunderstorms are common — plan to be below treeline by 2pm when possible. Rain gear every day.
                 </p>
               </div>
 
@@ -211,8 +213,15 @@ export default function WeatherForecast() {
                   </thead>
                   <tbody>
                     {WEATHER.map((w) => {
-                      const highF = [cToF(w.highC[0]), cToF(w.highC[1])];
-                      const lowF = [cToF(w.lowC[0]), cToF(w.lowC[1])];
+                      const highDisplay = u.isMetric
+                        ? `${w.highC[0]}–${w.highC[1]}°C`
+                        : `${cToF(w.highC[0])}–${cToF(w.highC[1])}°F`;
+                      const lowDisplay = u.isMetric
+                        ? `${w.lowC[0]}–${w.lowC[1]}°C`
+                        : `${cToF(w.lowC[0])}–${cToF(w.lowC[1])}°F`;
+                      const elevDisplay = u.isMetric
+                        ? `${w.elevation}m`
+                        : `${Math.round(w.elevation * 3.281)}ft`;
                       return (
                         <tr
                           key={w.day}
@@ -226,16 +235,16 @@ export default function WeatherForecast() {
                           </td>
                           <td className="py-2.5 px-3 text-xs text-[var(--muted-foreground)]">{w.location}</td>
                           <td className="py-2.5 px-3 text-center text-xs font-mono text-[var(--muted-foreground)]">
-                            {Math.round(w.elevation * 3.281)}ft
+                            {elevDisplay}
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <span className="text-xs font-mono font-medium text-orange-400">
-                              {highF[0]}–{highF[1]}°F
+                              {highDisplay}
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <span className="text-xs font-mono font-medium text-blue-400">
-                              {lowF[0]}–{lowF[1]}°F
+                              {lowDisplay}
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-center">

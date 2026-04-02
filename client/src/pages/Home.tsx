@@ -12,8 +12,10 @@ import {
   Target, ArrowDown, ArrowUp, Play, Calendar, Trophy, Save, X, Trash2, Dumbbell,
 } from "lucide-react";
 import TrainingAnalytics from "@/components/TrainingAnalytics";
+import { useUnits } from "@/contexts/UnitContext";
 import { TMBRouteMap } from "@/components/TMBRouteMap";
 import type { GpsPosition } from "@/lib/gps-tracker";
+import ElevationProfile from "@/components/ElevationProfile";
 import GearChecklist from "@/components/GearChecklist";
 import DailyBudget from "@/components/DailyBudget";
 import WeatherForecast from "@/components/WeatherForecast";
@@ -61,12 +63,15 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
   entries: { date: string; weight: number }[];
   onAddWeight: (w: number) => void;
 }) {
+  const u = useUnits();
   const [inputVal, setInputVal] = useState("");
   const [showInput, setShowInput] = useState(false);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const w = parseFloat(inputVal);
-    if (w > 150 && w < 300) { onAddWeight(w); setInputVal(""); setShowInput(false); }
+    // Accept input in current unit system
+    const lbVal = u.isMetric ? w / 0.453592 : w;
+    if (lbVal > 150 && lbVal < 300) { onAddWeight(Math.round(lbVal * 10) / 10); setInputVal(""); setShowInput(false); }
   };
   const gaugeH = 280;
   const goalReached = currentWeight <= ATHLETE.goalWeight;
@@ -75,7 +80,7 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
     <div className="border border-border p-5 bg-card">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)]">Altitude Gauge</h3>
-        <span className="font-mono text-xs text-[var(--muted-foreground)]">{ATHLETE.startWeight} → {ATHLETE.goalWeight} lb</span>
+        <span className="font-mono text-xs text-[var(--muted-foreground)]">{u.wt(ATHLETE.startWeight, 0)} → {u.wt(ATHLETE.goalWeight, 0)} {u.wtUnit}</span>
       </div>
       <div className="flex gap-6 items-center">
         <div className="relative" style={{ width: 48, height: gaugeH }}>
@@ -88,25 +93,25 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
             transition={{ duration: 1.5, ease: "easeOut" }} />
           <div className="absolute left-0 right-0 top-0 h-px bg-[var(--primary)] opacity-50" />
           <div className="absolute left-0 right-0 bottom-0 h-px bg-border" />
-          <span className="absolute -right-8 top-0 text-[10px] font-mono text-[var(--primary)] translate-y-[-50%]">{ATHLETE.goalWeight}</span>
-          <span className="absolute -right-8 bottom-0 text-[10px] font-mono text-[var(--muted-foreground)] translate-y-[50%]">{ATHLETE.startWeight}</span>
+          <span className="absolute -right-8 top-0 text-[10px] font-mono text-[var(--primary)] translate-y-[-50%]">{u.wt(ATHLETE.goalWeight, 0)}</span>
+          <span className="absolute -right-8 bottom-0 text-[10px] font-mono text-[var(--muted-foreground)] translate-y-[50%]">{u.wt(ATHLETE.startWeight, 0)}</span>
         </div>
         <div className="flex-1">
           <div className="font-mono text-4xl font-bold text-foreground leading-none">
-            {currentWeight}<span className="text-lg text-[var(--muted-foreground)] ml-1">lb</span>
+            {u.wt(currentWeight, 1)}<span className="text-lg text-[var(--muted-foreground)] ml-1">{u.wtUnit}</span>
           </div>
           <div className="mt-2 flex items-center gap-2">
             {goalReached ? (
               <span className="text-xs font-mono text-amber-400 flex items-center gap-1"><Trophy className="w-3 h-3" /> GOAL REACHED</span>
             ) : (
-              <span className="text-xs font-mono text-[var(--muted-foreground)]">{currentWeight - ATHLETE.goalWeight} lb to go</span>
+              <span className="text-xs font-mono text-[var(--muted-foreground)]">{u.wt(currentWeight - ATHLETE.goalWeight, 1)} {u.wtUnit} to go</span>
             )}
           </div>
           <div className="mt-1 text-xs font-mono text-[var(--primary)]">{Math.round(progress)}% complete</div>
           <div className="mt-4 space-y-1">
             {entries.slice(-4).map((e) => (
               <div key={e.date} className="flex justify-between text-xs font-mono text-[var(--muted-foreground)]">
-                <span>{e.date}</span><span>{e.weight} lb</span>
+                <span>{e.date}</span><span>{u.wt(e.weight, 1)} {u.wtUnit}</span>
               </div>
             ))}
           </div>
@@ -286,7 +291,7 @@ function WorkoutCard({ day, onStart, hasHitGoal, getBestPerformance }: {
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="border border-border bg-card">
-      <div onClick={() => setExpanded(!expanded)}
+      <div role="button" tabIndex={0} onClick={() => setExpanded(!expanded)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setExpanded(!expanded); }}
         className="w-full flex items-center justify-between p-4 text-left hover:bg-[var(--secondary)] transition-colors cursor-pointer">
         <div className="flex items-center gap-3">
           <span className="text-xl">{day.icon}</span>
@@ -510,6 +515,7 @@ function WorkoutCalendar({ sessions, onDelete }: { sessions: WorkoutSession[]; o
 
 // ── Itinerary Row ─────────────────────────────────────────
 function ItineraryRow({ day }: { day: ItineraryDay }) {
+  const u = useUnits();
   const diffColor: Record<string, string> = {
     easy: "text-green-400", moderate: "text-yellow-400",
     hard: "text-[var(--primary)]", brutal: "text-red-400",
@@ -525,12 +531,12 @@ function ItineraryRow({ day }: { day: ItineraryDay }) {
         <div className="min-w-0">
           <div className="font-mono text-xs text-foreground truncate">{day.from} → {day.to}</div>
           <div className="text-[10px] text-[var(--muted-foreground)] sm:hidden mt-0.5">
-            {day.distanceMi} mi · ↑{day.ascent}' · ↓{day.descent}' · {day.duration}
+            {u.dist(day.distanceMi)} {u.distUnit} · ↑{u.elev(day.ascent)} {u.elevUnit} · ↓{u.elev(day.descent)} {u.elevUnit} · {day.duration}
           </div>
         </div>
-        <span className="hidden sm:block font-mono text-xs text-[var(--muted-foreground)] text-right">{day.distanceMi} mi</span>
-        <span className="hidden sm:flex font-mono text-xs text-green-400 items-center justify-end gap-0.5"><ArrowUp className="w-3 h-3" />{day.ascent}'</span>
-        <span className="hidden sm:flex font-mono text-xs text-red-400 items-center justify-end gap-0.5"><ArrowDown className="w-3 h-3" />{day.descent}'</span>
+        <span className="hidden sm:block font-mono text-xs text-[var(--muted-foreground)] text-right">{u.dist(day.distanceMi)} {u.distUnit}</span>
+        <span className="hidden sm:flex font-mono text-xs text-green-400 items-center justify-end gap-0.5"><ArrowUp className="w-3 h-3" />{u.elev(day.ascent)} {u.elevUnit}</span>
+        <span className="hidden sm:flex font-mono text-xs text-red-400 items-center justify-end gap-0.5"><ArrowDown className="w-3 h-3" />{u.elev(day.descent)} {u.elevUnit}</span>
         <span className="hidden sm:block font-mono text-xs text-[var(--muted-foreground)] text-right">{day.duration}</span>
         <span className={`font-mono text-[10px] uppercase tracking-wider text-right px-2 py-0.5 ${diffColor[day.difficulty]} ${diffBg[day.difficulty]} justify-self-end`}>
           {day.difficulty}
@@ -687,88 +693,6 @@ function FootMobilitySection() {
   );
 }
 
-// ── Utility Card (for card grid) ───────────────────────────
-function UtilityCard({ accent, accentBg, icon, title, subtitle, tag, tagColor, children }: {
-  accent: string; accentBg: string; icon: React.ReactNode; title: string;
-  subtitle: string; tag: string; tagColor: string; children: React.ReactNode;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className={`border border-border ${accentBg} border-l-4 ${accent} transition-all duration-200 ${
-      open ? "sm:col-span-2 lg:col-span-3" : ""
-    }`}>
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full p-4 text-left hover:bg-white/[0.02] transition-colors cursor-pointer"
-      >
-        <div className="flex items-start gap-3">
-          <div className="mt-0.5">{icon}</div>
-          <div className="flex-1 min-w-0">
-            <div className="font-mono text-sm font-bold text-foreground tracking-wider">{title}</div>
-            <div className="text-[11px] text-[var(--muted-foreground)] mt-0.5 font-mono">{subtitle}</div>
-            <span className={`inline-block text-[10px] font-mono uppercase tracking-wider mt-2 px-2 py-0.5 ${tagColor}`}>{tag}</span>
-          </div>
-          <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3 }}>
-            <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)]" />
-          </motion.div>
-        </div>
-      </button>
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="overflow-hidden"
-          >
-            <div className="border-t border-border">
-              {children}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// ── Mode Toggle ──────────────────────────────────────────
-type AppMode = "training" | "trail";
-
-function ModeToggle({ mode, setMode }: { mode: AppMode; setMode: (m: AppMode) => void }) {
-  return (
-    <div className="container py-6">
-      <div className="flex items-center gap-1 p-1 bg-[var(--secondary)] border border-border w-full sm:w-auto sm:inline-flex">
-        <button
-          onClick={() => setMode("training")}
-          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-mono uppercase tracking-[0.2em] transition-all duration-200 ${
-            mode === "training"
-              ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-bold"
-              : "text-[var(--muted-foreground)] hover:text-foreground"
-          }`}
-        >
-          <Dumbbell className="w-3.5 h-3.5" />
-          Training
-        </button>
-        <button
-          onClick={() => setMode("trail")}
-          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-mono uppercase tracking-[0.2em] transition-all duration-200 ${
-            mode === "trail"
-              ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-bold"
-              : "text-[var(--muted-foreground)] hover:text-foreground"
-          }`}
-        >
-          <Mountain className="w-3.5 h-3.5" />
-          Trail
-        </button>
-      </div>
-      <p className="text-[10px] font-mono text-[var(--muted-foreground)] mt-2 tracking-wide">
-        {mode === "training" ? "Body composition, gear prep, analytics & mobility" : "Route map, itinerary, budget, phrasebook & weather"}
-      </p>
-    </div>
-  );
-}
-
 // ── Main Page ─────────────────────────────────────────────
 export default function Home() {
   const wt = useWeightTracker();
@@ -776,19 +700,7 @@ export default function Home() {
   const [showSummary, setShowSummary] = useState<WorkoutSession | null>(null);
   const [highlightDay, setHighlightDay] = useState<number | null>(null);
   const [gpsPosition, setGpsPosition] = useState<GpsPosition | null>(null);
-  // Auto-default to trail mode within 7 days of trip
-  const daysLeft = getDaysUntilTrip();
-  const [mode, setMode] = useState<AppMode>(() => {
-    try {
-      const saved = localStorage.getItem("tmb-app-mode");
-      if (saved === "training" || saved === "trail") return saved;
-    } catch {}
-    return daysLeft <= 7 ? "trail" : "training";
-  });
-  const handleModeChange = (m: AppMode) => {
-    setMode(m);
-    localStorage.setItem("tmb-app-mode", m);
-  };
+  const units = useUnits();
   // Compute exact totals from stitched GPX elevation profile data
   const totalMi = elevationData.totalDistance;
   const { totalAscent, totalDescent } = useMemo(() => {
@@ -802,9 +714,6 @@ export default function Home() {
   }, []);
   const totalA = totalAscent;
   const totalD = totalDescent;
-
-  // Workout history collapsed state
-  const [workoutOpen, setWorkoutOpen] = useState(false);
 
   const handleSave = () => {
     const session = wl.saveSession();
@@ -822,7 +731,7 @@ export default function Home() {
             <div className="text-xs uppercase tracking-[0.4em] text-[var(--primary)] font-mono mb-2">Alpine Command Center</div>
             <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-white leading-none">Tour du Mont Blanc</h1>
             <p className="text-sm text-white/60 font-mono mt-2 tracking-wide">
-              {ATHLETE.tripDays}-Day {ATHLETE.tripStyle} · {totalMi.toFixed(1)} miles · {totalA.toLocaleString()}' gain · {totalD.toLocaleString()}' loss
+              {ATHLETE.tripDays}-Day {ATHLETE.tripStyle} · {units.dist(totalMi)} {units.distUnit} · {units.elev(totalA)} {units.elevUnit} gain · {units.elev(totalD)} {units.elevUnit} loss
             </p>
           </motion.div>
         </div>
@@ -834,12 +743,25 @@ export default function Home() {
         <div className="relative container py-8">
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
             <div>
-              <Countdown />
+              <div className="flex items-center justify-between">
+                <Countdown />
+                <button
+                  onClick={units.toggle}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 transition-colors text-[10px] font-mono uppercase tracking-wider"
+                  title={`Switch to ${units.isMetric ? 'imperial' : 'metric'} units`}
+                >
+                  <span className={`transition-colors ${!units.isMetric ? 'text-[var(--primary)]' : 'text-slate-500'}`}>MI/FT</span>
+                  <div className={`relative w-8 h-4 rounded-full transition-colors ${units.isMetric ? 'bg-[var(--primary)]' : 'bg-slate-600'}`}>
+                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${units.isMetric ? 'translate-x-4.5 left-0.5' : 'left-0.5'}`} />
+                  </div>
+                  <span className={`transition-colors ${units.isMetric ? 'text-[var(--primary)]' : 'text-slate-500'}`}>KM/M</span>
+                </button>
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-                <StatCard label="Total Distance" value={`${totalMi.toFixed(1)}`} unit="mi" />
-                <StatCard label="Total Ascent" value={totalA.toLocaleString()} unit="ft" color="text-green-400" />
-                <StatCard label="Total Descent" value={totalD.toLocaleString()} unit="ft" color="text-[var(--primary)]" />
-                <StatCard label="Pack Weight" value={ATHLETE.packWeight} unit="" />
+                <StatCard label="Total Distance" value={units.dist(totalMi)} unit={units.distUnit} />
+                <StatCard label="Total Ascent" value={units.elev(totalA)} unit={units.elevUnit} color="text-green-400" />
+                <StatCard label="Total Descent" value={units.elev(totalD)} unit={units.elevUnit} color="text-[var(--primary)]" />
+                <StatCard label="Pack Weight" value={units.isMetric ? `${(12*0.453592).toFixed(0)}–${(16*0.453592).toFixed(0)}` : ATHLETE.packWeight} unit={units.isMetric ? "kg" : ""} />
               </div>
             </div>
             <WeightGauge currentWeight={wt.currentWeight} progress={wt.progress} entries={wt.entries} onAddWeight={wt.addEntry} />
@@ -847,194 +769,60 @@ export default function Home() {
         </div>
       </section>
 
-      {/* WORKOUT PLAN — Collapsible */}
+      {/* WORKOUT PLAN */}
       <section className="container py-6">
-        <button
-          onClick={() => setWorkoutOpen(!workoutOpen)}
-          className="w-full flex items-center justify-between group cursor-pointer"
-        >
+        <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm uppercase tracking-[0.2em] text-foreground font-mono flex items-center gap-3 font-semibold">
             <span className="text-xl">🏋️</span> Training Protocol
           </h2>
-          <div className="flex items-center gap-3">
-            <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{wl.sessions.length} sessions logged</span>
-            <motion.div animate={{ rotate: workoutOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>
-              <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-colors" />
-            </motion.div>
-          </div>
-        </button>
-        <AnimatePresence>
-          {workoutOpen && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="overflow-hidden"
-            >
-              <div className="mt-4 space-y-2">
-                {WORKOUT_PLAN.map((day) => (
-                  <WorkoutCard key={day.id} day={day} onStart={wl.startSession} hasHitGoal={wl.hasHitGoal} getBestPerformance={wl.getBestPerformance} />
-                ))}
-              </div>
-              <div className="mt-6">
-                <WorkoutCalendar sessions={wl.sessions} onDelete={wl.deleteSession} />
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        </div>
+
+
+        {/* Browse cards (always visible) */}
+        <div className="space-y-2">
+          {WORKOUT_PLAN.map((day) => (
+            <WorkoutCard key={day.id} day={day} onStart={wl.startSession} hasHitGoal={wl.hasHitGoal} getBestPerformance={wl.getBestPerformance} />
+          ))}
+        </div>
+
+        {/* Workout History */}
+        <div className="mt-6">
+          <WorkoutCalendar sessions={wl.sessions} onDelete={wl.deleteSession} />
+        </div>
       </section>
 
-      {/* MODE TOGGLE */}
-      <div className="border-t border-border">
-        <ModeToggle mode={mode} setMode={handleModeChange} />
-      </div>
+      {/* TRAINING ANALYTICS */}
+      <TrainingAnalytics />
 
-      {/* ═══ TRAINING MODE ═══ */}
-      {mode === "training" && (
-        <motion.div
-          key="training"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          {/* All training tools in one card grid */}
-          <section className="container py-8">
-            <h3 className="text-[10px] uppercase tracking-[0.4em] text-[var(--muted-foreground)] font-mono mb-4">Training Tools</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Garmin Analytics Card */}
-              <UtilityCard
-                accent="border-l-cyan-500"
-                accentBg="bg-cyan-500/5"
-                icon={<span className="text-lg">⌚</span>}
-                title="Garmin Analytics"
-                subtitle="Training load & trends"
-                tag="36 activities"
-                tagColor="text-cyan-400 bg-cyan-400/10"
-              >
-                <TrainingAnalytics />
-              </UtilityCard>
+      {/* TMB ITINERARY */}
+      <ItinerarySection />
 
-              {/* Body Fat Card */}
-              <UtilityCard
-                accent="border-l-[var(--primary)]"
-                accentBg="bg-[var(--primary)]/5"
-                icon={<span className="text-lg">📏</span>}
-                title="Body Fat Estimator"
-                subtitle="Multi-formula composite"
-                tag="Navy method"
-                tagColor="text-[var(--primary)] bg-[var(--primary)]/10"
-              >
-                <BodyFatEstimator />
-              </UtilityCard>
+      {/* TMB ROUTE MAP */}
+      <TMBRouteMap highlightDay={highlightDay} onDayHover={setHighlightDay} onGpsUpdate={setGpsPosition} />
 
-              {/* Gear Card */}
-              <UtilityCard
-                accent="border-l-violet-500"
-                accentBg="bg-violet-500/5"
-                icon={<span className="text-lg">🎒</span>}
-                title="Gear Checklist"
-                subtitle="Pack weight tracker"
-                tag="12–16 lbs target"
-                tagColor="text-violet-400 bg-violet-400/10"
-              >
-                <GearChecklist />
-              </UtilityCard>
+      {/* ELEVATION PROFILE */}
+      <ElevationProfile highlightDay={highlightDay} onDayHover={setHighlightDay} gpsPosition={gpsPosition} />
 
-              {/* Technique Videos Card */}
-              <UtilityCard
-                accent="border-l-red-500"
-                accentBg="bg-red-500/5"
-                icon={<span className="text-lg">🎥</span>}
-                title="Technique Videos"
-                subtitle="Descent & trail skills"
-                tag="Video library"
-                tagColor="text-red-400 bg-red-400/10"
-              >
-                <TechniqueVideos />
-              </UtilityCard>
+      {/* BODY FAT ESTIMATOR */}
+      <BodyFatEstimator />
 
-              {/* Foot Mobility Card */}
-              <UtilityCard
-                accent="border-l-teal-500"
-                accentBg="bg-teal-500/5"
-                icon={<span className="text-lg">🦶</span>}
-                title="Foot Mobility"
-                subtitle="High transverse arch protocol"
-                tag="Daily drills"
-                tagColor="text-teal-400 bg-teal-400/10"
-              >
-                <FootMobilitySection />
-              </UtilityCard>
-            </div>
-          </section>
-        </motion.div>
-      )}
+      {/* GEAR CHECKLIST (Collapsible) */}
+      <GearChecklist />
 
-      {/* ═══ TRAIL MODE ═══ */}
-      {mode === "trail" && (
-        <motion.div
-          key="trail"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-        >
-          {/* Itinerary — full width with accent */}
-          <div className="border-l-4 border-l-indigo-500 bg-indigo-500/[0.03]">
-            <ItinerarySection />
-          </div>
+      {/* DAILY BUDGET & FOOD STOPS */}
+      <DailyBudget />
 
-          {/* Route Map & Elevation Profile — merged into one section with toggle */}
-          <div className="border-l-4 border-l-green-500 bg-green-500/[0.03]">
-            <TMBRouteMap highlightDay={highlightDay} onDayHover={setHighlightDay} onGpsUpdate={setGpsPosition} />
-          </div>
+      {/* TRAVEL TOOLKIT — Currency, Phrasebook, Cultural Etiquette */}
+      <TravelToolkit />
 
-          {/* Utility card grid */}
-          <section className="container py-8">
-            <h3 className="text-[10px] uppercase tracking-[0.4em] text-[var(--muted-foreground)] font-mono mb-4">Trail Tools</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Budget Card */}
-              <UtilityCard
-                accent="border-l-emerald-500"
-                accentBg="bg-emerald-500/5"
-                icon={<span className="text-lg">💶</span>}
-                title="Budget & Food"
-                subtitle="€196–344 + CHF 60–95"
-                tag="10 stages"
-                tagColor="text-emerald-400 bg-emerald-400/10"
-              >
-                <DailyBudget />
-              </UtilityCard>
+      {/* WEATHER AVERAGES */}
+      <WeatherForecast />
 
-              {/* Travel Toolkit Card */}
-              <UtilityCard
-                accent="border-l-amber-500"
-                accentBg="bg-amber-500/5"
-                icon={<span className="text-lg">🌍</span>}
-                title="Travel Toolkit"
-                subtitle="Currency · Phrases · Etiquette"
-                tag="FR · IT · CH"
-                tagColor="text-amber-400 bg-amber-400/10"
-              >
-                <TravelToolkit />
-              </UtilityCard>
+      {/* TECHNIQUE VIDEO LIBRARY */}
+      <TechniqueVideos />
 
-              {/* Weather Card */}
-              <UtilityCard
-                accent="border-l-sky-500"
-                accentBg="bg-sky-500/5"
-                icon={<span className="text-lg">⛅</span>}
-                title="Weather Averages"
-                subtitle="Late July conditions"
-                tag="Historical"
-                tagColor="text-sky-400 bg-sky-400/10"
-              >
-                <WeatherForecast />
-              </UtilityCard>
-            </div>
-          </section>
-        </motion.div>
-      )}
+      {/* FOOT MOBILITY (Collapsible) */}
+      <FootMobilitySection />
 
       {/* FOOTER */}
       <footer className="border-t border-border py-6">

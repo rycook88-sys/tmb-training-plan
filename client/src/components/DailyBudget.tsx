@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUnits } from "@/contexts/UnitContext";
 import {
   ChevronDown,
   CreditCard,
@@ -472,6 +473,7 @@ const STOP_ICON: Record<string, typeof Coffee> = {
 
 /* ── component ── */
 export default function DailyBudget() {
+  const u = useUnits();
   const [open, setOpen] = useState(false);
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
@@ -636,10 +638,10 @@ export default function DailyBudget() {
                               {/* Day summary bar */}
                               {dayMiles > 0 && itDay && (
                                 <div className="flex flex-wrap items-center gap-3 py-2 px-3 bg-[var(--primary)]/5 border border-[var(--primary)]/20 text-[10px] font-mono">
-                                  <span className="text-[var(--primary)] font-bold">{dayMiles} mi total</span>
+                                  <span className="text-[var(--primary)] font-bold">{u.isMetric ? `${(dayMiles * 1.60934).toFixed(1)} km total` : `${dayMiles} mi total`}</span>
                                   <span className="text-[var(--muted-foreground)]">·</span>
-                                  <span className="text-green-400">↑ {itDay.ascent.toLocaleString()} ft</span>
-                                  <span className="text-red-400">↓ {itDay.descent.toLocaleString()} ft</span>
+                                  <span className="text-green-400">↑ {u.isMetric ? `${Math.round(itDay.ascent * 0.3048).toLocaleString()} m` : `${itDay.ascent.toLocaleString()} ft`}</span>
+                                  <span className="text-red-400">↓ {u.isMetric ? `${Math.round(itDay.descent * 0.3048).toLocaleString()} m` : `${itDay.descent.toLocaleString()} ft`}</span>
                                   <span className="text-[var(--muted-foreground)]">·</span>
                                   <span className="text-[var(--muted-foreground)]">{itDay.duration}</span>
                                 </div>
@@ -672,7 +674,7 @@ export default function DailyBudget() {
                                         {stop.mileIn !== undefined && stop.mileIn > 0 && (
                                           <span className="text-[10px] font-mono bg-[var(--primary)]/10 text-[var(--primary)] px-1.5 py-0.5 flex items-center gap-0.5">
                                             <Navigation className="w-2.5 h-2.5" />
-                                            mi {stop.mileIn.toFixed(1)}
+                                            {u.isMetric ? `km ${(stop.mileIn * 1.60934).toFixed(1)}` : `mi ${stop.mileIn.toFixed(1)}`}
                                           </span>
                                         )}
                                         <span className={`flex items-center gap-1 text-[10px] font-mono ${pay.color}`}>
