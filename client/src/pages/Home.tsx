@@ -14,7 +14,6 @@ import {
 import TrainingAnalytics from "@/components/TrainingAnalytics";
 import { TMBRouteMap } from "@/components/TMBRouteMap";
 import type { GpsPosition } from "@/lib/gps-tracker";
-import ElevationProfile from "@/components/ElevationProfile";
 import GearChecklist from "@/components/GearChecklist";
 import DailyBudget from "@/components/DailyBudget";
 import WeatherForecast from "@/components/WeatherForecast";
@@ -985,14 +984,9 @@ export default function Home() {
             <ItinerarySection />
           </div>
 
-          {/* Route Map & Elevation Profile — side by side on desktop */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
-            <div className="border-l-4 border-l-green-500 bg-green-500/[0.03]">
-              <TMBRouteMap highlightDay={highlightDay} onDayHover={setHighlightDay} onGpsUpdate={setGpsPosition} />
-            </div>
-            <div className="border-l-4 border-l-rose-500 bg-rose-500/[0.03]">
-              <ElevationProfile highlightDay={highlightDay} onDayHover={setHighlightDay} gpsPosition={gpsPosition} />
-            </div>
+          {/* Route Map & Elevation Profile — merged into one section with toggle */}
+          <div className="border-l-4 border-l-green-500 bg-green-500/[0.03]">
+            <TMBRouteMap highlightDay={highlightDay} onDayHover={setHighlightDay} onGpsUpdate={setGpsPosition} />
           </div>
 
           {/* Utility card grid */}
