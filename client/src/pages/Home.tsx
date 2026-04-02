@@ -899,8 +899,10 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {/* Full-width: Analytics */}
-          <TrainingAnalytics />
+          {/* Full-width: Analytics — with accent */}
+          <div className="border-l-4 border-l-cyan-500 bg-cyan-500/[0.03]">
+            <TrainingAnalytics />
+          </div>
 
           {/* Utility card grid for training tools */}
           <section className="container py-8">
@@ -910,7 +912,7 @@ export default function Home() {
               <UtilityCard
                 accent="border-l-[var(--primary)]"
                 accentBg="bg-[var(--primary)]/5"
-                icon={<span className="text-lg">🏹</span>}
+                icon={<span className="text-lg">📏</span>}
                 title="Body Fat Estimator"
                 subtitle="Multi-formula composite"
                 tag="Navy method"
@@ -947,8 +949,10 @@ export default function Home() {
             </div>
           </section>
 
-          {/* Foot Mobility - full width since it has detailed content */}
-          <FootMobilitySection />
+          {/* Foot Mobility — with accent */}
+          <div className="border-l-4 border-l-teal-500 bg-teal-500/[0.03]">
+            <FootMobilitySection />
+          </div>
         </motion.div>
       )}
 
@@ -960,10 +964,16 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {/* Full-width visual sections */}
-          <ItinerarySection />
-          <TMBRouteMap highlightDay={highlightDay} onDayHover={setHighlightDay} onGpsUpdate={setGpsPosition} />
-          <ElevationProfile highlightDay={highlightDay} onDayHover={setHighlightDay} gpsPosition={gpsPosition} />
+          {/* Full-width visual sections — with accents */}
+          <div className="border-l-4 border-l-indigo-500 bg-indigo-500/[0.03]">
+            <ItinerarySection />
+          </div>
+          <div className="border-l-4 border-l-green-500 bg-green-500/[0.03]">
+            <TMBRouteMap highlightDay={highlightDay} onDayHover={setHighlightDay} onGpsUpdate={setGpsPosition} />
+          </div>
+          <div className="border-l-4 border-l-rose-500 bg-rose-500/[0.03]">
+            <ElevationProfile highlightDay={highlightDay} onDayHover={setHighlightDay} gpsPosition={gpsPosition} />
+          </div>
 
           {/* Utility card grid */}
           <section className="container py-8">
