@@ -688,6 +688,51 @@ function FootMobilitySection() {
   );
 }
 
+// ── Utility Card (for card grid) ───────────────────────────
+function UtilityCard({ accent, accentBg, icon, title, subtitle, tag, tagColor, children }: {
+  accent: string; accentBg: string; icon: React.ReactNode; title: string;
+  subtitle: string; tag: string; tagColor: string; children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={`border border-border ${accentBg} border-l-4 ${accent} transition-all duration-200 ${
+      open ? "sm:col-span-2 lg:col-span-3" : ""
+    }`}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full p-4 text-left hover:bg-white/[0.02] transition-colors cursor-pointer"
+      >
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5">{icon}</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-mono text-sm font-bold text-foreground tracking-wider">{title}</div>
+            <div className="text-[11px] text-[var(--muted-foreground)] mt-0.5 font-mono">{subtitle}</div>
+            <span className={`inline-block text-[10px] font-mono uppercase tracking-wider mt-2 px-2 py-0.5 ${tagColor}`}>{tag}</span>
+          </div>
+          <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3 }}>
+            <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)]" />
+          </motion.div>
+        </div>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-border">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // ── Mode Toggle ──────────────────────────────────────────
 type AppMode = "training" | "trail";
 
@@ -854,10 +899,55 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
+          {/* Full-width: Analytics */}
           <TrainingAnalytics />
-          <BodyFatEstimator />
-          <GearChecklist />
-          <TechniqueVideos />
+
+          {/* Utility card grid for training tools */}
+          <section className="container py-8">
+            <h3 className="text-[10px] uppercase tracking-[0.4em] text-[var(--muted-foreground)] font-mono mb-4">Training Tools</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Body Fat Card */}
+              <UtilityCard
+                accent="border-l-[var(--primary)]"
+                accentBg="bg-[var(--primary)]/5"
+                icon={<span className="text-lg">🏹</span>}
+                title="Body Fat Estimator"
+                subtitle="Multi-formula composite"
+                tag="Navy method"
+                tagColor="text-[var(--primary)] bg-[var(--primary)]/10"
+              >
+                <BodyFatEstimator />
+              </UtilityCard>
+
+              {/* Gear Card */}
+              <UtilityCard
+                accent="border-l-violet-500"
+                accentBg="bg-violet-500/5"
+                icon={<span className="text-lg">🎒</span>}
+                title="Gear Checklist"
+                subtitle="Pack weight tracker"
+                tag="12–16 lbs target"
+                tagColor="text-violet-400 bg-violet-400/10"
+              >
+                <GearChecklist />
+              </UtilityCard>
+
+              {/* Technique Videos Card */}
+              <UtilityCard
+                accent="border-l-red-500"
+                accentBg="bg-red-500/5"
+                icon={<span className="text-lg">🎥</span>}
+                title="Technique Videos"
+                subtitle="Descent & trail skills"
+                tag="Video library"
+                tagColor="text-red-400 bg-red-400/10"
+              >
+                <TechniqueVideos />
+              </UtilityCard>
+            </div>
+          </section>
+
+          {/* Foot Mobility - full width since it has detailed content */}
           <FootMobilitySection />
         </motion.div>
       )}
@@ -870,12 +960,55 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
+          {/* Full-width visual sections */}
           <ItinerarySection />
           <TMBRouteMap highlightDay={highlightDay} onDayHover={setHighlightDay} onGpsUpdate={setGpsPosition} />
           <ElevationProfile highlightDay={highlightDay} onDayHover={setHighlightDay} gpsPosition={gpsPosition} />
-          <DailyBudget />
-          <TravelToolkit />
-          <WeatherForecast />
+
+          {/* Utility card grid */}
+          <section className="container py-8">
+            <h3 className="text-[10px] uppercase tracking-[0.4em] text-[var(--muted-foreground)] font-mono mb-4">Trail Tools</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Budget Card */}
+              <UtilityCard
+                accent="border-l-emerald-500"
+                accentBg="bg-emerald-500/5"
+                icon={<span className="text-lg">💶</span>}
+                title="Budget & Food"
+                subtitle="€196–344 + CHF 60–95"
+                tag="10 stages"
+                tagColor="text-emerald-400 bg-emerald-400/10"
+              >
+                <DailyBudget />
+              </UtilityCard>
+
+              {/* Travel Toolkit Card */}
+              <UtilityCard
+                accent="border-l-amber-500"
+                accentBg="bg-amber-500/5"
+                icon={<span className="text-lg">🌍</span>}
+                title="Travel Toolkit"
+                subtitle="Currency · Phrases · Etiquette"
+                tag="FR · IT · CH"
+                tagColor="text-amber-400 bg-amber-400/10"
+              >
+                <TravelToolkit />
+              </UtilityCard>
+
+              {/* Weather Card */}
+              <UtilityCard
+                accent="border-l-sky-500"
+                accentBg="bg-sky-500/5"
+                icon={<span className="text-lg">⛅</span>}
+                title="Weather Averages"
+                subtitle="Late July conditions"
+                tag="Historical"
+                tagColor="text-sky-400 bg-sky-400/10"
+              >
+                <WeatherForecast />
+              </UtilityCard>
+            </div>
+          </section>
         </motion.div>
       )}
 
