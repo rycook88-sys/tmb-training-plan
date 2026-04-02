@@ -899,15 +899,23 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
         >
-          {/* Full-width: Analytics — with accent */}
-          <div className="border-l-4 border-l-cyan-500 bg-cyan-500/[0.03]">
-            <TrainingAnalytics />
-          </div>
-
-          {/* Utility card grid for training tools */}
+          {/* All training tools in one card grid */}
           <section className="container py-8">
             <h3 className="text-[10px] uppercase tracking-[0.4em] text-[var(--muted-foreground)] font-mono mb-4">Training Tools</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Garmin Analytics Card */}
+              <UtilityCard
+                accent="border-l-cyan-500"
+                accentBg="bg-cyan-500/5"
+                icon={<span className="text-lg">⌚</span>}
+                title="Garmin Analytics"
+                subtitle="Training load & trends"
+                tag="36 activities"
+                tagColor="text-cyan-400 bg-cyan-400/10"
+              >
+                <TrainingAnalytics />
+              </UtilityCard>
+
               {/* Body Fat Card */}
               <UtilityCard
                 accent="border-l-[var(--primary)]"
@@ -946,13 +954,21 @@ export default function Home() {
               >
                 <TechniqueVideos />
               </UtilityCard>
+
+              {/* Foot Mobility Card */}
+              <UtilityCard
+                accent="border-l-teal-500"
+                accentBg="bg-teal-500/5"
+                icon={<span className="text-lg">🦶</span>}
+                title="Foot Mobility"
+                subtitle="High transverse arch protocol"
+                tag="Daily drills"
+                tagColor="text-teal-400 bg-teal-400/10"
+              >
+                <FootMobilitySection />
+              </UtilityCard>
             </div>
           </section>
-
-          {/* Foot Mobility — with accent */}
-          <div className="border-l-4 border-l-teal-500 bg-teal-500/[0.03]">
-            <FootMobilitySection />
-          </div>
         </motion.div>
       )}
 
