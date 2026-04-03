@@ -21,6 +21,7 @@ import WeatherForecast from "@/components/WeatherForecast";
 import TechniqueVideos from "@/components/TechniqueVideos";
 import TravelToolkit from "@/components/TravelToolkit";
 import BodyFatEstimator from "@/components/BodyFatEstimator";
+import NutritionTracker from "@/components/NutritionTracker";
 import elevationData from "@/lib/tmb_elevation_profile.json";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/hero-tmb-ridge-TA9BE2JzZxaxi68um9vvG9.webp";
@@ -915,6 +916,19 @@ export default function Home() {
           <section className="container py-8">
             <h3 className="text-[10px] uppercase tracking-[0.4em] text-[var(--muted-foreground)] font-mono mb-4">Training Tools</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Nutrition Tracker Card */}
+              <UtilityCard
+                accent="border-l-green-500"
+                accentBg="bg-green-500/5"
+                icon={<span className="text-lg">📸</span>}
+                title="Nutrition Tracker"
+                subtitle="Photo-based calorie tracking"
+                tag="2,300 cal target"
+                tagColor="text-green-400 bg-green-400/10"
+              >
+                <NutritionTracker embedded />
+              </UtilityCard>
+
               {/* Garmin Analytics Card */}
               <UtilityCard
                 accent="border-l-cyan-500"

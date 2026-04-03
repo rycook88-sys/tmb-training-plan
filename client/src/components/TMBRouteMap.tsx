@@ -29,7 +29,7 @@ interface Accommodation {
   name: string;
   lat: number;
   lng: number;
-  elevation: string;
+  elevation: number;
   type: "start" | "hut" | "hotel" | "gite" | "rifugio" | "auberge" | "end";
   image: string;
   country: string;
@@ -43,7 +43,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     name: "RockyPop Hotel",
     lat: 45.8972406,
     lng: 6.8152178,
-    elevation: "1,008m",
+    elevation: 1008,
     type: "start",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rockypop_e77608f8.jpg",
     country: "France",
@@ -54,7 +54,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     name: "Les Houches Trailhead",
     lat: 45.8910,
     lng: 6.7980,
-    elevation: "1,008m",
+    elevation: 1008,
     type: "start",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rockypop_e77608f8.jpg",
     country: "France",
@@ -65,7 +65,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     name: "Gîte Le Pontet",
     lat: 45.802991,
     lng: 6.722181,
-    elevation: "1,183m",
+    elevation: 1183,
     type: "gite",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/gite-le-pontet_3f84378c.jpg",
     country: "France",
@@ -76,7 +76,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     name: "Hotel Base Camp Lodge",
     lat: 45.696411,
     lng: 6.733627,
-    elevation: "1,593m",
+    elevation: 1593,
     type: "hotel",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/base-camp-lodge_73fd4672.jpg",
     country: "France",
@@ -87,7 +87,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     name: "Rifugio Elisabetta",
     lat: 45.767213,
     lng: 6.837629,
-    elevation: "2,146m",
+    elevation: 2146,
     type: "rifugio",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rifugio-elisabetta_66a22f61.jpg",
     country: "Italy",
@@ -98,7 +98,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     name: "Rifugio Maison Vieille",
     lat: 45.79085,
     lng: 6.93129,
-    elevation: "1,981m",
+    elevation: 1981,
     type: "rifugio",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/maison-vieille_fa54cb04.jpg",
     country: "Italy",
@@ -109,7 +109,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     name: "Rifugio Chapy Mont Blanc",
     lat: 45.82309,
     lng: 6.96586,
-    elevation: "1,429m",
+    elevation: 1429,
     type: "rifugio",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rifugio-chapy_59cb8b94.jpg",
     country: "Italy",
@@ -120,7 +120,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     name: "Gîte Alpage de La Peule",
     lat: 45.89864,
     lng: 7.11268,
-    elevation: "2,106m",
+    elevation: 2106,
     type: "gite",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/alpage-la-peule_f059aaa4.jpg",
     country: "Switzerland",
@@ -131,7 +131,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     name: "Relais D'Arpette",
     lat: 46.02985,
     lng: 7.09294,
-    elevation: "1,633m",
+    elevation: 1633,
     type: "gite",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/relais-arpette_f7e434cb.jpg",
     country: "Switzerland",
@@ -142,7 +142,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     name: "Auberge Mont Blanc",
     lat: 46.05623,
     lng: 6.99534,
-    elevation: "1,314m",
+    elevation: 1314,
     type: "auberge",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/auberge-mont-blanc_4ef2c0b7.jpg",
     country: "Switzerland",
@@ -153,7 +153,7 @@ const ACCOMMODATIONS: Accommodation[] = [
     name: "Gîte Le Nouveau Grassonnet",
     lat: 45.96998,
     lng: 6.91680,
-    elevation: "1,193m",
+    elevation: 1193,
     type: "gite",
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/nouveau-grassonnet_51afd809.jpg",
     country: "France",
@@ -351,7 +351,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
               <h3 style="margin:3px 0;font-size:15px;font-weight:700;color:#1E293B;">
                 Day ${acc.day}: ${acc.name}
               </h3>
-              <p style="margin:2px 0;font-size:11px;color:#64748B;">Elevation: ${acc.elevation}</p>
+              <p style="margin:2px 0;font-size:11px;color:#64748B;">Elevation: ${u.elev(acc.elevation)} ${u.elevUnit}</p>
               ${itDay ? `
                 <div style="margin-top:6px;padding-top:6px;border-top:1px solid #E2E8F0;">
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;font-size:10px;">
