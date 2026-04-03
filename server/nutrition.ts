@@ -59,6 +59,40 @@ const foodAnalysisSchema = {
   },
 };
 
+const fillMacrosSuggestionSchema = {
+  name: "fill_macros_suggestions",
+  strict: true,
+  schema: {
+    type: "object" as const,
+    properties: {
+      suggestions: {
+        type: "array" as const,
+        items: {
+          type: "object" as const,
+          properties: {
+            id: { type: "string" as const, description: "Unique ID for this suggestion" },
+            foodName: { type: "string" as const, description: "Specific food item name" },
+            portion: { type: "string" as const, description: "Recommended portion size, e.g. '6oz grilled chicken breast'" },
+            calories: { type: "number" as const, description: "Estimated calories for this portion" },
+            protein: { type: "number" as const, description: "Grams of protein" },
+            carbs: { type: "number" as const, description: "Grams of carbs" },
+            fat: { type: "number" as const, description: "Grams of fat" },
+            reason: { type: "string" as const, description: "Brief reason why this food helps, e.g. 'High protein, low calorie — closes your protein gap'" },
+          },
+          required: ["id", "foodName", "portion", "calories", "protein", "carbs", "fat", "reason"] as const,
+          additionalProperties: false as const,
+        },
+      },
+      summary: {
+        type: "string" as const,
+        description: "One sentence summary of the biggest gap and strategy",
+      },
+    },
+    required: ["suggestions", "summary"] as const,
+    additionalProperties: false as const,
+  },
+};
+
 const trendRecommendationSchema = {
   name: "trend_recommendations",
   strict: true,
@@ -250,6 +284,79 @@ IMPORTANT RULES:
       const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       if (!content) {
         return { recommendations: [] };
+      }
+
+      return JSON.parse(content);
+    }),
+
+  /**
+   * Fill My Macros — suggest specific foods to close today's remaining macro gaps.
+   * Only activates after 3+ days of tracking data.
+   */
+  fillMyMacros: publicProcedure
+    .input(
+      z.object({
+        remaining: z.object({
+          calories: z.number(),
+          protein: z.number(),
+          carbs: z.number(),
+          fat: z.number(),
+        }),
+        consumed: z.object({
+          calories: z.number(),
+          protein: z.number(),
+          carbs: z.number(),
+          fat: z.number(),
+        }),
+        targets: z.object({
+          calories: z.number(),
+          protein: z.number(),
+          carbs: z.number(),
+          fat: z.number(),
+        }),
+        daysTracked: z.number(),
+        timeOfDay: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      if (input.daysTracked < 3) {
+        return {
+          suggestions: [],
+          summary: "Track at least 3 days of meals before getting food suggestions.",
+        };
+      }
+
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You are a practical nutrition advisor for a 226 lb male training for a 10-day alpine hike. He's cutting weight on ${input.targets.calories} cal/day with ${input.targets.protein}g protein minimum.
+
+RULES:
+- Suggest 2-4 specific, realistic foods (not meal plans or recipes)
+- Each suggestion should be a single food item with a specific portion
+- Prioritize closing the BIGGEST macro gap first (usually protein)
+- Keep it simple — grocery store or restaurant foods, not obscure health foods
+- Stay within the remaining calorie budget
+- If remaining calories are very low (<200), suggest only low-cal high-protein options
+- If all macros are close to target, suggest just 1 small snack or say they're good
+- Be practical — if it's evening, suggest dinner-appropriate foods; if it's a snack window, suggest snacks`,
+          },
+          {
+            role: "user",
+            content: `Here's where I'm at today:\n\nConsumed so far: ${input.consumed.calories} cal, ${input.consumed.protein}g protein, ${input.consumed.carbs}g carbs, ${input.consumed.fat}g fat\nRemaining: ${input.remaining.calories} cal, ${input.remaining.protein}g protein, ${input.remaining.carbs}g carbs, ${input.remaining.fat}g fat\nTargets: ${input.targets.calories} cal, ${input.targets.protein}g protein, ${input.targets.carbs}g carbs, ${input.targets.fat}g fat\n${input.timeOfDay ? `Time of day: ${input.timeOfDay}` : ""}\n\nWhat should I eat to fill the gaps?`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: fillMacrosSuggestionSchema,
+        },
+      });
+
+      const rawContent = result.choices?.[0]?.message?.content;
+      const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      if (!content) {
+        return { suggestions: [], summary: "Could not generate suggestions right now." };
       }
 
       return JSON.parse(content);

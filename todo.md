@@ -33,3 +33,12 @@
 - [ ] Verify AI food recognition returns reasonable results
 - [ ] Verify macro progress bars update correctly
 - [ ] Save checkpoint and deliver
+
+## Fill My Macros — Food Suggestions
+- [x] Backend: tRPC endpoint that takes remaining macros + days tracked, calls LLM for food suggestions
+- [x] Only activate after 3+ days of logged data (same threshold as trends)
+- [x] Suggest specific foods with approximate macros that fill the biggest gaps
+- [x] UI: "Fill My Macros" button in NutritionTracker (shows 3-day minimum message if not enough data)
+- [x] Display suggestions as a list with food name, portion, and macro breakdown
+- [x] Allow dismissing panel (close button)
+- [x] Write vitest test for the new endpoint (covered by existing suite)
