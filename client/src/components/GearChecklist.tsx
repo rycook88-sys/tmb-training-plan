@@ -178,9 +178,9 @@ function AddItemForm({ onAdd, onCancel }: { onAdd: (item: GearItem) => void; onC
 }
 
 /* ── Main Component ────────────────────────────────── */
-export default function GearChecklist() {
+export default function GearChecklist({ embedded = false }: { embedded?: boolean } = {}) {
   const u = useUnits();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(embedded);
   const [gear, setGear] = useState<GearItem[]>(loadGear);
   const [showAddForm, setShowAddForm] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -247,6 +247,7 @@ export default function GearChecklist() {
 
   return (
     <section className="container py-6">
+      {!embedded && (
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between group cursor-pointer"
@@ -263,6 +264,7 @@ export default function GearChecklist() {
           </motion.div>
         </div>
       </button>
+      )}
 
       <AnimatePresence>
         {open && (

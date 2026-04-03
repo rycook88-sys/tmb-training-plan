@@ -193,8 +193,8 @@ function GuideModal({ field, onClose }: { field: MeasurementField; onClose: () =
 }
 
 // ── Main Component ──────────────────────────────────────────
-export default function BodyFatEstimator() {
-  const [open, setOpen] = useState(false);
+export default function BodyFatEstimator({ embedded = false }: { embedded?: boolean } = {}) {
+  const [open, setOpen] = useState(embedded);
   const [guideField, setGuideField] = useState<MeasurementField | null>(null);
 
   // Inputs
@@ -344,6 +344,7 @@ export default function BodyFatEstimator() {
 
   return (
     <section className="container py-6">
+      {!embedded && (
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between group cursor-pointer"
@@ -362,6 +363,7 @@ export default function BodyFatEstimator() {
           </motion.div>
         </div>
       </button>
+      )}
 
       <AnimatePresence>
         {open && (

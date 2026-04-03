@@ -288,8 +288,8 @@ function WorkoutCard({ day, onStart, hasHitGoal, getBestPerformance }: {
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="border border-border bg-card">
-      <button onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between p-4 text-left hover:bg-[var(--secondary)] transition-colors">
+      <div role="button" tabIndex={0} onClick={() => setExpanded(!expanded)} onKeyDown={(e) => e.key === 'Enter' && setExpanded(!expanded)}
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-[var(--secondary)] transition-colors cursor-pointer">
         <div className="flex items-center gap-3">
           <span className="text-xl">{day.icon}</span>
           <div>
@@ -304,7 +304,7 @@ function WorkoutCard({ day, onStart, hasHitGoal, getBestPerformance }: {
           </button>
           {expanded ? <ChevronUp className="w-4 h-4 text-[var(--muted-foreground)]" /> : <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)]" />}
         </div>
-      </button>
+      </div>
       <AnimatePresence>
         {expanded && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
@@ -623,10 +623,11 @@ function ItinerarySection() {
 }
 
 // ── Foot Mobility Section (Collapsible) ──────────────
-function FootMobilitySection() {
-  const [open, setOpen] = useState(false);
+function FootMobilitySection({ embedded = false }: { embedded?: boolean } = {}) {
+  const [open, setOpen] = useState(embedded);
   return (
     <section className="container py-6">
+      {!embedded && (
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between group cursor-pointer"
@@ -638,6 +639,7 @@ function FootMobilitySection() {
           <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-colors" />
         </motion.div>
       </button>
+      )}
       <AnimatePresence>
         {open && (
           <motion.div
@@ -689,6 +691,88 @@ function FootMobilitySection() {
   );
 }
 
+// ── Utility Card (for card grid) ───────────────────────────
+function UtilityCard({ accent, accentBg, icon, title, subtitle, tag, tagColor, children }: {
+  accent: string; accentBg: string; icon: React.ReactNode; title: string;
+  subtitle: string; tag: string; tagColor: string; children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={`border border-border ${accentBg} border-l-4 ${accent} transition-all duration-200 ${
+      open ? "sm:col-span-2 lg:col-span-3" : ""
+    }`}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full p-4 text-left hover:bg-white/[0.02] transition-colors cursor-pointer"
+      >
+        <div className="flex items-start gap-3">
+          <div className="mt-0.5">{icon}</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-mono text-sm font-bold text-foreground tracking-wider">{title}</div>
+            <div className="text-[11px] text-[var(--muted-foreground)] mt-0.5 font-mono">{subtitle}</div>
+            <span className={`inline-block text-[10px] font-mono uppercase tracking-wider mt-2 px-2 py-0.5 ${tagColor}`}>{tag}</span>
+          </div>
+          <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3 }}>
+            <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)]" />
+          </motion.div>
+        </div>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-border">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ── Mode Toggle ──────────────────────────────────────────
+type AppMode = "training" | "trail";
+
+function ModeToggle({ mode, setMode }: { mode: AppMode; setMode: (m: AppMode) => void }) {
+  return (
+    <div className="container py-6">
+      <div className="flex items-center gap-1 p-1 bg-[var(--secondary)] border border-border w-full sm:w-auto sm:inline-flex">
+        <button
+          onClick={() => setMode("training")}
+          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-mono uppercase tracking-[0.2em] transition-all duration-200 ${
+            mode === "training"
+              ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-bold"
+              : "text-[var(--muted-foreground)] hover:text-foreground"
+          }`}
+        >
+          <Dumbbell className="w-3.5 h-3.5" />
+          Training
+        </button>
+        <button
+          onClick={() => setMode("trail")}
+          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-mono uppercase tracking-[0.2em] transition-all duration-200 ${
+            mode === "trail"
+              ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-bold"
+              : "text-[var(--muted-foreground)] hover:text-foreground"
+          }`}
+        >
+          <Mountain className="w-3.5 h-3.5" />
+          Trail
+        </button>
+      </div>
+      <p className="text-[10px] font-mono text-[var(--muted-foreground)] mt-2 tracking-wide">
+        {mode === "training" ? "Body composition, gear prep, analytics & mobility" : "Route map, itinerary, budget, phrasebook & weather"}
+      </p>
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────
 export default function Home() {
   const wt = useWeightTracker();
@@ -697,6 +781,19 @@ export default function Home() {
   const [highlightDay, setHighlightDay] = useState<number | null>(null);
   const [gpsPosition, setGpsPosition] = useState<GpsPosition | null>(null);
   const u = useUnits();
+  // Auto-default to trail mode within 7 days of trip
+  const daysLeft = getDaysUntilTrip();
+  const [mode, setMode] = useState<AppMode>(() => {
+    try {
+      const saved = localStorage.getItem("tmb-app-mode");
+      if (saved === "training" || saved === "trail") return saved;
+    } catch {}
+    return daysLeft <= 7 ? "trail" : "training";
+  });
+  const handleModeChange = (m: AppMode) => {
+    setMode(m);
+    localStorage.setItem("tmb-app-mode", m);
+  };
   // Compute exact totals from stitched GPX elevation profile data
   const totalMi = elevationData.totalDistance;
   const { totalAscent, totalDescent } = useMemo(() => {
@@ -710,6 +807,9 @@ export default function Home() {
   }, []);
   const totalA = totalAscent;
   const totalD = totalDescent;
+
+  // Workout history collapsed state
+  const [workoutOpen, setWorkoutOpen] = useState(false);
 
   const handleSave = () => {
     const session = wl.saveSession();
@@ -758,60 +858,195 @@ export default function Home() {
         </div>
       </section>
 
-      {/* WORKOUT PLAN */}
+      {/* WORKOUT PLAN — Collapsible */}
       <section className="container py-6">
-        <div className="flex items-center justify-between mb-4">
+        <button
+          onClick={() => setWorkoutOpen(!workoutOpen)}
+          className="w-full flex items-center justify-between group cursor-pointer"
+        >
           <h2 className="text-sm uppercase tracking-[0.2em] text-foreground font-mono flex items-center gap-3 font-semibold">
             <span className="text-xl">🏋️</span> Training Protocol
           </h2>
-        </div>
-
-
-        {/* Browse cards (always visible) */}
-        <div className="space-y-2">
-          {WORKOUT_PLAN.map((day) => (
-            <WorkoutCard key={day.id} day={day} onStart={wl.startSession} hasHitGoal={wl.hasHitGoal} getBestPerformance={wl.getBestPerformance} />
-          ))}
-        </div>
-
-        {/* Workout History */}
-        <div className="mt-6">
-          <WorkoutCalendar sessions={wl.sessions} onDelete={wl.deleteSession} />
-        </div>
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{wl.sessions.length} sessions logged</span>
+            <motion.div animate={{ rotate: workoutOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>
+              <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-colors" />
+            </motion.div>
+          </div>
+        </button>
+        <AnimatePresence>
+          {workoutOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.4, ease: "easeInOut" }}
+              className="overflow-hidden"
+            >
+              <div className="mt-4 space-y-2">
+                {WORKOUT_PLAN.map((day) => (
+                  <WorkoutCard key={day.id} day={day} onStart={wl.startSession} hasHitGoal={wl.hasHitGoal} getBestPerformance={wl.getBestPerformance} />
+                ))}
+              </div>
+              <div className="mt-6">
+                <WorkoutCalendar sessions={wl.sessions} onDelete={wl.deleteSession} />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </section>
 
-      {/* TRAINING ANALYTICS */}
-      <TrainingAnalytics />
+      {/* MODE TOGGLE */}
+      <div className="border-t border-border">
+        <ModeToggle mode={mode} setMode={handleModeChange} />
+      </div>
 
-      {/* TMB ITINERARY */}
-      <ItinerarySection />
+      {/* ═══ TRAINING MODE ═══ */}
+      {mode === "training" && (
+        <motion.div
+          key="training"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          {/* All training tools in one card grid */}
+          <section className="container py-8">
+            <h3 className="text-[10px] uppercase tracking-[0.4em] text-[var(--muted-foreground)] font-mono mb-4">Training Tools</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Garmin Analytics Card */}
+              <UtilityCard
+                accent="border-l-cyan-500"
+                accentBg="bg-cyan-500/5"
+                icon={<span className="text-lg">⌚</span>}
+                title="Garmin Analytics"
+                subtitle="Training load & trends"
+                tag="36 activities"
+                tagColor="text-cyan-400 bg-cyan-400/10"
+              >
+                <TrainingAnalytics embedded />
+              </UtilityCard>
 
-      {/* TMB ROUTE MAP */}
-      <TMBRouteMap highlightDay={highlightDay} onDayHover={setHighlightDay} onGpsUpdate={setGpsPosition} />
+              {/* Body Fat Card */}
+              <UtilityCard
+                accent="border-l-[var(--primary)]"
+                accentBg="bg-[var(--primary)]/5"
+                icon={<span className="text-lg">📏</span>}
+                title="Body Fat Estimator"
+                subtitle="Multi-formula composite"
+                tag="Navy method"
+                tagColor="text-[var(--primary)] bg-[var(--primary)]/10"
+              >
+                <BodyFatEstimator embedded />
+              </UtilityCard>
 
-      {/* ELEVATION PROFILE */}
-      <ElevationProfile highlightDay={highlightDay} onDayHover={setHighlightDay} gpsPosition={gpsPosition} />
+              {/* Gear Card */}
+              <UtilityCard
+                accent="border-l-violet-500"
+                accentBg="bg-violet-500/5"
+                icon={<span className="text-lg">🎒</span>}
+                title="Gear Checklist"
+                subtitle="Pack weight tracker"
+                tag="12–16 lbs target"
+                tagColor="text-violet-400 bg-violet-400/10"
+              >
+                <GearChecklist embedded />
+              </UtilityCard>
 
-      {/* BODY FAT ESTIMATOR */}
-      <BodyFatEstimator />
+              {/* Technique Videos Card */}
+              <UtilityCard
+                accent="border-l-red-500"
+                accentBg="bg-red-500/5"
+                icon={<span className="text-lg">🎥</span>}
+                title="Technique Videos"
+                subtitle="Descent & trail skills"
+                tag="Video library"
+                tagColor="text-red-400 bg-red-400/10"
+              >
+                <TechniqueVideos embedded />
+              </UtilityCard>
 
-      {/* GEAR CHECKLIST (Collapsible) */}
-      <GearChecklist />
+              {/* Foot Mobility Card */}
+              <UtilityCard
+                accent="border-l-teal-500"
+                accentBg="bg-teal-500/5"
+                icon={<span className="text-lg">🦶</span>}
+                title="Foot Mobility"
+                subtitle="High transverse arch protocol"
+                tag="Daily drills"
+                tagColor="text-teal-400 bg-teal-400/10"
+              >
+                <FootMobilitySection embedded />
+              </UtilityCard>
+            </div>
+          </section>
+        </motion.div>
+      )}
 
-      {/* DAILY BUDGET & FOOD STOPS */}
-      <DailyBudget />
+      {/* ═══ TRAIL MODE ═══ */}
+      {mode === "trail" && (
+        <motion.div
+          key="trail"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          {/* Full-width visual sections — with accents */}
+          <div className="border-l-4 border-l-indigo-500 bg-indigo-500/[0.03]">
+            <ItinerarySection />
+          </div>
+          <div className="border-l-4 border-l-green-500 bg-green-500/[0.03]">
+            <TMBRouteMap highlightDay={highlightDay} onDayHover={setHighlightDay} onGpsUpdate={setGpsPosition} />
+          </div>
+          <div className="border-l-4 border-l-rose-500 bg-rose-500/[0.03]">
+            <ElevationProfile highlightDay={highlightDay} onDayHover={setHighlightDay} gpsPosition={gpsPosition} />
+          </div>
 
-      {/* TRAVEL TOOLKIT — Currency, Phrasebook, Cultural Etiquette */}
-      <TravelToolkit />
+          {/* Utility card grid */}
+          <section className="container py-8">
+            <h3 className="text-[10px] uppercase tracking-[0.4em] text-[var(--muted-foreground)] font-mono mb-4">Trail Tools</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {/* Budget Card */}
+              <UtilityCard
+                accent="border-l-emerald-500"
+                accentBg="bg-emerald-500/5"
+                icon={<span className="text-lg">💶</span>}
+                title="Budget & Food"
+                subtitle="€196–344 + CHF 60–95"
+                tag="10 stages"
+                tagColor="text-emerald-400 bg-emerald-400/10"
+              >
+                <DailyBudget embedded />
+              </UtilityCard>
 
-      {/* WEATHER AVERAGES */}
-      <WeatherForecast />
+              {/* Travel Toolkit Card */}
+              <UtilityCard
+                accent="border-l-amber-500"
+                accentBg="bg-amber-500/5"
+                icon={<span className="text-lg">🌍</span>}
+                title="Travel Toolkit"
+                subtitle="Currency · Phrases · Etiquette"
+                tag="FR · IT · CH"
+                tagColor="text-amber-400 bg-amber-400/10"
+              >
+                <TravelToolkit embedded />
+              </UtilityCard>
 
-      {/* TECHNIQUE VIDEO LIBRARY */}
-      <TechniqueVideos />
-
-      {/* FOOT MOBILITY (Collapsible) */}
-      <FootMobilitySection />
+              {/* Weather Card */}
+              <UtilityCard
+                accent="border-l-sky-500"
+                accentBg="bg-sky-500/5"
+                icon={<span className="text-lg">⛅</span>}
+                title="Weather Averages"
+                subtitle="Late July conditions"
+                tag="Historical"
+                tagColor="text-sky-400 bg-sky-400/10"
+              >
+                <WeatherForecast embedded />
+              </UtilityCard>
+            </div>
+          </section>
+        </motion.div>
+      )}
 
       {/* FOOTER */}
       <footer className="border-t border-border py-6">

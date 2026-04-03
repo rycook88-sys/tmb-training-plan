@@ -127,8 +127,8 @@ const CATEGORIES: Category[] = [
 ];
 
 /* ── component ── */
-export default function TechniqueVideos() {
-  const [open, setOpen] = useState(false);
+export default function TechniqueVideos({ embedded = false }: { embedded?: boolean } = {}) {
+  const [open, setOpen] = useState(embedded);
   const [expandedCat, setExpandedCat] = useState<string | null>(null);
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
 
@@ -136,6 +136,7 @@ export default function TechniqueVideos() {
 
   return (
     <section className="container py-6">
+      {!embedded && (
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between group cursor-pointer"
@@ -150,6 +151,7 @@ export default function TechniqueVideos() {
           </motion.div>
         </div>
       </button>
+      )}
 
       <AnimatePresence>
         {open && (

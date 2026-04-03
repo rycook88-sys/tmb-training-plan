@@ -471,8 +471,8 @@ const STOP_ICON: Record<string, typeof Coffee> = {
 };
 
 /* ── component ── */
-export default function DailyBudget() {
-  const [open, setOpen] = useState(false);
+export default function DailyBudget({ embedded = false }: { embedded?: boolean } = {}) {
+  const [open, setOpen] = useState(embedded);
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
   const totals = useMemo(() => {
@@ -497,6 +497,7 @@ export default function DailyBudget() {
   return (
     <section className="container py-6">
       {/* Header */}
+      {!embedded && (
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between group cursor-pointer"
@@ -513,6 +514,7 @@ export default function DailyBudget() {
           </motion.div>
         </div>
       </button>
+      )}
 
       <AnimatePresence>
         {open && (

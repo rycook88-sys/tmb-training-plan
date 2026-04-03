@@ -146,12 +146,13 @@ const COUNTRY_FLAG: Record<string, string> = {
 };
 
 /* ── component ── */
-export default function WeatherForecast() {
-  const [open, setOpen] = useState(false);
+export default function WeatherForecast({ embedded = false }: { embedded?: boolean } = {}) {
+  const [open, setOpen] = useState(embedded);
   const u = useUnits();
 
   return (
     <section className="container py-6">
+      {!embedded && (
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between group cursor-pointer"
@@ -166,6 +167,7 @@ export default function WeatherForecast() {
           </motion.div>
         </div>
       </button>
+      )}
 
       <AnimatePresence>
         {open && (

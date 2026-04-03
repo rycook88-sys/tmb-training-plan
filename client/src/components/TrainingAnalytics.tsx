@@ -524,11 +524,12 @@ function SummaryStats() {
 }
 
 // ── Main Export ───────────────────────────────────────────────
-export default function TrainingAnalytics() {
-  const [open, setOpen] = useState(false);
+export default function TrainingAnalytics({ embedded = false }: { embedded?: boolean } = {}) {
+  const [open, setOpen] = useState(embedded);
 
   return (
     <section className="container py-8">
+      {!embedded && (
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between group cursor-pointer"
@@ -545,6 +546,7 @@ export default function TrainingAnalytics() {
           </motion.div>
         </div>
       </button>
+      )}
       <AnimatePresence>
         {open && (
           <motion.div

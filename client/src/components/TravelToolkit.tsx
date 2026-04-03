@@ -819,11 +819,12 @@ function CulturalGuide() {
    MAIN TRAVEL TOOLKIT COMPONENT
    ═══════════════════════════════════════════════════════ */
 
-export default function TravelToolkit() {
-  const [isOpen, setIsOpen] = useState(false);
+export default function TravelToolkit({ embedded = false }: { embedded?: boolean } = {}) {
+  const [isOpen, setIsOpen] = useState(embedded);
 
   return (
     <section className="container py-6">
+      {!embedded && (
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="w-full flex items-center justify-between group cursor-pointer"
@@ -838,6 +839,7 @@ export default function TravelToolkit() {
           </motion.div>
         </div>
       </button>
+      )}
 
       <AnimatePresence>
         {isOpen && (
