@@ -333,8 +333,8 @@ function FoodStopDot({ cx, cy, stop }: { cx?: number; cy?: number; stop: FoodSto
   );
 }
 
-export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void; gpsPosition?: { lat: number; lng: number } | null }) {
-  const [open, setOpen] = useState(false);
+export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition, embedded }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void; gpsPosition?: { lat: number; lng: number } | null; embedded?: boolean }) {
+  const [open, setOpen] = useState(embedded ? true : false);
   const [customScale, setCustomScale] = useState(1); // continuous zoom scale
   const [windowStart, setWindowStart] = useState(0);
   const [mode, setMode] = useState<ViewMode>("country");
@@ -535,26 +535,28 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
   }, [highlightDay]);
 
   return (
-    <section className="container py-6">
-      {/* Header */}
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between group cursor-pointer"
-      >
-        <h2 className="text-sm uppercase tracking-[0.2em] text-foreground font-mono flex items-center gap-3 font-semibold">
-          <span className="text-xl">📈</span> Elevation Profile
-        </h2>
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-mono text-[var(--muted-foreground)]">{data.totalDistance} mi · {maxEle.toLocaleString()}' peak · 10 stages</span>
-          <ChevronDown
-            className={`w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-all duration-300 ${open ? "rotate-180" : ""}`}
-          />
-        </div>
-      </button>
+    <section className={embedded ? "" : "container py-6"}>
+      {/* Header — hidden when embedded inside TMBRouteMap */}
+      {!embedded && (
+        <button
+          onClick={() => setOpen(!open)}
+          className="w-full flex items-center justify-between group cursor-pointer"
+        >
+          <h2 className="text-sm uppercase tracking-[0.2em] text-foreground font-mono flex items-center gap-3 font-semibold">
+            <span className="text-xl">📈</span> Elevation Profile
+          </h2>
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-mono text-[var(--muted-foreground)]">{data.totalDistance} mi · {maxEle.toLocaleString()}' peak · 10 stages</span>
+            <ChevronDown
+              className={`w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-all duration-300 ${open ? "rotate-180" : ""}`}
+            />
+          </div>
+        </button>
+      )}
 
       {/* Content */}
       {open && (
-        <div className="mt-4 border border-border bg-card px-4 py-6">
+        <div className={embedded ? "bg-card px-4 py-6" : "mt-4 border border-border bg-card px-4 py-6"}>
           {/* Mode Toggle + Legend + Zoom Controls */}
           <div className="flex flex-col gap-3 mb-4 px-2">
             {/* Top row: Mode toggle + Zoom controls */}

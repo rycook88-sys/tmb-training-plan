@@ -15,7 +15,6 @@ import TrainingAnalytics from "@/components/TrainingAnalytics";
 import { useUnits } from "@/contexts/UnitContext";
 import { TMBRouteMap } from "@/components/TMBRouteMap";
 import type { GpsPosition } from "@/lib/gps-tracker";
-import ElevationProfile from "@/components/ElevationProfile";
 import GearChecklist from "@/components/GearChecklist";
 import DailyBudget from "@/components/DailyBudget";
 import WeatherForecast from "@/components/WeatherForecast";
@@ -997,9 +996,7 @@ export default function Home() {
           <div className="border-l-4 border-l-green-500 bg-green-500/[0.03]">
             <TMBRouteMap highlightDay={highlightDay} onDayHover={setHighlightDay} onGpsUpdate={setGpsPosition} />
           </div>
-          <div className="border-l-4 border-l-rose-500 bg-rose-500/[0.03]">
-            <ElevationProfile highlightDay={highlightDay} onDayHover={setHighlightDay} gpsPosition={gpsPosition} />
-          </div>
+
 
           {/* Utility card grid */}
           <section className="container py-8">

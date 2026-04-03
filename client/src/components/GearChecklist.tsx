@@ -178,7 +178,7 @@ function AddItemForm({ onAdd, onCancel }: { onAdd: (item: GearItem) => void; onC
 }
 
 /* ── Main Component ────────────────────────────────── */
-export default function GearChecklist({ embedded = false }: { embedded?: boolean } = {}) {
+export default function GearChecklist({ embedded = false }: { embedded?: boolean }) {
   const u = useUnits();
   const [open, setOpen] = useState(embedded);
   const [gear, setGear] = useState<GearItem[]>(loadGear);

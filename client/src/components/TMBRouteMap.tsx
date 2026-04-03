@@ -3,7 +3,8 @@
 // Trail segments colored by country (France/Italy/Switzerland)
 // Food stop markers appear when a specific day is selected
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ChevronDown, Map, Bus, Layers, Mountain, UtensilsCrossed, LocateFixed, Navigation, Play, Square, MoreHorizontal, X } from "lucide-react";
+import { ChevronDown, Map, Bus, Layers, Mountain, UtensilsCrossed, LocateFixed, Navigation, Play, Square, MoreHorizontal, X, BarChart3 } from "lucide-react";
+import ElevationProfile from "@/components/ElevationProfile";
 import { TMB_ITINERARY } from "@/lib/data";
 import { FOOD_STOPS, DAY_MILES, getStopsForDay } from "@/lib/tmb-food-stops";
 import { OfflineMapManager } from "@/components/OfflineMapManager";
@@ -205,6 +206,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [showFoodStops, setShowFoodStops] = useState(true);
   const [mapLayer, setMapLayer] = useState<"topo" | "satellite">("topo");
+  const [viewMode, setViewMode] = useState<"map" | "elevation">("map");
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
@@ -750,10 +752,10 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
         className="w-full flex items-center justify-between group cursor-pointer"
       >
         <h2 className="text-sm uppercase tracking-[0.2em] text-foreground font-mono flex items-center gap-3 font-semibold">
-          <span className="text-xl">🗺️</span> TMB Route Map
+          <span className="text-xl">{viewMode === "map" ? "🗺️" : "📈"}</span> {viewMode === "map" ? "TMB Route Map" : "Elevation Profile"}
         </h2>
         <div className="flex items-center gap-3">
-          <span className="text-xs font-mono text-[var(--muted-foreground)]">10 hiking days · 3 countries · real trail data</span>
+          <span className="text-xs font-mono text-[var(--muted-foreground)]">{viewMode === "map" ? "10 hiking days · 3 countries · real trail data" : "109.5 mi · 8,244' peak · 10 stages"}</span>
           <ChevronDown
             className={`w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-all duration-300 ${
               isOpen ? "rotate-180" : ""
@@ -868,7 +870,22 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                   <Navigation className="w-3 h-3" /> CENTER
                 </button>
               )}
-              {/* 4. More menu — contains Locate Me, Simulate, Download Maps, Avatar */}
+              {/* 4. View toggle — Map / Elevation */}
+              <button
+                onClick={() => setViewMode(viewMode === "map" ? "elevation" : "map")}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono transition-colors ${
+                  viewMode === "elevation"
+                    ? "bg-rose-500/15 border-rose-500/40 text-rose-400 hover:bg-rose-500/25"
+                    : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                {viewMode === "map" ? (
+                  <><BarChart3 className="w-3 h-3" /> ELEVATION</>
+                ) : (
+                  <><Map className="w-3 h-3" /> ROUTE MAP</>
+                )}
+              </button>
+              {/* 5. More menu — contains Locate Me, Simulate, Download Maps, Avatar */}
               <div className="relative" ref={moreMenuRef}>
                 <button
                   onClick={() => setMoreMenuOpen(!moreMenuOpen)}
@@ -979,14 +996,23 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
             </div>
           )}
 
-          {/* Map Container */}
-          <div className="rounded-xl overflow-hidden border border-slate-700/50">
-            <div
-              ref={mapContainerRef}
-              className="h-[450px] sm:h-[550px] w-full"
-              style={{ background: "#1a1a2e" }}
-            />
+          {/* Map Container — only visible in map mode */}
+          <div style={{ display: viewMode === "map" ? "block" : "none" }}>
+            <div className="rounded-xl overflow-hidden border border-slate-700/50">
+              <div
+                ref={mapContainerRef}
+                className="h-[450px] sm:h-[550px] w-full"
+                style={{ background: "#1a1a2e" }}
+              />
+            </div>
           </div>
+
+          {/* Elevation Profile — only visible in elevation mode */}
+          {viewMode === "elevation" && (
+            <div className="border border-slate-700/50 rounded-xl overflow-hidden">
+              <ElevationProfile highlightDay={highlightDay} onDayHover={onDayHover} gpsPosition={gpsPosition ? { lat: gpsPosition.lat, lng: gpsPosition.lng } : null} embedded />
+            </div>
+          )}
 
           {/* Accommodation thumbnails */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mt-3">
