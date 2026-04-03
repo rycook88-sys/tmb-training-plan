@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Camera, Check, Edit3, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown,
   Trash2, X, AlertTriangle, TrendingUp, Pill, Utensils, Plus, RotateCcw,
-  Loader2, Sparkles, UtensilsCrossed, Zap,
+  Loader2, Sparkles,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { DAILY_VITAMINS, getDailyVitaminTotals, MACRO_TARGETS } from "@/lib/vitamin-data";
@@ -267,9 +267,6 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const [showVitamins, setShowVitamins] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const [showFillMacros, setShowFillMacros] = useState(false);
-  const [macroSuggestions, setMacroSuggestions] = useState<any[]>([]);
-  const [macroSummary, setMacroSummary] = useState<string>("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -278,7 +275,6 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const analyzeMutation = trpc.nutrition.analyzePhoto.useMutation();
   const reAnalyzeMutation = trpc.nutrition.reAnalyze.useMutation();
   const trendsMutation = trpc.nutrition.getTrends.useMutation();
-  const fillMacrosMutation = trpc.nutrition.fillMyMacros.useMutation();
 
   // Persist logs
   useEffect(() => { saveLogs(logs); }, [logs]);
@@ -541,48 +537,6 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
     });
   }, []);
 
-  /* ── Fill My Macros ─────────────────────────── */
-  const daysTracked = useMemo(() => logs.filter((l) => l.entries.length > 0).length, [logs]);
-
-  const handleFillMacros = useCallback(async () => {
-    setShowFillMacros(true);
-    setMacroSuggestions([]);
-    setMacroSummary("");
-
-    const remaining = {
-      calories: Math.max(MACRO_TARGETS.calories - dailyTotals.calories, 0),
-      protein: Math.max(MACRO_TARGETS.protein - dailyTotals.protein, 0),
-      carbs: Math.max(MACRO_TARGETS.carbs - dailyTotals.carbs, 0),
-      fat: Math.max(MACRO_TARGETS.fat - dailyTotals.fat, 0),
-    };
-
-    const consumed = {
-      calories: dailyTotals.calories,
-      protein: dailyTotals.protein,
-      carbs: dailyTotals.carbs,
-      fat: dailyTotals.fat,
-    };
-
-    // Determine time of day for context-aware suggestions
-    const hour = new Date().getHours();
-    const timeOfDay = hour < 10 ? "morning/breakfast" : hour < 14 ? "lunch" : hour < 17 ? "afternoon snack" : "dinner/evening";
-
-    try {
-      const result = await fillMacrosMutation.mutateAsync({
-        remaining,
-        consumed,
-        targets: MACRO_TARGETS,
-        daysTracked,
-        timeOfDay,
-      });
-      setMacroSuggestions(result.suggestions || []);
-      setMacroSummary(result.summary || "");
-    } catch (err) {
-      console.error("Fill macros failed:", err);
-      setMacroSummary("Could not generate suggestions right now.");
-    }
-  }, [dailyTotals, daysTracked, fillMacrosMutation]);
-
   /* ── Cancel capture ────────────────────────────── */
   const handleCancelCapture = useCallback(() => {
     setCapturedImage(null);
@@ -593,7 +547,6 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const isAnalyzing = analyzeMutation.isPending;
   const isReAnalyzing = reAnalyzeMutation.isPending;
   const isTrendLoading = trendsMutation.isPending;
-  const isFillLoading = fillMacrosMutation.isPending;
 
   return (
     <div className={embedded ? "" : "container py-6"}>
@@ -664,15 +617,6 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
         >
           <TrendingUp className="w-3.5 h-3.5" />
           {isTrendLoading ? "Analyzing..." : "Trends"}
-        </button>
-
-        <button
-          onClick={handleFillMacros}
-          disabled={isFillLoading}
-          className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-emerald-400 hover:border-emerald-400 transition-colors disabled:opacity-50"
-        >
-          <Zap className="w-3.5 h-3.5" />
-          {isFillLoading ? "Thinking..." : "Fill My Macros"}
         </button>
       </div>
 
@@ -823,96 +767,6 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                   existingFeedback={feedback.find((f) => f.id === rec.id)}
                 />
               ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Fill My Macros Panel ──────────────── */}
-      <AnimatePresence>
-        {showFillMacros && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="mx-4 mb-3 border border-emerald-500/30 bg-emerald-500/5 p-3">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Zap className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-emerald-400 font-bold">Fill My Macros</span>
-                </div>
-                <button onClick={() => setShowFillMacros(false)} className="text-[var(--muted-foreground)] hover:text-foreground p-0.5">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {isFillLoading && (
-                <div className="flex items-center gap-2 py-3">
-                  <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
-                  <span className="text-xs font-mono text-[var(--muted-foreground)]">Finding foods to fill your gaps...</span>
-                </div>
-              )}
-
-              {!isFillLoading && daysTracked < 3 && (
-                <div className="py-3 text-center">
-                  <span className="text-xs font-mono text-[var(--muted-foreground)]">
-                    Track at least 3 days of meals before getting suggestions
-                  </span>
-                </div>
-              )}
-
-              {!isFillLoading && daysTracked >= 3 && macroSuggestions.length === 0 && macroSummary && (
-                <div className="py-3 text-center">
-                  <span className="text-xs font-mono text-[var(--muted-foreground)]">{macroSummary}</span>
-                </div>
-              )}
-
-              {!isFillLoading && macroSummary && macroSuggestions.length > 0 && (
-                <div className="mb-2 text-[11px] font-mono text-emerald-400/80 italic">{macroSummary}</div>
-              )}
-
-              {!isFillLoading && macroSuggestions.map((sug: any) => (
-                <div key={sug.id} className="border border-border bg-card p-3 mb-2 last:mb-0">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <UtensilsCrossed className="w-3 h-3 text-emerald-400 flex-shrink-0" />
-                        <span className="font-mono text-xs font-bold text-foreground">{sug.foodName}</span>
-                      </div>
-                      <div className="text-[10px] font-mono text-[var(--muted-foreground)] mt-0.5 italic">{sug.portion}</div>
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-[10px] font-mono">
-                        <span className="text-emerald-400 font-bold">{sug.calories} cal</span>
-                        <span className="text-blue-400">P: {sug.protein}g</span>
-                        <span className="text-amber-400">C: {sug.carbs}g</span>
-                        <span className="text-rose-400">F: {sug.fat}g</span>
-                      </div>
-                      <div className="text-[10px] text-[var(--muted-foreground)] mt-1 leading-relaxed">{sug.reason}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {!isFillLoading && macroSuggestions.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-border">
-                  <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] font-mono text-[var(--muted-foreground)]">
-                    <span>If you eat all suggestions:</span>
-                    <span className="text-emerald-400">
-                      +{macroSuggestions.reduce((s: number, sg: any) => s + sg.calories, 0)} cal
-                    </span>
-                    <span className="text-blue-400">
-                      +{macroSuggestions.reduce((s: number, sg: any) => s + sg.protein, 0)}g protein
-                    </span>
-                    <span className="text-amber-400">
-                      +{macroSuggestions.reduce((s: number, sg: any) => s + sg.carbs, 0)}g carbs
-                    </span>
-                    <span className="text-rose-400">
-                      +{macroSuggestions.reduce((s: number, sg: any) => s + sg.fat, 0)}g fat
-                    </span>
-                  </div>
-                </div>
-              )}
             </div>
           </motion.div>
         )}
