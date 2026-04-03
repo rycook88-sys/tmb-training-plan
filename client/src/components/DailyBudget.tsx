@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { TMB_ITINERARY } from "@/lib/data";
 import { FOOD_STOPS, DAY_MILES } from "@/lib/tmb-food-stops";
+import { useUnits } from "@/contexts/UnitContext";
 
 /* ── types ── */
 interface FoodStop {
@@ -472,6 +473,7 @@ const STOP_ICON: Record<string, typeof Coffee> = {
 
 /* ── component ── */
 export default function DailyBudget({ embedded = false }: { embedded?: boolean } = {}) {
+  const u = useUnits();
   const [open, setOpen] = useState(embedded);
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
@@ -638,10 +640,10 @@ export default function DailyBudget({ embedded = false }: { embedded?: boolean }
                               {/* Day summary bar */}
                               {dayMiles > 0 && itDay && (
                                 <div className="flex flex-wrap items-center gap-3 py-2 px-3 bg-[var(--primary)]/5 border border-[var(--primary)]/20 text-[10px] font-mono">
-                                  <span className="text-[var(--primary)] font-bold">{dayMiles} mi total</span>
+                                  <span className="text-[var(--primary)] font-bold">{u.dist(dayMiles)} {u.distUnit} total</span>
                                   <span className="text-[var(--muted-foreground)]">·</span>
-                                  <span className="text-green-400">↑ {itDay.ascent.toLocaleString()} ft</span>
-                                  <span className="text-red-400">↓ {itDay.descent.toLocaleString()} ft</span>
+                                  <span className="text-green-400">↑ {u.elev(itDay.ascent)} {u.elevUnit}</span>
+                                  <span className="text-red-400">↓ {u.elev(itDay.descent)} {u.elevUnit}</span>
                                   <span className="text-[var(--muted-foreground)]">·</span>
                                   <span className="text-[var(--muted-foreground)]">{itDay.duration}</span>
                                 </div>
@@ -674,7 +676,7 @@ export default function DailyBudget({ embedded = false }: { embedded?: boolean }
                                         {stop.mileIn !== undefined && stop.mileIn > 0 && (
                                           <span className="text-[10px] font-mono bg-[var(--primary)]/10 text-[var(--primary)] px-1.5 py-0.5 flex items-center gap-0.5">
                                             <Navigation className="w-2.5 h-2.5" />
-                                            mi {stop.mileIn.toFixed(1)}
+                                            {u.distUnit} {u.isMetric ? (stop.mileIn * 1.60934).toFixed(1) : stop.mileIn.toFixed(1)}
                                           </span>
                                         )}
                                         <span className={`flex items-center gap-1 text-[10px] font-mono ${pay.color}`}>

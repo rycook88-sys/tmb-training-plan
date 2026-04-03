@@ -5,6 +5,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Info, X, Camera, Trash2, RotateCcw } from "lucide-react";
+import { useUnits } from "@/contexts/UnitContext";
 
 // ── Guide images (CDN) ──────────────────────────────────────
 const GUIDE_IMAGES: Record<string, string> = {
@@ -194,6 +195,7 @@ function GuideModal({ field, onClose }: { field: MeasurementField; onClose: () =
 
 // ── Main Component ──────────────────────────────────────────
 export default function BodyFatEstimator({ embedded = false }: { embedded?: boolean } = {}) {
+  const uu = useUnits();
   const [open, setOpen] = useState(embedded);
   const [guideField, setGuideField] = useState<MeasurementField | null>(null);
 
@@ -273,7 +275,7 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
       shortName: "YMCA",
       bf: ymcaResult ?? 0,
       available: ymcaResult !== null && ymcaResult > 0,
-      note: `Uses waist, weight (${weightLbs} lb)`,
+      note: `Uses waist, weight (${uu.wt(weightLbs)} ${uu.wtUnit})`,
     },
     {
       name: "Covert Bailey Method",
@@ -387,9 +389,10 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                       value={heightFt}
                       onChange={e => setHeightFt(e.target.value)}
                       className="w-14 bg-background border border-border text-foreground text-sm font-mono px-2 py-1.5 text-center focus:outline-none focus:border-[var(--primary)] transition-colors"
-                      placeholder="ft"
+                      placeholder={uu.isMetric ? "cm" : "ft"}
                     />
-                    <span className="text-xs font-mono text-muted-foreground">ft</span>
+                    <span className="text-xs font-mono text-muted-foreground">{uu.isMetric ? "cm" : "ft"}</span>
+                    {!uu.isMetric && (<>
                     <input
                       type="number"
                       value={heightInR}
@@ -398,6 +401,7 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                       placeholder="in"
                     />
                     <span className="text-xs font-mono text-muted-foreground">in</span>
+                    </>)}
                   </div>
                 </div>
                 <div>
@@ -419,7 +423,7 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground block mb-1.5">Weight (lb)</label>
+                  <label className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground block mb-1.5">Weight ({uu.wtUnit})</label>
                   <input
                     type="number"
                     step="0.5"
@@ -495,13 +499,13 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                       <div>
                         <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground block mb-0.5">Est. Fat Mass</span>
                         <span className="text-sm font-mono text-foreground">
-                          ~{((composite / 100) * weightLbs).toFixed(0)} lbs
+                          ~{uu.wt((composite / 100) * weightLbs, 0)} {uu.wtUnit}
                         </span>
                       </div>
                       <div>
                         <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground block mb-0.5">Est. Lean Mass</span>
                         <span className="text-sm font-mono text-[var(--primary)]">
-                          ~{(weightLbs - (composite / 100) * weightLbs).toFixed(0)} lbs
+                          ~{uu.wt(weightLbs - (composite / 100) * weightLbs, 0)} {uu.wtUnit}
                         </span>
                       </div>
                     </div>
@@ -663,7 +667,7 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                             <span className={`w-16 shrink-0 font-bold ${
                               isCurrent ? "text-[var(--primary)]" : isTarget ? "text-green-400" : "text-foreground"
                             }`}>
-                              {p.weight} lb
+                              {uu.wt(p.weight, 0)} {uu.wtUnit}
                             </span>
                             <span className={`w-14 text-right font-bold ${pCat.color}`}>
                               {p.bf.toFixed(1)}%

@@ -62,6 +62,7 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
   entries: { date: string; weight: number }[];
   onAddWeight: (w: number) => void;
 }) {
+  const u = useUnits();
   const [inputVal, setInputVal] = useState("");
   const [showInput, setShowInput] = useState(false);
   const handleSubmit = (e: React.FormEvent) => {
@@ -76,7 +77,7 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
     <div className="border border-border p-5 bg-card">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)]">Altitude Gauge</h3>
-        <span className="font-mono text-xs text-[var(--muted-foreground)]">{ATHLETE.startWeight} → {ATHLETE.goalWeight} lb</span>
+        <span className="font-mono text-xs text-[var(--muted-foreground)]">{u.wt(ATHLETE.startWeight, 0)} → {u.wt(ATHLETE.goalWeight, 0)} {u.wtUnit}</span>
       </div>
       <div className="flex gap-6 items-center">
         <div className="relative" style={{ width: 48, height: gaugeH }}>
@@ -89,25 +90,25 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
             transition={{ duration: 1.5, ease: "easeOut" }} />
           <div className="absolute left-0 right-0 top-0 h-px bg-[var(--primary)] opacity-50" />
           <div className="absolute left-0 right-0 bottom-0 h-px bg-border" />
-          <span className="absolute -right-8 top-0 text-[10px] font-mono text-[var(--primary)] translate-y-[-50%]">{ATHLETE.goalWeight}</span>
-          <span className="absolute -right-8 bottom-0 text-[10px] font-mono text-[var(--muted-foreground)] translate-y-[50%]">{ATHLETE.startWeight}</span>
+          <span className="absolute -right-8 top-0 text-[10px] font-mono text-[var(--primary)] translate-y-[-50%]">{u.wt(ATHLETE.goalWeight, 0)}</span>
+          <span className="absolute -right-8 bottom-0 text-[10px] font-mono text-[var(--muted-foreground)] translate-y-[50%]">{u.wt(ATHLETE.startWeight, 0)}</span>
         </div>
         <div className="flex-1">
           <div className="font-mono text-4xl font-bold text-foreground leading-none">
-            {currentWeight}<span className="text-lg text-[var(--muted-foreground)] ml-1">lb</span>
+            {u.wt(currentWeight, 0)}<span className="text-lg text-[var(--muted-foreground)] ml-1">{u.wtUnit}</span>
           </div>
           <div className="mt-2 flex items-center gap-2">
             {goalReached ? (
               <span className="text-xs font-mono text-amber-400 flex items-center gap-1"><Trophy className="w-3 h-3" /> GOAL REACHED</span>
             ) : (
-              <span className="text-xs font-mono text-[var(--muted-foreground)]">{currentWeight - ATHLETE.goalWeight} lb to go</span>
+              <span className="text-xs font-mono text-[var(--muted-foreground)]">{u.wt(currentWeight - ATHLETE.goalWeight, 0)} {u.wtUnit} to go</span>
             )}
           </div>
           <div className="mt-1 text-xs font-mono text-[var(--primary)]">{Math.round(progress)}% complete</div>
           <div className="mt-4 space-y-1">
             {entries.slice(-4).map((e) => (
               <div key={e.date} className="flex justify-between text-xs font-mono text-[var(--muted-foreground)]">
-                <span>{e.date}</span><span>{e.weight} lb</span>
+                <span>{e.date}</span><span>{u.wt(e.weight)} {u.wtUnit}</span>
               </div>
             ))}
           </div>
@@ -511,6 +512,7 @@ function WorkoutCalendar({ sessions, onDelete }: { sessions: WorkoutSession[]; o
 
 // ── Itinerary Row ─────────────────────────────────────────
 function ItineraryRow({ day }: { day: ItineraryDay }) {
+  const u = useUnits();
   const diffColor: Record<string, string> = {
     easy: "text-green-400", moderate: "text-yellow-400",
     hard: "text-[var(--primary)]", brutal: "text-red-400",
@@ -526,12 +528,12 @@ function ItineraryRow({ day }: { day: ItineraryDay }) {
         <div className="min-w-0">
           <div className="font-mono text-xs text-foreground truncate">{day.from} → {day.to}</div>
           <div className="text-[10px] text-[var(--muted-foreground)] sm:hidden mt-0.5">
-            {day.distanceMi} mi · ↑{day.ascent}' · ↓{day.descent}' · {day.duration}
+            {u.dist(day.distanceMi)} {u.distUnit} · ↑{u.elev(day.ascent)} {u.elevUnit} · ↓{u.elev(day.descent)} {u.elevUnit} · {day.duration}
           </div>
         </div>
-        <span className="hidden sm:block font-mono text-xs text-[var(--muted-foreground)] text-right">{day.distanceMi} mi</span>
-        <span className="hidden sm:flex font-mono text-xs text-green-400 items-center justify-end gap-0.5"><ArrowUp className="w-3 h-3" />{day.ascent}'</span>
-        <span className="hidden sm:flex font-mono text-xs text-red-400 items-center justify-end gap-0.5"><ArrowDown className="w-3 h-3" />{day.descent}'</span>
+        <span className="hidden sm:block font-mono text-xs text-[var(--muted-foreground)] text-right">{u.dist(day.distanceMi)} {u.distUnit}</span>
+        <span className="hidden sm:flex font-mono text-xs text-green-400 items-center justify-end gap-0.5"><ArrowUp className="w-3 h-3" />{u.elev(day.ascent)} {u.elevUnit}</span>
+        <span className="hidden sm:flex font-mono text-xs text-red-400 items-center justify-end gap-0.5"><ArrowDown className="w-3 h-3" />{u.elev(day.descent)} {u.elevUnit}</span>
         <span className="hidden sm:block font-mono text-xs text-[var(--muted-foreground)] text-right">{day.duration}</span>
         <span className={`font-mono text-[10px] uppercase tracking-wider text-right px-2 py-0.5 ${diffColor[day.difficulty]} ${diffBg[day.difficulty]} justify-self-end`}>
           {day.difficulty}
@@ -544,6 +546,7 @@ function ItineraryRow({ day }: { day: ItineraryDay }) {
 
 // ── Elevation Chart ───────────────────────────────────────
 function ElevationChart() {
+  const u = useUnits();
   const maxA = Math.max(...TMB_ITINERARY.map((d) => d.ascent));
   const maxD = Math.max(...TMB_ITINERARY.map((d) => d.descent));
   const bw = 100 / TMB_ITINERARY.length;
@@ -567,8 +570,8 @@ function ElevationChart() {
         <line x1="0" y1="20" x2="100" y2="20" stroke="oklch(0.25 0.01 250)" strokeWidth="0.3" />
       </svg>
       <div className="flex justify-between mt-2">
-        <span className="flex items-center gap-1 text-[10px] font-mono text-green-400"><ArrowUp className="w-3 h-3" /> Ascent</span>
-        <span className="flex items-center gap-1 text-[10px] font-mono text-[var(--primary)]"><ArrowDown className="w-3 h-3" /> Descent</span>
+        <span className="flex items-center gap-1 text-[10px] font-mono text-green-400"><ArrowUp className="w-3 h-3" /> Ascent ({u.elevUnit})</span>
+        <span className="flex items-center gap-1 text-[10px] font-mono text-[var(--primary)]"><ArrowDown className="w-3 h-3" /> Descent ({u.elevUnit})</span>
       </div>
     </div>
   );
@@ -945,7 +948,7 @@ export default function Home() {
                 icon={<span className="text-lg">🎒</span>}
                 title="Gear Checklist"
                 subtitle="Pack weight tracker"
-                tag="12–16 lbs target"
+                tag={`${u.wt(12, 0)}–${u.wt(16, 0)} ${u.wtUnit} target`}
                 tagColor="text-violet-400 bg-violet-400/10"
               >
                 <GearChecklist embedded />

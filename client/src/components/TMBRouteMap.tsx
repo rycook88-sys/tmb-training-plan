@@ -10,6 +10,7 @@ import { FOOD_STOPS, DAY_MILES, getStopsForDay } from "@/lib/tmb-food-stops";
 import { OfflineMapManager } from "@/components/OfflineMapManager";
 import AvatarCropper, { getAvatarUrl, onAvatarChange } from "@/components/AvatarCropper";
 import { watchPosition, clearWatch, haversineMeters, metersToMiles, type GpsPosition } from "@/lib/gps-tracker";
+import { useUnits } from "@/contexts/UnitContext";
 import trailDataRaw from "@/lib/tmb-trail-data.json";
 import countrySegmentsRaw from "@/lib/tmb-country-segments.json";
 import "leaflet/dist/leaflet.css";
@@ -202,6 +203,7 @@ const STOP_TYPE_EMOJI: Record<string, string> = {
 };
 
 export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void; onGpsUpdate?: (pos: GpsPosition | null) => void }) {
+  const u = useUnits();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [showFoodStops, setShowFoodStops] = useState(true);
@@ -353,10 +355,10 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
               ${itDay ? `
                 <div style="margin-top:6px;padding-top:6px;border-top:1px solid #E2E8F0;">
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;font-size:10px;">
-                    <span style="color:#64748B;">Distance:</span><span style="color:#1E293B;font-weight:600;">${itDay.distance} / ${itDay.distanceMi} mi</span>
+                    <span style="color:#64748B;">Distance:</span><span style="color:#1E293B;font-weight:600;">${u.dist(itDay.distanceMi)} ${u.distUnit}</span>
                     <span style="color:#64748B;">Duration:</span><span style="color:#1E293B;font-weight:600;">${itDay.duration}</span>
-                    <span style="color:#22C55E;">↑ Ascent:</span><span style="color:#1E293B;font-weight:600;">${itDay.ascent.toLocaleString()} ft</span>
-                    <span style="color:#EF4444;">↓ Descent:</span><span style="color:#1E293B;font-weight:600;">${itDay.descent.toLocaleString()} ft</span>
+                    <span style="color:#22C55E;">↑ Ascent:</span><span style="color:#1E293B;font-weight:600;">${u.elev(itDay.ascent)} ${u.elevUnit}</span>
+                    <span style="color:#EF4444;">↓ Descent:</span><span style="color:#1E293B;font-weight:600;">${u.elev(itDay.descent)} ${u.elevUnit}</span>
                   </div>
                 </div>
               ` : ""}
@@ -482,7 +484,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
             <span style="font-size:13px;font-weight:700;color:#1E293B;">${stop.name}</span>
           </div>
           <div style="display:flex;gap:8px;font-size:10px;color:#64748B;margin-bottom:4px;">
-            <span style="background:#F0FDF4;color:#16A34A;padding:1px 5px;border-radius:3px;font-weight:600;">mi ${stop.mileIn.toFixed(1)} of ${dayMiles}</span>
+            <span style="background:#F0FDF4;color:#16A34A;padding:1px 5px;border-radius:3px;font-weight:600;">${u.distUnit} ${u.isMetric ? (stop.mileIn * 1.60934).toFixed(1) : stop.mileIn.toFixed(1)} of ${u.dist(dayMiles)}</span>
             <span>${stop.type}</span>
           </div>
           ${isHighlight ? '<div style="font-size:10px;color:#D97706;font-weight:600;margin-bottom:2px;">⭐ Don\'t miss!</div>' : ""}
@@ -585,7 +587,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
       if (nextDay) {
         const dist = haversineMeters(lat, lng, nextDay.lat, nextDay.lng);
         const mi = metersToMiles(dist);
-        setDistanceToNext(`${mi.toFixed(1)} mi to ${nextDay.name.split("–")[0].trim()}`);
+        setDistanceToNext(`${u.isMetric ? (mi * 1.60934).toFixed(1) : mi.toFixed(1)} ${u.distUnit} to ${nextDay.name.split("–")[0].trim()}`);
       }
     } else {
       // Find closest accommodation and show distance
@@ -597,7 +599,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
         if (d < minDist) { minDist = d; closestAcc = acc; }
       }
       const mi = metersToMiles(minDist);
-      setDistanceToNext(`${mi.toFixed(1)} mi to ${closestAcc.name.split("–")[0].trim()}`);
+      setDistanceToNext(`${u.isMetric ? (mi * 1.60934).toFixed(1) : mi.toFixed(1)} ${u.distUnit} to ${closestAcc.name.split("–")[0].trim()}`);
     }
   }, [gpsActive, gpsPosition, selectedDay, simulating, avatarUrl]);
 
@@ -755,7 +757,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
           <span className="text-xl">{viewMode === "map" ? "🗺️" : "📈"}</span> {viewMode === "map" ? "TMB Route Map" : "Elevation Profile"}
         </h2>
         <div className="flex items-center gap-3">
-          <span className="text-xs font-mono text-[var(--muted-foreground)]">{viewMode === "map" ? "10 hiking days · 3 countries · real trail data" : "109.5 mi · 8,244' peak · 10 stages"}</span>
+          <span className="text-xs font-mono text-[var(--muted-foreground)]">{viewMode === "map" ? "10 hiking days · 3 countries · real trail data" : `${u.dist(109.5)} ${u.distUnit} · ${u.elev(8244)} ${u.elevUnit} peak · 10 stages`}</span>
           <ChevronDown
             className={`w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-all duration-300 ${
               isOpen ? "rotate-180" : ""
@@ -950,7 +952,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                   <span className="text-slate-400">·</span>
                   <span className="text-green-400">Point {simIndexRef.current} / {allTrailPoints.current.length}</span>
                   <span className="text-slate-400">·</span>
-                  <span className="text-emerald-400">110 mi / 5 min</span>
+                  <span className="text-emerald-400">{u.dist(110, 0)} {u.distUnit} / 5 min</span>
                 </>
               )}
               {gpsPosition && (
@@ -962,7 +964,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                   {gpsPosition.altitude && (
                     <>
                       <span className="text-slate-400">·</span>
-                      <span className="text-emerald-400">{Math.round(gpsPosition.altitude * 3.281)}ft</span>
+                      <span className="text-emerald-400">{u.isMetric ? Math.round(gpsPosition.altitude) : Math.round(gpsPosition.altitude * 3.281)}{u.elevUnit}</span>
                     </>
                   )}
                   {distanceToNext && (
@@ -984,7 +986,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
             <div className="flex flex-wrap items-center gap-3 px-3 py-2 bg-violet-500/10 border border-violet-500/20 text-[10px] font-mono">
               <span className="text-violet-400 font-bold">Day {selectedDay}</span>
               <span className="text-slate-400">·</span>
-              <span className="text-slate-300">{DAY_MILES[selectedDay] || 0} mi</span>
+              <span className="text-slate-300">{u.dist(DAY_MILES[selectedDay] || 0)} {u.distUnit}</span>
               <span className="text-slate-400">·</span>
               <span className="text-amber-400">{getStopsForDay(selectedDay).length} food stops</span>
               {getStopsForDay(selectedDay).filter(s => s.highlight).length > 0 && (

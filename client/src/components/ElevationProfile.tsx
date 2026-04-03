@@ -1,7 +1,8 @@
 // TMB Elevation Profile — stitched from real GPX data
-// Two modes: Country (colored by country) and Steepness (gradient by ft/mile)
+// Two modes: Country (colored by country) and Steepness (gradient by steepness)
 // Button-only horizontal scroll (no touch scroll to preserve tooltip)
 // Touch: locks page scroll when finger is in chart, tooltip positioned away from finger
+// Units: All source data in miles/feet. Converted at render via useUnits().
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import {
   AreaChart,
@@ -18,6 +19,7 @@ import profileRaw from "@/lib/tmb_elevation_profile.json";
 import { FOOD_STOPS, type FoodStopGeo } from "@/lib/tmb-food-stops";
 import { haversineMeters } from "@/lib/gps-tracker";
 import trailGpsProfile from "@/lib/tmb-trail-gps-profile.json";
+import { useUnits } from "@/contexts/UnitContext";
 
 // ── types ──────────────────────────────────────────────────────────
 interface ProfilePoint {
@@ -60,6 +62,16 @@ const STEEPNESS_SCALE = [
 ];
 const STEEPNESS_THRESHOLDS = [0, 300, 600, 900, 1200];
 
+// Metric equivalents: ft/mi → m/km (multiply by 0.1894)
+const STEEPNESS_SCALE_METRIC = [
+  { min: 0,    max: 57,       color: "#4ade80" },
+  { min: 57,   max: 114,      color: "#facc15" },
+  { min: 114,  max: 170,      color: "#fb923c" },
+  { min: 170,  max: 227,      color: "#ef4444" },
+  { min: 227,  max: Infinity,  color: "#f0f0f0" },
+];
+const STEEPNESS_THRESHOLDS_METRIC = [0, 57, 114, 170, 227];
+
 function getSteepnessColor(ftPerMile: number): string {
   const abs = Math.abs(ftPerMile);
   for (const s of STEEPNESS_SCALE) {
@@ -100,6 +112,7 @@ const ZOOM_LEVELS = [
 
 // ── smart tooltip — positions away from finger ────────────────────
 function SmartTooltip({ active, payload, coordinate, viewBox, mode }: any) {
+  const u = useUnits();
   if (!active || !payload?.[0]) return null;
   const d = payload[0].payload as ProfilePoint;
   const idx = data.points.findIndex(p => Math.abs(p.dist - d.dist) < 0.01 && p.day === d.day);
@@ -128,6 +141,16 @@ function SmartTooltip({ active, payload, coordinate, viewBox, mode }: any) {
       : { left: 8, right: "auto" }),
   };
 
+  // Convert steepness for metric: ft/mi → m/km
+  const steepnessDisplay = u.isMetric
+    ? Math.round(Math.abs(ftPerMile) * 0.1894)
+    : Math.round(Math.abs(ftPerMile));
+  const steepnessUnit = u.isMetric ? "m/km" : "ft/mi";
+
+  // Convert distance
+  const distDisplay = u.isMetric ? u.milesToKm(d.dist).toFixed(1) : d.dist.toFixed(1);
+  const distLabel = u.isMetric ? "Km" : "Mile";
+
   return (
     <div style={tooltipStyle}>
       <div className="bg-zinc-900/95 border border-zinc-700 rounded-lg px-3 py-2 text-xs shadow-xl">
@@ -141,14 +164,14 @@ function SmartTooltip({ active, payload, coordinate, viewBox, mode }: any) {
           </span>
         </div>
         <div className="text-white font-mono text-sm">
-          {d.ele.toLocaleString()} ft
+          {u.elev(d.ele)} {u.elevUnit}
         </div>
         <div className="text-zinc-500 font-mono" style={{ fontSize: "0.65rem" }}>
-          Mile {d.dist.toFixed(1)}
+          {distLabel} {distDisplay}
         </div>
         {mode === "steepness" && (
           <div className="mt-1 pt-1 border-t border-zinc-700 font-mono" style={{ fontSize: "0.65rem", color: steepColor }}>
-            {Math.round(Math.abs(ftPerMile))} ft/mi
+            {steepnessDisplay} {steepnessUnit}
             <span className="text-zinc-500 ml-1">
               ({ftPerMile > 100 ? "climb" : ftPerMile < -100 ? "descent" : "flat"})
             </span>
@@ -215,10 +238,13 @@ function CountryLegend() {
 
 // ── Steepness Legend ────────────────────────────────────────────────
 function SteepnessLegend() {
+  const u = useUnits();
+  const thresholds = u.isMetric ? STEEPNESS_THRESHOLDS_METRIC : STEEPNESS_THRESHOLDS;
+  const unitLabel = u.isMetric ? "m/km" : "ft/mi";
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
       <span className="text-[0.55rem] text-zinc-500 tracking-wider uppercase mr-0.5"
-        style={{ fontFamily: "'JetBrains Mono', monospace" }}>ft/mi</span>
+        style={{ fontFamily: "'JetBrains Mono', monospace" }}>{unitLabel}</span>
       {/* Color blocks with threshold numbers between them */}
       <div className="flex items-end gap-0">
         {STEEPNESS_SCALE.map((s, i) => (
@@ -226,7 +252,7 @@ function SteepnessLegend() {
             {/* Threshold number before this block (except first which is 0) */}
             {i === 0 && (
               <span className="text-[0.55rem] text-zinc-500 px-0.5 leading-none tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                {STEEPNESS_THRESHOLDS[i]}
+                {thresholds[i]}
               </span>
             )}
             {/* Color block */}
@@ -241,7 +267,7 @@ function SteepnessLegend() {
             {/* Threshold number after this block */}
             {i < STEEPNESS_SCALE.length - 1 ? (
               <span className="text-[0.55rem] text-zinc-500 px-0.5 leading-none tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
-                {STEEPNESS_THRESHOLDS[i + 1]}
+                {thresholds[i + 1]}
               </span>
             ) : (
               <span className="text-[0.55rem] text-zinc-500 px-0.5 leading-none tracking-wider" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
@@ -334,6 +360,7 @@ function FoodStopDot({ cx, cy, stop }: { cx?: number; cy?: number; stop: FoodSto
 }
 
 export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition, embedded }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void; gpsPosition?: { lat: number; lng: number } | null; embedded?: boolean }) {
+  const u = useUnits();
   const [open, setOpen] = useState(embedded ? true : false);
   const [customScale, setCustomScale] = useState(1); // continuous zoom scale
   const [windowStart, setWindowStart] = useState(0);
@@ -363,8 +390,8 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
     
     const nearest = gpsProfilePoints[nearestIdx];
     return {
-      dist: nearest.dist,  // miles along profile (x-axis)
-      ele: nearest.ele,    // elevation in feet (y-axis)
+      dist: nearest.dist,  // miles along profile (x-axis) — canonical
+      ele: nearest.ele,    // elevation in feet (y-axis) — canonical
     };
   }, [gpsPosition]);
 
@@ -534,6 +561,28 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
     };
   }, [highlightDay]);
 
+  // Unit-aware display helpers
+  const distLabel = u.isMetric ? "Km" : "Mile";
+  const distAxisLabel = `DISTANCE (${u.distUnitLong.toUpperCase()})`;
+  const eleAxisLabel = `ELEVATION (${u.elevUnit.toUpperCase()})`;
+
+  // Convert distance for display (chart data stays in miles, we format labels)
+  const formatDist = (miles: number) => u.isMetric ? u.milesToKm(miles).toFixed(0) : miles.toFixed(0);
+  // Convert elevation for display
+  const formatEle = (feet: number) => {
+    if (u.isMetric) {
+      const m = u.feetToM(feet);
+      return `${(m / 1000).toFixed(1)}k`;
+    }
+    return `${(feet / 1000).toFixed(1)}k`;
+  };
+
+  // Y-axis domain in canonical feet (chart data is in feet)
+  const yDomain = [
+    Math.floor(minEle / 500) * 500,
+    Math.ceil(maxEle / 500) * 500 + 500,
+  ];
+
   return (
     <section className={embedded ? "" : "container py-6"}>
       {/* Header — hidden when embedded inside TMBRouteMap */}
@@ -546,7 +595,7 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
             <span className="text-xl">📈</span> Elevation Profile
           </h2>
           <div className="flex items-center gap-3">
-            <span className="text-xs font-mono text-[var(--muted-foreground)]">{data.totalDistance} mi · {maxEle.toLocaleString()}' peak · 10 stages</span>
+            <span className="text-xs font-mono text-[var(--muted-foreground)]">{u.dist(data.totalDistance)} {u.distUnit} · {u.elev(maxEle)} {u.elevUnit} peak · 10 stages</span>
             <ChevronDown
               className={`w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-all duration-300 ${open ? "rotate-180" : ""}`}
             />
@@ -664,10 +713,10 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
               </div>
               <div className="flex justify-between mt-1">
                 <span className="text-[0.55rem] font-mono text-zinc-600">
-                  Mile {clampedStart.toFixed(0)}
+                  {distLabel} {formatDist(clampedStart)}
                 </span>
                 <span className="text-[0.55rem] font-mono text-zinc-600">
-                  Mile {Math.min(clampedStart + windowSize, totalDist).toFixed(0)}
+                  {distLabel} {formatDist(Math.min(clampedStart + windowSize, totalDist))}
                 </span>
               </div>
             </div>
@@ -709,29 +758,26 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
                   dataKey="dist"
                   type="number"
                   domain={[clampedStart, clampedStart + windowSize]}
-                  tickFormatter={(v: number) => `${v.toFixed(0)}`}
+                  tickFormatter={(v: number) => formatDist(v)}
                   tick={{ fill: "#71717a", fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
                   axisLine={{ stroke: "#3f3f46" }}
                   tickLine={{ stroke: "#3f3f46" }}
                   label={{
-                    value: "DISTANCE (MILES)",
+                    value: distAxisLabel,
                     position: "insideBottom",
                     offset: -10,
                     style: { fill: "#52525b", fontSize: 9, letterSpacing: "0.15em", fontFamily: "'JetBrains Mono', monospace" },
                   }}
                 />
                 <YAxis
-                  domain={[
-                    Math.floor(minEle / 500) * 500,
-                    Math.ceil(maxEle / 500) * 500 + 500,
-                  ]}
-                  tickFormatter={(v: number) => `${(v / 1000).toFixed(1)}k`}
+                  domain={yDomain}
+                  tickFormatter={(v: number) => formatEle(v)}
                   tick={{ fill: "#71717a", fontSize: 10, fontFamily: "'JetBrains Mono', monospace" }}
                   axisLine={{ stroke: "#3f3f46" }}
                   tickLine={{ stroke: "#3f3f46" }}
                   width={45}
                   label={{
-                    value: "ELEVATION (FT)",
+                    value: eleAxisLabel,
                     angle: -90,
                     position: "insideLeft",
                     offset: 5,
@@ -868,7 +914,7 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
                     className="text-zinc-500 group-hover:text-zinc-300 transition-colors leading-tight whitespace-nowrap"
                     style={{ fontSize: "0.5rem", fontFamily: "'JetBrains Mono', monospace" }}
                   >
-                    {a.ele.toLocaleString()}'
+                    {u.elev(a.ele)} {u.elevUnit}
                   </span>
                   <span
                     className="text-zinc-600 leading-tight mt-0.5 whitespace-nowrap"
