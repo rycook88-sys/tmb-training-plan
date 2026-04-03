@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useUnits } from "@/contexts/UnitContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown,
@@ -9,12 +8,13 @@ import {
   Wind,
   CloudLightning,
 } from "lucide-react";
+import { useUnits } from "@/contexts/UnitContext";
 
 /* ── data ── */
 interface DayWeather {
   day: number;
   location: string;
-  elevation: number;
+  elevation: number; // in meters
   country: "france" | "italy" | "switzerland";
   highC: [number, number];
   lowC: [number, number];
@@ -181,7 +181,7 @@ export default function WeatherForecast() {
               <div className="border border-border bg-card p-4 flex items-start gap-3">
                 <CloudLightning className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
                 <p className="text-xs text-[var(--muted-foreground)] leading-relaxed">
-                  <span className="text-foreground font-medium">Late July on the TMB:</span> Warm in valleys ({u.isMetric ? '20–27°C' : '68–80°F'}), cool at altitude ({u.isMetric ? '7–15°C' : '45–60°F'}), cold at passes and at night ({u.isMetric ? '0–7°C' : '32–45°F'}). Afternoon thunderstorms are common — plan to be below treeline by 2pm when possible. Rain gear every day.
+                  <span className="text-foreground font-medium">Late July on the TMB:</span> Warm in valleys ({u.temp(68)}–{u.temp(80)}{u.tempUnit}), cool at altitude ({u.temp(45)}–{u.temp(60)}{u.tempUnit}), cold at passes and at night ({u.temp(32)}–{u.temp(45)}{u.tempUnit}). Afternoon thunderstorms are common — plan to be below treeline by 2pm when possible. Rain gear every day.
                 </p>
               </div>
 
@@ -192,7 +192,7 @@ export default function WeatherForecast() {
                     <tr className="border-b border-border">
                       <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider font-mono text-[var(--muted-foreground)] font-medium">Day</th>
                       <th className="text-left py-2.5 px-3 text-[10px] uppercase tracking-wider font-mono text-[var(--muted-foreground)] font-medium">Location</th>
-                      <th className="text-center py-2.5 px-3 text-[10px] uppercase tracking-wider font-mono text-[var(--muted-foreground)] font-medium">Elev</th>
+                      <th className="text-center py-2.5 px-3 text-[10px] uppercase tracking-wider font-mono text-[var(--muted-foreground)] font-medium">Elev ({u.elevUnit})</th>
                       <th className="text-center py-2.5 px-3 text-[10px] uppercase tracking-wider font-mono text-[var(--muted-foreground)] font-medium">
                         <span className="flex items-center justify-center gap-1">
                           <Sun className="w-3 h-3" /> High
@@ -213,15 +213,9 @@ export default function WeatherForecast() {
                   </thead>
                   <tbody>
                     {WEATHER.map((w) => {
-                      const highDisplay = u.isMetric
-                        ? `${w.highC[0]}–${w.highC[1]}°C`
-                        : `${cToF(w.highC[0])}–${cToF(w.highC[1])}°F`;
-                      const lowDisplay = u.isMetric
-                        ? `${w.lowC[0]}–${w.lowC[1]}°C`
-                        : `${cToF(w.lowC[0])}–${cToF(w.lowC[1])}°F`;
-                      const elevDisplay = u.isMetric
-                        ? `${w.elevation}m`
-                        : `${Math.round(w.elevation * 3.281)}ft`;
+                      const elevationInFeet = w.elevation * 3.28084;
+                      const highF = [cToF(w.highC[0]), cToF(w.highC[1])];
+                      const lowF = [cToF(w.lowC[0]), cToF(w.lowC[1])];
                       return (
                         <tr
                           key={w.day}
@@ -235,16 +229,16 @@ export default function WeatherForecast() {
                           </td>
                           <td className="py-2.5 px-3 text-xs text-[var(--muted-foreground)]">{w.location}</td>
                           <td className="py-2.5 px-3 text-center text-xs font-mono text-[var(--muted-foreground)]">
-                            {elevDisplay}
+                            {u.elev(elevationInFeet)}
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <span className="text-xs font-mono font-medium text-orange-400">
-                              {highDisplay}
+                              {u.isMetric ? `${w.highC[0]}–${w.highC[1]}` : `${highF[0]}–${highF[1]}`}{u.tempUnit}
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             <span className="text-xs font-mono font-medium text-blue-400">
-                              {lowDisplay}
+                              {u.isMetric ? `${w.lowC[0]}–${w.lowC[1]}` : `${lowF[0]}–${lowF[1]}`}{u.tempUnit}
                             </span>
                           </td>
                           <td className="py-2.5 px-3 text-center">

@@ -63,15 +63,12 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
   entries: { date: string; weight: number }[];
   onAddWeight: (w: number) => void;
 }) {
-  const u = useUnits();
   const [inputVal, setInputVal] = useState("");
   const [showInput, setShowInput] = useState(false);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const w = parseFloat(inputVal);
-    // Accept input in current unit system
-    const lbVal = u.isMetric ? w / 0.453592 : w;
-    if (lbVal > 150 && lbVal < 300) { onAddWeight(Math.round(lbVal * 10) / 10); setInputVal(""); setShowInput(false); }
+    if (w > 150 && w < 300) { onAddWeight(w); setInputVal(""); setShowInput(false); }
   };
   const gaugeH = 280;
   const goalReached = currentWeight <= ATHLETE.goalWeight;
@@ -80,7 +77,7 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
     <div className="border border-border p-5 bg-card">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)]">Altitude Gauge</h3>
-        <span className="font-mono text-xs text-[var(--muted-foreground)]">{u.wt(ATHLETE.startWeight, 0)} → {u.wt(ATHLETE.goalWeight, 0)} {u.wtUnit}</span>
+        <span className="font-mono text-xs text-[var(--muted-foreground)]">{ATHLETE.startWeight} → {ATHLETE.goalWeight} lb</span>
       </div>
       <div className="flex gap-6 items-center">
         <div className="relative" style={{ width: 48, height: gaugeH }}>
@@ -93,25 +90,25 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
             transition={{ duration: 1.5, ease: "easeOut" }} />
           <div className="absolute left-0 right-0 top-0 h-px bg-[var(--primary)] opacity-50" />
           <div className="absolute left-0 right-0 bottom-0 h-px bg-border" />
-          <span className="absolute -right-8 top-0 text-[10px] font-mono text-[var(--primary)] translate-y-[-50%]">{u.wt(ATHLETE.goalWeight, 0)}</span>
-          <span className="absolute -right-8 bottom-0 text-[10px] font-mono text-[var(--muted-foreground)] translate-y-[50%]">{u.wt(ATHLETE.startWeight, 0)}</span>
+          <span className="absolute -right-8 top-0 text-[10px] font-mono text-[var(--primary)] translate-y-[-50%]">{ATHLETE.goalWeight}</span>
+          <span className="absolute -right-8 bottom-0 text-[10px] font-mono text-[var(--muted-foreground)] translate-y-[50%]">{ATHLETE.startWeight}</span>
         </div>
         <div className="flex-1">
           <div className="font-mono text-4xl font-bold text-foreground leading-none">
-            {u.wt(currentWeight, 1)}<span className="text-lg text-[var(--muted-foreground)] ml-1">{u.wtUnit}</span>
+            {currentWeight}<span className="text-lg text-[var(--muted-foreground)] ml-1">lb</span>
           </div>
           <div className="mt-2 flex items-center gap-2">
             {goalReached ? (
               <span className="text-xs font-mono text-amber-400 flex items-center gap-1"><Trophy className="w-3 h-3" /> GOAL REACHED</span>
             ) : (
-              <span className="text-xs font-mono text-[var(--muted-foreground)]">{u.wt(currentWeight - ATHLETE.goalWeight, 1)} {u.wtUnit} to go</span>
+              <span className="text-xs font-mono text-[var(--muted-foreground)]">{currentWeight - ATHLETE.goalWeight} lb to go</span>
             )}
           </div>
           <div className="mt-1 text-xs font-mono text-[var(--primary)]">{Math.round(progress)}% complete</div>
           <div className="mt-4 space-y-1">
             {entries.slice(-4).map((e) => (
               <div key={e.date} className="flex justify-between text-xs font-mono text-[var(--muted-foreground)]">
-                <span>{e.date}</span><span>{u.wt(e.weight, 1)} {u.wtUnit}</span>
+                <span>{e.date}</span><span>{e.weight} lb</span>
               </div>
             ))}
           </div>
@@ -291,8 +288,8 @@ function WorkoutCard({ day, onStart, hasHitGoal, getBestPerformance }: {
   const [expanded, setExpanded] = useState(false);
   return (
     <div className="border border-border bg-card">
-      <div role="button" tabIndex={0} onClick={() => setExpanded(!expanded)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setExpanded(!expanded); }}
-        className="w-full flex items-center justify-between p-4 text-left hover:bg-[var(--secondary)] transition-colors cursor-pointer">
+      <button onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-[var(--secondary)] transition-colors">
         <div className="flex items-center gap-3">
           <span className="text-xl">{day.icon}</span>
           <div>
@@ -307,7 +304,7 @@ function WorkoutCard({ day, onStart, hasHitGoal, getBestPerformance }: {
           </button>
           {expanded ? <ChevronUp className="w-4 h-4 text-[var(--muted-foreground)]" /> : <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)]" />}
         </div>
-      </div>
+      </button>
       <AnimatePresence>
         {expanded && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
@@ -515,7 +512,6 @@ function WorkoutCalendar({ sessions, onDelete }: { sessions: WorkoutSession[]; o
 
 // ── Itinerary Row ─────────────────────────────────────────
 function ItineraryRow({ day }: { day: ItineraryDay }) {
-  const u = useUnits();
   const diffColor: Record<string, string> = {
     easy: "text-green-400", moderate: "text-yellow-400",
     hard: "text-[var(--primary)]", brutal: "text-red-400",
@@ -531,12 +527,12 @@ function ItineraryRow({ day }: { day: ItineraryDay }) {
         <div className="min-w-0">
           <div className="font-mono text-xs text-foreground truncate">{day.from} → {day.to}</div>
           <div className="text-[10px] text-[var(--muted-foreground)] sm:hidden mt-0.5">
-            {u.dist(day.distanceMi)} {u.distUnit} · ↑{u.elev(day.ascent)} {u.elevUnit} · ↓{u.elev(day.descent)} {u.elevUnit} · {day.duration}
+            {day.distanceMi} mi · ↑{day.ascent}' · ↓{day.descent}' · {day.duration}
           </div>
         </div>
-        <span className="hidden sm:block font-mono text-xs text-[var(--muted-foreground)] text-right">{u.dist(day.distanceMi)} {u.distUnit}</span>
-        <span className="hidden sm:flex font-mono text-xs text-green-400 items-center justify-end gap-0.5"><ArrowUp className="w-3 h-3" />{u.elev(day.ascent)} {u.elevUnit}</span>
-        <span className="hidden sm:flex font-mono text-xs text-red-400 items-center justify-end gap-0.5"><ArrowDown className="w-3 h-3" />{u.elev(day.descent)} {u.elevUnit}</span>
+        <span className="hidden sm:block font-mono text-xs text-[var(--muted-foreground)] text-right">{day.distanceMi} mi</span>
+        <span className="hidden sm:flex font-mono text-xs text-green-400 items-center justify-end gap-0.5"><ArrowUp className="w-3 h-3" />{day.ascent}'</span>
+        <span className="hidden sm:flex font-mono text-xs text-red-400 items-center justify-end gap-0.5"><ArrowDown className="w-3 h-3" />{day.descent}'</span>
         <span className="hidden sm:block font-mono text-xs text-[var(--muted-foreground)] text-right">{day.duration}</span>
         <span className={`font-mono text-[10px] uppercase tracking-wider text-right px-2 py-0.5 ${diffColor[day.difficulty]} ${diffBg[day.difficulty]} justify-self-end`}>
           {day.difficulty}
@@ -700,7 +696,7 @@ export default function Home() {
   const [showSummary, setShowSummary] = useState<WorkoutSession | null>(null);
   const [highlightDay, setHighlightDay] = useState<number | null>(null);
   const [gpsPosition, setGpsPosition] = useState<GpsPosition | null>(null);
-  const units = useUnits();
+  const u = useUnits();
   // Compute exact totals from stitched GPX elevation profile data
   const totalMi = elevationData.totalDistance;
   const { totalAscent, totalDescent } = useMemo(() => {
@@ -731,7 +727,7 @@ export default function Home() {
             <div className="text-xs uppercase tracking-[0.4em] text-[var(--primary)] font-mono mb-2">Alpine Command Center</div>
             <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-white leading-none">Tour du Mont Blanc</h1>
             <p className="text-sm text-white/60 font-mono mt-2 tracking-wide">
-              {ATHLETE.tripDays}-Day {ATHLETE.tripStyle} · {units.dist(totalMi)} {units.distUnit} · {units.elev(totalA)} {units.elevUnit} gain · {units.elev(totalD)} {units.elevUnit} loss
+              {ATHLETE.tripDays}-Day {ATHLETE.tripStyle} · {u.dist(totalMi)} {u.distUnitLong} · {u.elev(totalA)} {u.elevUnit} gain · {u.elev(totalD)} {u.elevUnit} loss
             </p>
           </motion.div>
         </div>
@@ -745,23 +741,16 @@ export default function Home() {
             <div>
               <div className="flex items-center justify-between">
                 <Countdown />
-                <button
-                  onClick={units.toggle}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800/80 hover:bg-slate-700 transition-colors text-[10px] font-mono uppercase tracking-wider"
-                  title={`Switch to ${units.isMetric ? 'imperial' : 'metric'} units`}
-                >
-                  <span className={`transition-colors ${!units.isMetric ? 'text-[var(--primary)]' : 'text-slate-500'}`}>MI/FT</span>
-                  <div className={`relative w-8 h-4 rounded-full transition-colors ${units.isMetric ? 'bg-[var(--primary)]' : 'bg-slate-600'}`}>
-                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${units.isMetric ? 'translate-x-4.5 left-0.5' : 'left-0.5'}`} />
-                  </div>
-                  <span className={`transition-colors ${units.isMetric ? 'text-[var(--primary)]' : 'text-slate-500'}`}>KM/M</span>
+                <button onClick={u.toggle}
+                  className="text-[7px] font-mono uppercase tracking-wider border border-border/60 px-1.5 py-0.5 rounded bg-background/40 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors leading-none">
+                  {u.isMetric ? 'KM/M' : 'MI/FT'}
                 </button>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
-                <StatCard label="Total Distance" value={units.dist(totalMi)} unit={units.distUnit} />
-                <StatCard label="Total Ascent" value={units.elev(totalA)} unit={units.elevUnit} color="text-green-400" />
-                <StatCard label="Total Descent" value={units.elev(totalD)} unit={units.elevUnit} color="text-[var(--primary)]" />
-                <StatCard label="Pack Weight" value={units.isMetric ? `${(12*0.453592).toFixed(0)}–${(16*0.453592).toFixed(0)}` : ATHLETE.packWeight} unit={units.isMetric ? "kg" : ""} />
+                <StatCard label="Total Distance" value={u.dist(totalMi)} unit={u.distUnit} />
+                <StatCard label="Total Ascent" value={u.elev(totalA)} unit={u.elevUnit} color="text-green-400" />
+                <StatCard label="Total Descent" value={u.elev(totalD)} unit={u.elevUnit} color="text-[var(--primary)]" />
+                <StatCard label="Pack Weight" value={ATHLETE.packWeight} unit="" />
               </div>
             </div>
             <WeightGauge currentWeight={wt.currentWeight} progress={wt.progress} entries={wt.entries} onAddWeight={wt.addEntry} />

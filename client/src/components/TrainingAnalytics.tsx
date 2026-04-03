@@ -5,7 +5,6 @@
 // ============================================================
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useUnits } from "@/contexts/UnitContext";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine, Cell, Legend,
@@ -308,7 +307,6 @@ function WeeklyVolume() {
 
 // ── 5. Hiking-Specific Data ──────────────────────────────────
 function HikingData() {
-  const u = useUnits();
   const hikes = useMemo(() => getHikeSessions(), []);
 
   if (hikes.length === 0) {
@@ -332,7 +330,7 @@ function HikingData() {
             <div key={h.id} className="border border-border p-3 bg-[var(--secondary)]">
               <div className="flex items-center justify-between mb-2">
                 <span className="font-mono text-xs text-foreground">{h.date}</span>
-                <span className="text-[10px] font-mono text-[var(--primary)]">{u.isMetric ? `${(h.distance_mi * 1.60934).toFixed(1)} km` : `${h.distance_mi} mi`}</span>
+                <span className="text-[10px] font-mono text-[var(--primary)]">{h.distance_mi} mi</span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
@@ -342,13 +340,13 @@ function HikingData() {
                 <div>
                   <div className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wider">Gain / Loss</div>
                   <div className="font-mono text-sm">
-                    <span className="text-green-400">↑{u.isMetric ? `${Math.round(h.elevation_gain * 0.3048)}m` : `${h.elevation_gain}'`}</span>
+                    <span className="text-green-400">↑{h.elevation_gain}'</span>
                     {" / "}
-                    <span className="text-red-400">↓{u.isMetric ? `${Math.round(h.elevation_loss * 0.3048)}m` : `${h.elevation_loss}'`}</span>
+                    <span className="text-red-400">↓{h.elevation_loss}'</span>
                   </div>
                 </div>
                 <div>
-                  <div className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wider">{u.isMetric ? 'Pace / 300m Gain' : "Pace / 1000' Gain"}</div>
+                  <div className="text-[10px] text-[var(--muted-foreground)] uppercase tracking-wider">Pace / 1000' Gain</div>
                   <div className="font-mono text-sm text-foreground">{pacePerK} min</div>
                 </div>
                 <div>
@@ -372,7 +370,7 @@ function HikingData() {
         })}
       </div>
       <div className="text-[10px] font-mono text-[var(--muted-foreground)] mt-3 italic">
-        The Mar 10 hike ({u.isMetric ? '20.1 km, 345m gain, 435m loss' : "12.5 mi, 1133' gain, 1427' loss"}) is the closest analog to a TMB day. HR stayed well below Z2 — good sign for aerobic base.
+        The Mar 10 hike (12.5 mi, 1133' gain, 1427' loss) is the closest analog to a TMB day. HR stayed well below Z2 — good sign for aerobic base.
         More hike data will unlock ascent vs descent HR comparison.
       </div>
     </div>

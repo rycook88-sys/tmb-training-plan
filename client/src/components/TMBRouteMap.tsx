@@ -2,8 +2,7 @@
 // Design: Alpine dark theme, topo map showing actual hiking trails
 // Trail segments colored by country (France/Italy/Switzerland)
 // Food stop markers appear when a specific day is selected
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { useUnits } from "@/contexts/UnitContext";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { ChevronDown, Map, Bus, Layers, Mountain, UtensilsCrossed, LocateFixed, Navigation, Play, Square, MoreHorizontal, X } from "lucide-react";
 import { TMB_ITINERARY } from "@/lib/data";
 import { FOOD_STOPS, DAY_MILES, getStopsForDay } from "@/lib/tmb-food-stops";
@@ -202,7 +201,6 @@ const STOP_TYPE_EMOJI: Record<string, string> = {
 };
 
 export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void; onGpsUpdate?: (pos: GpsPosition | null) => void }) {
-  const u = useUnits();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [showFoodStops, setShowFoodStops] = useState(true);
@@ -353,10 +351,10 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
               ${itDay ? `
                 <div style="margin-top:6px;padding-top:6px;border-top:1px solid #E2E8F0;">
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;font-size:10px;">
-                    <span style="color:#64748B;">Distance:</span><span style="color:#1E293B;font-weight:600;">${u.isMetric ? itDay.distance : `${itDay.distanceMi} mi`}</span>
+                    <span style="color:#64748B;">Distance:</span><span style="color:#1E293B;font-weight:600;">${itDay.distance} / ${itDay.distanceMi} mi</span>
                     <span style="color:#64748B;">Duration:</span><span style="color:#1E293B;font-weight:600;">${itDay.duration}</span>
-                    <span style="color:#22C55E;">↑ Ascent:</span><span style="color:#1E293B;font-weight:600;">${u.isMetric ? `${Math.round(itDay.ascent * 0.3048).toLocaleString()} m` : `${itDay.ascent.toLocaleString()} ft`}</span>
-                    <span style="color:#EF4444;">↓ Descent:</span><span style="color:#1E293B;font-weight:600;">${u.isMetric ? `${Math.round(itDay.descent * 0.3048).toLocaleString()} m` : `${itDay.descent.toLocaleString()} ft`}</span>
+                    <span style="color:#22C55E;">↑ Ascent:</span><span style="color:#1E293B;font-weight:600;">${itDay.ascent.toLocaleString()} ft</span>
+                    <span style="color:#EF4444;">↓ Descent:</span><span style="color:#1E293B;font-weight:600;">${itDay.descent.toLocaleString()} ft</span>
                   </div>
                 </div>
               ` : ""}
@@ -585,7 +583,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
       if (nextDay) {
         const dist = haversineMeters(lat, lng, nextDay.lat, nextDay.lng);
         const mi = metersToMiles(dist);
-        setDistanceToNext(u.isMetric ? `${(mi * 1.60934).toFixed(1)} km to ${nextDay.name.split("\u2013")[0].trim()}` : `${mi.toFixed(1)} mi to ${nextDay.name.split("\u2013")[0].trim()}`);
+        setDistanceToNext(`${mi.toFixed(1)} mi to ${nextDay.name.split("–")[0].trim()}`);
       }
     } else {
       // Find closest accommodation and show distance
@@ -597,7 +595,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
         if (d < minDist) { minDist = d; closestAcc = acc; }
       }
       const mi = metersToMiles(minDist);
-      setDistanceToNext(u.isMetric ? `${(mi * 1.60934).toFixed(1)} km to ${closestAcc.name.split("\u2013")[0].trim()}` : `${mi.toFixed(1)} mi to ${closestAcc.name.split("\u2013")[0].trim()}`);
+      setDistanceToNext(`${mi.toFixed(1)} mi to ${closestAcc.name.split("–")[0].trim()}`);
     }
   }, [gpsActive, gpsPosition, selectedDay, simulating, avatarUrl]);
 
@@ -947,7 +945,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                   {gpsPosition.altitude && (
                     <>
                       <span className="text-slate-400">·</span>
-                      <span className="text-emerald-400">{u.isMetric ? `${Math.round(gpsPosition.altitude)}m` : `${Math.round(gpsPosition.altitude * 3.281)}ft`}</span>
+                      <span className="text-emerald-400">{Math.round(gpsPosition.altitude * 3.281)}ft</span>
                     </>
                   )}
                   {distanceToNext && (
@@ -969,7 +967,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
             <div className="flex flex-wrap items-center gap-3 px-3 py-2 bg-violet-500/10 border border-violet-500/20 text-[10px] font-mono">
               <span className="text-violet-400 font-bold">Day {selectedDay}</span>
               <span className="text-slate-400">·</span>
-              <span className="text-slate-300">{u.isMetric ? `${((DAY_MILES[selectedDay] || 0) * 1.60934).toFixed(1)} km` : `${DAY_MILES[selectedDay] || 0} mi`}</span>
+              <span className="text-slate-300">{DAY_MILES[selectedDay] || 0} mi</span>
               <span className="text-slate-400">·</span>
               <span className="text-amber-400">{getStopsForDay(selectedDay).length} food stops</span>
               {getStopsForDay(selectedDay).filter(s => s.highlight).length > 0 && (

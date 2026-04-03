@@ -3,7 +3,6 @@
 // Button-only horizontal scroll (no touch scroll to preserve tooltip)
 // Touch: locks page scroll when finger is in chart, tooltip positioned away from finger
 import { useState, useMemo, useRef, useCallback, useEffect } from "react";
-import { useUnits } from "@/contexts/UnitContext";
 import {
   AreaChart,
   Area,
@@ -101,7 +100,6 @@ const ZOOM_LEVELS = [
 
 // ── smart tooltip — positions away from finger ────────────────────
 function SmartTooltip({ active, payload, coordinate, viewBox, mode }: any) {
-  const u = useUnits();
   if (!active || !payload?.[0]) return null;
   const d = payload[0].payload as ProfilePoint;
   const idx = data.points.findIndex(p => Math.abs(p.dist - d.dist) < 0.01 && p.day === d.day);
@@ -143,14 +141,14 @@ function SmartTooltip({ active, payload, coordinate, viewBox, mode }: any) {
           </span>
         </div>
         <div className="text-white font-mono text-sm">
-          {u.isMetric ? `${Math.round(d.ele * 0.3048).toLocaleString()} m` : `${d.ele.toLocaleString()} ft`}
+          {d.ele.toLocaleString()} ft
         </div>
         <div className="text-zinc-500 font-mono" style={{ fontSize: "0.65rem" }}>
-          {u.isMetric ? `Km ${(d.dist * 1.60934).toFixed(1)}` : `Mile ${d.dist.toFixed(1)}`}
+          Mile {d.dist.toFixed(1)}
         </div>
         {mode === "steepness" && (
           <div className="mt-1 pt-1 border-t border-zinc-700 font-mono" style={{ fontSize: "0.65rem", color: steepColor }}>
-            {u.isMetric ? `${Math.round(Math.abs(ftPerMile) * 0.1894)} m/km` : `${Math.round(Math.abs(ftPerMile))} ft/mi`}
+            {Math.round(Math.abs(ftPerMile))} ft/mi
             <span className="text-zinc-500 ml-1">
               ({ftPerMile > 100 ? "climb" : ftPerMile < -100 ? "descent" : "flat"})
             </span>
@@ -217,11 +215,10 @@ function CountryLegend() {
 
 // ── Steepness Legend ────────────────────────────────────────────────
 function SteepnessLegend() {
-  const u = useUnits();
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
       <span className="text-[0.55rem] text-zinc-500 tracking-wider uppercase mr-0.5"
-        style={{ fontFamily: "'JetBrains Mono', monospace" }}>{u.isMetric ? 'm/km' : 'ft/mi'}</span>
+        style={{ fontFamily: "'JetBrains Mono', monospace" }}>ft/mi</span>
       {/* Color blocks with threshold numbers between them */}
       <div className="flex items-end gap-0">
         {STEEPNESS_SCALE.map((s, i) => (
@@ -337,7 +334,6 @@ function FoodStopDot({ cx, cy, stop }: { cx?: number; cy?: number; stop: FoodSto
 }
 
 export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void; gpsPosition?: { lat: number; lng: number } | null }) {
-  const u = useUnits();
   const [open, setOpen] = useState(false);
   const [customScale, setCustomScale] = useState(1); // continuous zoom scale
   const [windowStart, setWindowStart] = useState(0);
@@ -549,7 +545,7 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
           <span className="text-xl">📈</span> Elevation Profile
         </h2>
         <div className="flex items-center gap-3">
-          <span className="text-xs font-mono text-[var(--muted-foreground)]">{u.isMetric ? `${(data.totalDistance * 1.60934).toFixed(1)} km` : `${data.totalDistance} mi`} · {u.isMetric ? `${Math.round(maxEle * 0.3048).toLocaleString()}m` : `${maxEle.toLocaleString()}'`} peak · 10 stages</span>
+          <span className="text-xs font-mono text-[var(--muted-foreground)]">{data.totalDistance} mi · {maxEle.toLocaleString()}' peak · 10 stages</span>
           <ChevronDown
             className={`w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-all duration-300 ${open ? "rotate-180" : ""}`}
           />
@@ -666,10 +662,10 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
               </div>
               <div className="flex justify-between mt-1">
                 <span className="text-[0.55rem] font-mono text-zinc-600">
-                  {u.isMetric ? `Km ${(clampedStart * 1.60934).toFixed(0)}` : `Mile ${clampedStart.toFixed(0)}`}
+                  Mile {clampedStart.toFixed(0)}
                 </span>
                 <span className="text-[0.55rem] font-mono text-zinc-600">
-                  {u.isMetric ? `Km ${(Math.min(clampedStart + windowSize, totalDist) * 1.60934).toFixed(0)}` : `Mile ${Math.min(clampedStart + windowSize, totalDist).toFixed(0)}`}
+                  Mile {Math.min(clampedStart + windowSize, totalDist).toFixed(0)}
                 </span>
               </div>
             </div>
@@ -716,7 +712,7 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
                   axisLine={{ stroke: "#3f3f46" }}
                   tickLine={{ stroke: "#3f3f46" }}
                   label={{
-                    value: u.isMetric ? "DISTANCE (KM)" : "DISTANCE (MILES)",
+                    value: "DISTANCE (MILES)",
                     position: "insideBottom",
                     offset: -10,
                     style: { fill: "#52525b", fontSize: 9, letterSpacing: "0.15em", fontFamily: "'JetBrains Mono', monospace" },
@@ -733,7 +729,7 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
                   tickLine={{ stroke: "#3f3f46" }}
                   width={45}
                   label={{
-                    value: u.isMetric ? "ELEVATION (M)" : "ELEVATION (FT)",
+                    value: "ELEVATION (FT)",
                     angle: -90,
                     position: "insideLeft",
                     offset: 5,
