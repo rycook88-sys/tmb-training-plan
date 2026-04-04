@@ -111,3 +111,11 @@
 - [x] Add edit button to common items (re-analyze with new name)
 - [x] Remove "(X left)" and "(+X over)" parentheses from macro progress bars
 - [x] Remove info ⓘ icon from daily and common item rows
+
+## Adjustable Macro Targets, Swipe-to-Delete, Fill Macros+Micros
+- [x] Adjustable macro targets: add settings UI to change calorie/protein/carb/fat goals
+- [x] Persist macro targets in localStorage (with backup sync)
+- [x] Swipe-to-delete on food entries for faster mobile interaction
+- [x] Upgrade Fill My Macros to also analyze micronutrient gaps
+- [x] Unified AI suggestion: foods that fill both macro AND micro gaps simultaneously
+- [x] Renamed to "Fill My Gaps" with micro badges on each suggestion

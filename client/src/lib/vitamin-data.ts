@@ -139,19 +139,41 @@ export function getDailyVitaminTotals() {
 }
 
 /**
- * Macro targets for the user
+ * Default macro targets for the user
  * 2300 cal, 180g protein minimum
  * Weight loss split: high protein, moderate fat, lower carbs
  * Protein: 180g = 720 cal (31%)
  * Fat: 77g = 693 cal (30%)
  * Carbs: 222g = 887 cal (39%)
  */
-export const MACRO_TARGETS = {
+export const DEFAULT_MACRO_TARGETS = {
   calories: 2300,
   protein: 180,
   fat: 77,
   carbs: 222,
 };
+
+export type MacroTargets = typeof DEFAULT_MACRO_TARGETS;
+
+const TARGETS_KEY = "tmb-macro-targets";
+
+export function loadMacroTargets(): MacroTargets {
+  try {
+    const raw = localStorage.getItem(TARGETS_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return { ...DEFAULT_MACRO_TARGETS, ...parsed };
+    }
+  } catch {}
+  return { ...DEFAULT_MACRO_TARGETS };
+}
+
+export function saveMacroTargets(targets: MacroTargets) {
+  localStorage.setItem(TARGETS_KEY, JSON.stringify(targets));
+}
+
+/** Backward compat alias — reads user-customized targets */
+export const MACRO_TARGETS = DEFAULT_MACRO_TARGETS;
 
 /**
  * Format a micronutrient amount for display.

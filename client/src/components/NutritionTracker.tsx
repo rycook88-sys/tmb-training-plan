@@ -4,12 +4,12 @@ import {
   Camera, Check, Edit3, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown,
   Trash2, X, AlertTriangle, TrendingUp, Pill, Utensils, Plus, RotateCcw,
   Loader2, Sparkles, ArrowUpToLine, Zap, Bookmark, Briefcase, Coffee,
-  Square, CheckSquare,
+  Square, CheckSquare, Settings,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import {
-  DAILY_VITAMINS, getDailyVitaminTotals, MACRO_TARGETS,
+  DAILY_VITAMINS, getDailyVitaminTotals, loadMacroTargets, saveMacroTargets,
   ALL_MICRONUTRIENTS, formatMicroAmount, getMicroDVPercent,
 } from "@/lib/vitamin-data";
 import type { NumericMicro } from "@/lib/vitamin-data";
@@ -520,44 +520,77 @@ function FoodEntryCard({ entry, onDelete, onEdit, onTap }: {
   onEdit: (id: string) => void;
   onTap: (entry: FoodEntry) => void;
 }) {
-  return (
-    <div
-      className="border border-border bg-card p-3 mb-2 cursor-pointer hover:border-[var(--primary)]/30 transition-colors"
-      onClick={() => onTap(entry)}
-    >
-      <div className="flex items-start gap-2">
-        {/* Main content — tappable */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <Utensils className="w-3 h-3 text-[var(--primary)] flex-shrink-0" />
-            <span className="font-mono text-xs font-medium text-foreground truncate">{entry.foodName}</span>
-          </div>
-          <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-[10px] font-mono">
-            <span className="text-[var(--primary)]">{entry.calories} cal</span>
-            <span className="text-blue-400">P: {entry.protein}g</span>
-            <span className="text-amber-400">C: {entry.carbs}g</span>
-            <span className="text-rose-400">F: {entry.fat}g</span>
-          </div>
-        </div>
+  const [swipeX, setSwipeX] = useState(0);
+  const [startX, setStartX] = useState(0);
+  const [swiping, setSwiping] = useState(false);
+  const DELETE_THRESHOLD = -80;
 
-        {/* Right column: timestamp + actions, vertically aligned */}
-        <div className="flex flex-col items-end gap-1 flex-shrink-0">
-          <span className="text-[10px] font-mono text-[var(--muted-foreground)] tabular-nums">{formatTime(entry.timestamp)}</span>
-          <div className="flex items-center gap-0.5">
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(entry.id); }}
-              className="text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors p-1"
-              title="Edit food entry"
-            >
-              <Edit3 className="w-3 h-3" />
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(entry.id); }}
-              className="text-[var(--muted-foreground)] hover:text-red-400 transition-colors p-1"
-              title="Delete entry"
-            >
-              <Trash2 className="w-3 h-3" />
-            </button>
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setStartX(e.touches[0].clientX);
+    setSwiping(true);
+  };
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!swiping) return;
+    const diff = e.touches[0].clientX - startX;
+    setSwipeX(Math.min(0, diff)); // only left swipe
+  };
+  const handleTouchEnd = () => {
+    setSwiping(false);
+    if (swipeX < DELETE_THRESHOLD) {
+      onDelete(entry.id);
+    }
+    setSwipeX(0);
+  };
+
+  return (
+    <div className="relative mb-2 overflow-hidden">
+      {/* Delete background revealed on swipe */}
+      <div className="absolute inset-0 flex items-center justify-end bg-red-500/20 pr-4">
+        <Trash2 className="w-4 h-4 text-red-400" />
+      </div>
+      {/* Swipeable card */}
+      <div
+        className="border border-border bg-card p-3 cursor-pointer hover:border-[var(--primary)]/30 transition-colors relative"
+        style={{ transform: `translateX(${swipeX}px)`, transition: swiping ? "none" : "transform 0.2s ease-out" }}
+        onClick={() => { if (Math.abs(swipeX) < 5) onTap(entry); }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        <div className="flex items-start gap-2">
+          {/* Main content — tappable */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <Utensils className="w-3 h-3 text-[var(--primary)] flex-shrink-0" />
+              <span className="font-mono text-xs font-medium text-foreground truncate">{entry.foodName}</span>
+            </div>
+            <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-[10px] font-mono">
+              <span className="text-[var(--primary)]">{entry.calories} cal</span>
+              <span className="text-blue-400">P: {entry.protein}g</span>
+              <span className="text-amber-400">C: {entry.carbs}g</span>
+              <span className="text-rose-400">F: {entry.fat}g</span>
+            </div>
+          </div>
+
+          {/* Right column: timestamp + actions, vertically aligned */}
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            <span className="text-[10px] font-mono text-[var(--muted-foreground)] tabular-nums">{formatTime(entry.timestamp)}</span>
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={(e) => { e.stopPropagation(); onEdit(entry.id); }}
+                className="text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors p-1"
+                title="Edit food entry"
+              >
+                <Edit3 className="w-3 h-3" />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onDelete(entry.id); }}
+                className="text-[var(--muted-foreground)] hover:text-red-400 transition-colors p-1"
+                title="Delete entry"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -616,6 +649,9 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const [presets, setPresets] = useState<PresetLists>(loadPresets);
   const [commonItems, setCommonItems] = useState<CommonItem[]>(loadCommonItems);
   const [backupStatus, setBackupStatus] = useState<"idle" | "syncing" | "synced" | "error">("idle");
+  const [macroTargets, setMacroTargets] = useState(loadMacroTargets);
+  const [showTargetSettings, setShowTargetSettings] = useState(false);
+  const [tempTargets, setTempTargets] = useState(loadMacroTargets);
 
   // UI state
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -1050,7 +1086,7 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
       return { date: l.date, totalCalories: cal, totalProtein: prot, totalCarbs: carb, totalFat: fat, totalFiber: fiber, totalSodium: sodium };
     });
     try {
-      const result = await trendsMutation.mutateAsync({ dailyLogs, targets: MACRO_TARGETS });
+      const result = await trendsMutation.mutateAsync({ dailyLogs, targets: macroTargets });
       setRecommendations(result.recommendations || []);
     } catch (err) { console.error("Trends fetch failed:", err); setRecommendations([]); }
   }, [logs, trendsMutation]);
@@ -1060,18 +1096,26 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
     setShowFillMacros(true);
     const hour = new Date().getHours();
     const timeOfDay = hour < 11 ? "morning" : hour < 15 ? "afternoon" : hour < 19 ? "evening" : "night";
+    // Compute micronutrient gaps from dailyMicroTotals
+    const microGaps: { name: string; currentPercent: number }[] = [];
+    for (const micro of ALL_MICRONUTRIENTS) {
+      const current = dailyMicroTotals.get(micro.name) || 0;
+      const pct = micro.dailyValue > 0 ? Math.round((current / micro.dailyValue) * 100) : 100;
+      microGaps.push({ name: micro.name, currentPercent: pct });
+    }
     try {
       const result = await fillMacrosMutation.mutateAsync({
-        remainingCalories: Math.max(MACRO_TARGETS.calories - dailyTotals.calories, 0),
-        remainingProtein: Math.max(MACRO_TARGETS.protein - dailyTotals.protein, 0),
-        remainingCarbs: Math.max(MACRO_TARGETS.carbs - dailyTotals.carbs, 0),
-        remainingFat: Math.max(MACRO_TARGETS.fat - dailyTotals.fat, 0),
+        remainingCalories: Math.max(macroTargets.calories - dailyTotals.calories, 0),
+        remainingProtein: Math.max(macroTargets.protein - dailyTotals.protein, 0),
+        remainingCarbs: Math.max(macroTargets.carbs - dailyTotals.carbs, 0),
+        remainingFat: Math.max(macroTargets.fat - dailyTotals.fat, 0),
         timeOfDay,
         daysTracked: daysWithFood,
+        microGaps,
       });
       setFillMacrosSuggestions(result);
     } catch (err) { console.error("Fill macros failed:", err); setFillMacrosSuggestions(null); }
-  }, [dailyTotals, daysWithFood, fillMacrosMutation]);
+  }, [dailyTotals, dailyMicroTotals, daysWithFood, fillMacrosMutation, macroTargets]);
 
   /* ── Feedback ──────────────────────────────────── */
   const handleFeedback = useCallback((id: string, thumbsUp: boolean) => {
@@ -1106,25 +1150,28 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Today's Nutrition</span>
               <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{todayKey}</span>
-
+              <button onClick={() => { setTempTargets({ ...macroTargets }); setShowTargetSettings(true); }}
+                className="text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors p-0.5" title="Adjust macro targets">
+                <Settings className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
           {/* Big calorie display — right-aligned, loud */}
           <div className="text-right">
-            <div className={`font-mono text-3xl font-black leading-none tracking-tight ${dailyTotals.calories > MACRO_TARGETS.calories ? "text-red-400" : "text-[var(--primary)]"}`}>
+            <div className={`font-mono text-3xl font-black leading-none tracking-tight ${dailyTotals.calories > macroTargets.calories ? "text-red-400" : "text-[var(--primary)]"}`}>
               {Math.round(dailyTotals.calories)}
             </div>
             <div className="font-mono text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] mt-0.5">
-              / {MACRO_TARGETS.calories} cal
+              / {macroTargets.calories} cal
             </div>
 
           </div>
         </div>
 
-        <MacroBar label="Calories" current={dailyTotals.calories} target={MACRO_TARGETS.calories} color="oklch(0.7 0.18 55)" unit=" cal" />
-        <MacroBar label="Protein" current={dailyTotals.protein} target={MACRO_TARGETS.protein} color="oklch(0.65 0.15 250)" />
-        <MacroBar label="Carbs" current={dailyTotals.carbs} target={MACRO_TARGETS.carbs} color="oklch(0.7 0.15 85)" />
-        <MacroBar label="Fat" current={dailyTotals.fat} target={MACRO_TARGETS.fat} color="oklch(0.7 0.15 15)" />
+        <MacroBar label="Calories" current={dailyTotals.calories} target={macroTargets.calories} color="oklch(0.7 0.18 55)" unit=" cal" />
+        <MacroBar label="Protein" current={dailyTotals.protein} target={macroTargets.protein} color="oklch(0.65 0.15 250)" />
+        <MacroBar label="Carbs" current={dailyTotals.carbs} target={macroTargets.carbs} color="oklch(0.7 0.15 85)" />
+        <MacroBar label="Fat" current={dailyTotals.fat} target={macroTargets.fat} color="oklch(0.7 0.15 15)" />
 
         {/* Daily Micronutrients — progress bars for ALL nutrients */}
         <MicroProgressDropdown microTotals={dailyMicroTotals} />
@@ -1156,7 +1203,7 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
 
         <button onClick={handleFillMacros} disabled={isFillMacrosLoading}
           className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors disabled:opacity-50">
-          <Zap className="w-3.5 h-3.5" /> {isFillMacrosLoading ? "Thinking..." : "Fill My Macros"}
+          <Zap className="w-3.5 h-3.5" /> {isFillMacrosLoading ? "Thinking..." : "Fill My Gaps"}
         </button>
       </div>
 
@@ -1398,7 +1445,7 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Zap className="w-3.5 h-3.5 text-[var(--primary)]" />
-                  <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Fill My Macros</span>
+                  <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Fill My Gaps</span>
                 </div>
                 <button onClick={() => setShowFillMacros(false)} className="text-[var(--muted-foreground)] hover:text-foreground p-0.5"><X className="w-3.5 h-3.5" /></button>
               </div>
@@ -1425,6 +1472,15 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                         <span className="text-amber-400">C: {s.carbs}g</span>
                         <span className="text-rose-400">F: {s.fat}g</span>
                       </div>
+                      {s.keyMicros && s.keyMicros.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {s.keyMicros.map((m: { name: string; percentDV: number }, mi: number) => (
+                            <span key={mi} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-mono">
+                              {m.name} {m.percentDV}%
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <p className="text-[10px] text-[var(--muted-foreground)] mt-1">{s.reason}</p>
                     </div>
                   ))}
@@ -1625,6 +1681,58 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                   className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] bg-[var(--primary)] text-[var(--primary-foreground)] font-bold hover:opacity-90 disabled:opacity-50 transition-colors cursor-pointer">
                   {isReAnalyzing ? "Analyzing..." : "Save"}
                 </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Macro Targets Settings Modal ─────── */}
+      <AnimatePresence>
+        {showTargetSettings && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => setShowTargetSettings(false)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-card border border-border p-5 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xs font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Macro Targets</h3>
+                <button onClick={() => setShowTargetSettings(false)} className="text-[var(--muted-foreground)] hover:text-foreground p-0.5"><X className="w-4 h-4" /></button>
+              </div>
+              <div className="space-y-3">
+                {(["calories", "protein", "carbs", "fat"] as const).map((key) => {
+                  const label = key.charAt(0).toUpperCase() + key.slice(1);
+                  const unit = key === "calories" ? "cal" : "g";
+                  const step = key === "calories" ? 50 : 5;
+                  return (
+                    <div key={key} className="flex items-center justify-between">
+                      <span className="text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] w-20">{label}</span>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => setTempTargets((p) => ({ ...p, [key]: Math.max(0, p[key] - step) }))}
+                          className="w-7 h-7 flex items-center justify-center border border-border text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors font-mono text-sm font-bold cursor-pointer">−</button>
+                        <input
+                          type="number"
+                          value={tempTargets[key]}
+                          onChange={(e) => setTempTargets((p) => ({ ...p, [key]: Math.max(0, Number(e.target.value) || 0) }))}
+                          className="w-16 text-center bg-[var(--secondary)] border border-border text-foreground text-xs font-mono py-1 focus:outline-none focus:border-[var(--primary)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <span className="text-[10px] font-mono text-[var(--muted-foreground)] w-6">{unit}</span>
+                        <button onClick={() => setTempTargets((p) => ({ ...p, [key]: p[key] + step }))}
+                          className="w-7 h-7 flex items-center justify-center border border-border text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors font-mono text-sm font-bold cursor-pointer">+</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex gap-2 mt-4">
+                <button onClick={() => setShowTargetSettings(false)}
+                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] border border-border text-[var(--muted-foreground)] hover:text-foreground transition-colors cursor-pointer">Cancel</button>
+                <button onClick={() => {
+                  setMacroTargets(tempTargets);
+                  saveMacroTargets(tempTargets);
+                  setShowTargetSettings(false);
+                }}
+                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] bg-[var(--primary)] text-[var(--primary-foreground)] font-bold hover:opacity-90 transition-colors cursor-pointer">Save</button>
               </div>
             </motion.div>
           </motion.div>

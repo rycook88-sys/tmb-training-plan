@@ -198,13 +198,26 @@ const fillMacrosSuggestionSchema = {
             protein: { type: "number" as const },
             carbs: { type: "number" as const },
             fat: { type: "number" as const },
-            reason: { type: "string" as const, description: "Why this food helps fill the gap, 1 sentence" },
+            keyMicros: {
+              type: "array" as const,
+              description: "Top 2-3 micronutrients this food is rich in, with approximate %DV it provides",
+              items: {
+                type: "object" as const,
+                properties: {
+                  name: { type: "string" as const, description: "Micronutrient name, e.g. Vitamin K" },
+                  percentDV: { type: "number" as const, description: "Approximate %DV this food provides" },
+                },
+                required: ["name", "percentDV"] as const,
+                additionalProperties: false as const,
+              },
+            },
+            reason: { type: "string" as const, description: "Why this food helps fill macro AND micro gaps, 1 sentence" },
           },
-          required: ["foodName", "portion", "calories", "protein", "carbs", "fat", "reason"] as const,
+          required: ["foodName", "portion", "calories", "protein", "carbs", "fat", "keyMicros", "reason"] as const,
           additionalProperties: false as const,
         },
       },
-      summary: { type: "string" as const, description: "One-sentence summary of the suggestion strategy" },
+      summary: { type: "string" as const, description: "One-sentence summary of the suggestion strategy, mentioning both macro and micro coverage" },
     },
     required: ["suggestions", "summary"] as const,
     additionalProperties: false as const,
@@ -437,18 +450,28 @@ IMPORTANT RULES:
         remainingFat: z.number(),
         timeOfDay: z.string(),
         daysTracked: z.number(),
+        microGaps: z.array(z.object({
+          name: z.string(),
+          currentPercent: z.number(),
+        })).optional(),
       })
     )
     .mutation(async ({ input }) => {
       // No minimum day requirement — manual button press overrides any wait
 
+      // Build micro gap summary for the prompt
+      const lowMicros = (input.microGaps || []).filter(m => m.currentPercent < 50);
+      const microGapText = lowMicros.length > 0
+        ? `\n\nMicronutrient gaps (below 50% DV):\n${lowMicros.map(m => `- ${m.name}: ${m.currentPercent}% DV`).join("\n")}\n\nPrioritize foods that are naturally rich in these deficient micronutrients while also filling macro gaps. For each suggestion, highlight which of these low micronutrients it helps cover.`
+        : "";
+
       const result = await invokeLLM({
         messages: [
           {
             role: "system",
-            content: `You are a practical nutrition advisor for a 226 lb male losing weight on 2300 cal/day with 180g protein minimum. He's training for a 10-day alpine hike.
+            content: `You are a practical nutrition advisor for a male losing weight with a high protein target. He's training for a 10-day alpine hike.
 
-Suggest 2-4 specific, realistic foods that would help fill his remaining macro gaps for the day. Consider the time of day — don't suggest a full dinner at breakfast time. Prioritize closing the biggest gap (usually protein). Keep suggestions practical and easy to prepare.`,
+Suggest 2-4 specific, realistic foods that would help fill his remaining macro AND micronutrient gaps for the day. Consider the time of day — don't suggest a full dinner at breakfast time. Prioritize closing the biggest macro gap (usually protein) while also targeting micronutrient deficiencies. Keep suggestions practical and easy to prepare.`,
           },
           {
             role: "user",
@@ -456,7 +479,7 @@ Suggest 2-4 specific, realistic foods that would help fill his remaining macro g
 - ${Math.round(input.remainingCalories)} more calories
 - ${Math.round(input.remainingProtein)}g more protein
 - ${Math.round(input.remainingCarbs)}g more carbs
-- ${Math.round(input.remainingFat)}g more fat
+- ${Math.round(input.remainingFat)}g more fat${microGapText}
 
 What should I eat to close these gaps?`,
           },
