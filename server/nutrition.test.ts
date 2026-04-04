@@ -2,6 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { appRouter } from "./routers";
 import type { TrpcContext } from "./_core/context";
 
+/**
+ * Mock LLM response using the NEW fixed-object micronutrient schema.
+ * Every micronutrient field is required — the AI can no longer skip any.
+ * Note: vi.mock is hoisted, so we inline the data directly.
+ */
+
 // Mock the LLM and storage modules
 vi.mock("./_core/llm", () => ({
   invokeLLM: vi.fn().mockResolvedValue({
@@ -16,13 +22,38 @@ vi.mock("./_core/llm", () => ({
             protein: 48,
             carbs: 45,
             fat: 12,
-            fiber: 2,
             sugar: 1,
-            sodium: 380,
-            micronutrients: [
-              { name: "Vitamin B6", amount: "0.8mg", dailyValuePct: 47 },
-              { name: "Niacin", amount: "12mg", dailyValuePct: 75 },
-            ],
+            micronutrients: {
+              vitamin_a_mcg: 120,
+              vitamin_c_mg: 5,
+              vitamin_d_mcg: 0.5,
+              vitamin_e_mg: 0.8,
+              vitamin_k_mcg: 2.5,
+              vitamin_b6_mg: 0.8,
+              vitamin_b12_mcg: 2.4,
+              thiamin_b1_mg: 0.15,
+              riboflavin_b2_mg: 0.2,
+              niacin_b3_mg: 12,
+              folate_mcg: 30,
+              biotin_mcg: 5,
+              pantothenic_acid_mg: 1.2,
+              choline_mg: 80,
+              calcium_mg: 25,
+              iron_mg: 2.5,
+              magnesium_mg: 40,
+              phosphorus_mg: 300,
+              potassium_mg: 450,
+              sodium_mg: 380,
+              zinc_mg: 5.5,
+              copper_mg: 0.15,
+              manganese_mg: 0.6,
+              selenium_mcg: 35,
+              chromium_mcg: 5,
+              molybdenum_mcg: 10,
+              iodine_mcg: 15,
+              fiber_g: 2,
+              omega3_epa_dha_mg: 20,
+            },
           }),
         },
       },
@@ -51,11 +82,10 @@ function createPublicContext(): TrpcContext {
 }
 
 describe("nutrition router", () => {
-  it("analyzePhoto returns structured food analysis", async () => {
+  it("analyzePhoto returns structured food analysis with all 29 micronutrients", async () => {
     const ctx = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
-    // Create a small test base64 image (1x1 pixel JPEG)
     const testBase64 = "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYI4Q/SFhSRFJiY0SFxNREA7/2gAMAwEAAhEDEQA/AJ//2Q==";
 
     const result = await caller.nutrition.analyzePhoto({
@@ -68,15 +98,31 @@ describe("nutrition router", () => {
     expect(result).toHaveProperty("protein");
     expect(result).toHaveProperty("carbs");
     expect(result).toHaveProperty("fat");
+    expect(result).toHaveProperty("fiber");
+    expect(result).toHaveProperty("sodium");
     expect(result).toHaveProperty("micronutrients");
     expect(result).toHaveProperty("imageUrl");
     expect(result.foodName).toBe("Grilled Chicken Breast with Rice");
     expect(result.calories).toBe(520);
     expect(result.protein).toBe(48);
+
+    // Verify micronutrients are returned as an array (server converts fixed-object to array)
     expect(Array.isArray(result.micronutrients)).toBe(true);
+    // All 29 micronutrients should be present
+    expect(result.micronutrients).toHaveLength(29);
+
+    // Verify the array format has the correct structure
+    const vitK = result.micronutrients.find((m: any) => m.name === "Vitamin K");
+    expect(vitK).toBeDefined();
+    expect(vitK!.amountMg).toBe(2.5);
+    expect(vitK!.unit).toBe("mcg");
+
+    // Verify fiber and sodium are extracted from the micronutrients object
+    expect(result.fiber).toBe(2);
+    expect(result.sodium).toBe(380);
   });
 
-  it("reAnalyze returns nutrition data for a corrected food name", async () => {
+  it("reAnalyze returns all 29 micronutrients for a corrected food name", async () => {
     const ctx = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
@@ -90,7 +136,21 @@ describe("nutrition router", () => {
     expect(result).toHaveProperty("protein");
     expect(result).toHaveProperty("carbs");
     expect(result).toHaveProperty("fat");
+    expect(result).toHaveProperty("fiber");
+    expect(result).toHaveProperty("sodium");
     expect(result).toHaveProperty("micronutrients");
+
+    // All 29 micronutrients should be present
+    expect(Array.isArray(result.micronutrients)).toBe(true);
+    expect(result.micronutrients).toHaveLength(29);
+
+    // Each micronutrient should have name, amountMg, and unit
+    for (const m of result.micronutrients) {
+      expect(m).toHaveProperty("name");
+      expect(m).toHaveProperty("amountMg");
+      expect(m).toHaveProperty("unit");
+      expect(typeof m.amountMg).toBe("number");
+    }
   });
 
   it("getTrends returns empty array for fewer than 3 days", async () => {
@@ -109,7 +169,6 @@ describe("nutrition router", () => {
   });
 
   it("getTrends returns recommendations for 3+ days of data", async () => {
-    // Re-mock invokeLLM for this specific test
     const { invokeLLM } = await import("./_core/llm");
     (invokeLLM as any).mockResolvedValueOnce({
       choices: [
@@ -146,5 +205,25 @@ describe("nutrition router", () => {
     expect(result.recommendations).toHaveLength(1);
     expect(result.recommendations[0].severity).toBe("warning");
     expect(result.recommendations[0].nutrient).toBe("protein");
+  });
+
+  it("MICRO_KEY_MAP covers all 29 tracked nutrients", async () => {
+    const { MICRO_KEY_MAP } = await import("./nutrition");
+
+    // Verify all 29 keys are present
+    const keys = Object.keys(MICRO_KEY_MAP);
+    expect(keys).toHaveLength(29);
+
+    // Verify each key maps to a valid name and unit
+    for (const [key, mapping] of Object.entries(MICRO_KEY_MAP)) {
+      expect(mapping.name).toBeTruthy();
+      expect(["mg", "mcg", "g"]).toContain(mapping.unit);
+      expect(key.endsWith("_mg") || key.endsWith("_mcg") || key.endsWith("_g")).toBe(true);
+    }
+
+    // Verify specific important mappings
+    expect(MICRO_KEY_MAP.vitamin_k_mcg).toEqual({ name: "Vitamin K", unit: "mcg" });
+    expect(MICRO_KEY_MAP.fiber_g).toEqual({ name: "Fiber", unit: "g" });
+    expect(MICRO_KEY_MAP.omega3_epa_dha_mg).toEqual({ name: "Omega-3 (EPA+DHA)", unit: "mg" });
   });
 });

@@ -7,7 +7,85 @@ import { nanoid } from "nanoid";
 /**
  * Nutrition router — handles food photo analysis via LLM vision,
  * macro/micro estimation, and trend recommendations.
+ *
+ * MICRONUTRIENT STRATEGY:
+ * Instead of a variable-length array, we use a fixed object with one property
+ * per tracked nutrient. This forces the AI to return ALL 28 nutrients every time
+ * because JSON schema validation rejects any missing fields.
  */
+
+// ── Fixed micronutrient schema (one field per nutrient) ──────────────
+// Each field is a number representing the amount in the nutrient's standard unit.
+// The AI MUST return a value for every single one.
+const micronutrientProperties = {
+  vitamin_a_mcg: { type: "number" as const, description: "Vitamin A in mcg RAE" },
+  vitamin_c_mg: { type: "number" as const, description: "Vitamin C in mg" },
+  vitamin_d_mcg: { type: "number" as const, description: "Vitamin D in mcg" },
+  vitamin_e_mg: { type: "number" as const, description: "Vitamin E in mg alpha-tocopherol" },
+  vitamin_k_mcg: { type: "number" as const, description: "Vitamin K in mcg" },
+  vitamin_b6_mg: { type: "number" as const, description: "Vitamin B6 in mg" },
+  vitamin_b12_mcg: { type: "number" as const, description: "Vitamin B12 in mcg" },
+  thiamin_b1_mg: { type: "number" as const, description: "Thiamin (B1) in mg" },
+  riboflavin_b2_mg: { type: "number" as const, description: "Riboflavin (B2) in mg" },
+  niacin_b3_mg: { type: "number" as const, description: "Niacin (B3) in mg" },
+  folate_mcg: { type: "number" as const, description: "Folate in mcg DFE" },
+  biotin_mcg: { type: "number" as const, description: "Biotin in mcg" },
+  pantothenic_acid_mg: { type: "number" as const, description: "Pantothenic Acid in mg" },
+  choline_mg: { type: "number" as const, description: "Choline in mg" },
+  calcium_mg: { type: "number" as const, description: "Calcium in mg" },
+  iron_mg: { type: "number" as const, description: "Iron in mg" },
+  magnesium_mg: { type: "number" as const, description: "Magnesium in mg" },
+  phosphorus_mg: { type: "number" as const, description: "Phosphorus in mg" },
+  potassium_mg: { type: "number" as const, description: "Potassium in mg" },
+  sodium_mg: { type: "number" as const, description: "Sodium in mg" },
+  zinc_mg: { type: "number" as const, description: "Zinc in mg" },
+  copper_mg: { type: "number" as const, description: "Copper in mg" },
+  manganese_mg: { type: "number" as const, description: "Manganese in mg" },
+  selenium_mcg: { type: "number" as const, description: "Selenium in mcg" },
+  chromium_mcg: { type: "number" as const, description: "Chromium in mcg" },
+  molybdenum_mcg: { type: "number" as const, description: "Molybdenum in mcg" },
+  iodine_mcg: { type: "number" as const, description: "Iodine in mcg" },
+  fiber_g: { type: "number" as const, description: "Dietary fiber in grams" },
+  omega3_epa_dha_mg: { type: "number" as const, description: "Omega-3 (EPA+DHA) in mg" },
+};
+
+const micronutrientRequiredKeys = Object.keys(micronutrientProperties) as [string, ...string[]];
+
+/**
+ * Mapping from fixed-object keys back to display names + units.
+ * Used by the frontend to convert the flat response into the FoodMicro[] format.
+ */
+export const MICRO_KEY_MAP: Record<string, { name: string; unit: string }> = {
+  vitamin_a_mcg: { name: "Vitamin A", unit: "mcg" },
+  vitamin_c_mg: { name: "Vitamin C", unit: "mg" },
+  vitamin_d_mcg: { name: "Vitamin D", unit: "mcg" },
+  vitamin_e_mg: { name: "Vitamin E", unit: "mg" },
+  vitamin_k_mcg: { name: "Vitamin K", unit: "mcg" },
+  vitamin_b6_mg: { name: "Vitamin B6", unit: "mg" },
+  vitamin_b12_mcg: { name: "Vitamin B12", unit: "mcg" },
+  thiamin_b1_mg: { name: "Thiamin (B1)", unit: "mg" },
+  riboflavin_b2_mg: { name: "Riboflavin (B2)", unit: "mg" },
+  niacin_b3_mg: { name: "Niacin (B3)", unit: "mg" },
+  folate_mcg: { name: "Folate", unit: "mcg" },
+  biotin_mcg: { name: "Biotin", unit: "mcg" },
+  pantothenic_acid_mg: { name: "Pantothenic Acid", unit: "mg" },
+  choline_mg: { name: "Choline", unit: "mg" },
+  calcium_mg: { name: "Calcium", unit: "mg" },
+  iron_mg: { name: "Iron", unit: "mg" },
+  magnesium_mg: { name: "Magnesium", unit: "mg" },
+  phosphorus_mg: { name: "Phosphorus", unit: "mg" },
+  potassium_mg: { name: "Potassium", unit: "mg" },
+  sodium_mg: { name: "Sodium", unit: "mg" },
+  zinc_mg: { name: "Zinc", unit: "mg" },
+  copper_mg: { name: "Copper", unit: "mg" },
+  manganese_mg: { name: "Manganese", unit: "mg" },
+  selenium_mcg: { name: "Selenium", unit: "mcg" },
+  chromium_mcg: { name: "Chromium", unit: "mcg" },
+  molybdenum_mcg: { name: "Molybdenum", unit: "mcg" },
+  iodine_mcg: { name: "Iodine", unit: "mcg" },
+  fiber_g: { name: "Fiber", unit: "g" },
+  omega3_epa_dha_mg: { name: "Omega-3 (EPA+DHA)", unit: "mg" },
+};
 
 const foodAnalysisSchema = {
   name: "food_analysis",
@@ -32,42 +110,44 @@ const foodAnalysisSchema = {
       protein: { type: "number" as const, description: "Grams of protein" },
       carbs: { type: "number" as const, description: "Grams of carbohydrates" },
       fat: { type: "number" as const, description: "Grams of fat" },
-      fiber: { type: "number" as const, description: "Grams of fiber" },
       sugar: { type: "number" as const, description: "Grams of sugar" },
-      sodium: { type: "number" as const, description: "Milligrams of sodium" },
       micronutrients: {
-        type: "array" as const,
-        items: {
-          type: "object" as const,
-          properties: {
-            name: {
-              type: "string" as const,
-              description: "Nutrient name. MUST match one of: Vitamin A, Vitamin C, Vitamin D, Vitamin E, Vitamin K, Vitamin B6, Vitamin B12, Thiamin (B1), Riboflavin (B2), Niacin (B3), Folate, Biotin, Pantothenic Acid, Choline, Calcium, Iron, Magnesium, Phosphorus, Potassium, Zinc, Copper, Manganese, Selenium, Chromium, Molybdenum, Iodine, Fiber, Omega-3 (EPA+DHA)",
-            },
-            amountMg: {
-              type: "number" as const,
-              description: "Amount in the standard unit for this nutrient. For nutrients measured in mg, provide mg. For nutrients measured in mcg (Vitamin A, Vitamin D, Vitamin K, Vitamin B12, Folate, Biotin, Selenium, Chromium, Molybdenum, Iodine), provide the value in mcg. For fiber (measured in g), provide grams. MUST be a specific number, never 0 unless truly absent.",
-            },
-            unit: {
-              type: "string" as const,
-              enum: ["mg", "mcg", "g"],
-              description: "The unit of the amountMg value",
-            },
-          },
-          required: ["name", "amountMg", "unit"] as const,
-          additionalProperties: false as const,
-        },
-        description: "ALL micronutrients present in this food. Include every nutrient you can estimate, even small amounts. Use exact numeric values only — never use words like 'Moderate' or 'High'. If unsure of exact amount, provide your best numeric estimate.",
+        type: "object" as const,
+        properties: micronutrientProperties,
+        required: micronutrientRequiredKeys,
+        additionalProperties: false as const,
+        description: "ALL 29 micronutrients. Every field is REQUIRED. Use 0 if the nutrient is truly absent from this food. Fiber and sodium are included here — do NOT duplicate them at the top level.",
       },
     },
     required: [
       "foodName", "confidence", "servingEstimate",
       "calories", "protein", "carbs", "fat",
-      "fiber", "sugar", "sodium", "micronutrients",
+      "sugar", "micronutrients",
     ] as const,
     additionalProperties: false as const,
   },
 };
+
+const FOOD_ANALYSIS_SYSTEM_PROMPT = `You are a nutrition expert analyzing food. Identify the food and estimate macronutrients and ALL micronutrients as accurately as possible.
+
+CRITICAL INSTRUCTIONS:
+1. INGREDIENT-LEVEL ANALYSIS: Mentally break down the meal into individual ingredients. For each ingredient, estimate its nutrient contribution, then SUM them all together.
+   Example: "Chicken breast with broccoli and rice" → analyze chicken (protein, B vitamins, selenium), broccoli (Vitamin K, Vitamin C, fiber, folate), rice (carbs, manganese, selenium) separately, then add up.
+
+2. ALL 29 MICRONUTRIENTS ARE REQUIRED: The response schema has 29 fixed micronutrient fields. You MUST provide a number for EVERY SINGLE ONE. Use 0 only if the nutrient is genuinely absent from ALL ingredients.
+
+3. DO NOT SKIP NUTRIENTS: Common mistakes to avoid:
+   - Broccoli → MUST include vitamin_k_mcg (1 cup cooked ≈ 220 mcg)
+   - Meat → MUST include iron, zinc, B12, selenium, phosphorus
+   - Dairy → MUST include calcium, phosphorus, vitamin A, riboflavin
+   - Potatoes → MUST include potassium, vitamin C, B6, manganese
+   - Eggs → MUST include choline, selenium, vitamin D, B12
+
+4. NUMERIC VALUES ONLY: Every micronutrient field must be a specific number. Never use 0 as a lazy default — if the food likely contains the nutrient, estimate it.
+
+5. UNITS: Each field name includes the unit (e.g., vitamin_k_mcg means the value is in micrograms). Fiber is in grams. Most minerals are in mg.
+
+Focus on accuracy for a 226 lb male trying to lose weight on 2300 cal/day with 180g protein minimum.`;
 
 const trendRecommendationSchema = {
   name: "trend_recommendations",
@@ -130,6 +210,22 @@ const fillMacrosSuggestionSchema = {
   },
 };
 
+/**
+ * Convert the fixed-object micronutrient response into the FoodMicro[] array
+ * format used by the frontend. This runs server-side so the frontend doesn't
+ * need to know about the schema change.
+ */
+function convertMicrosToArray(micros: Record<string, number>): Array<{ name: string; amountMg: number; unit: string }> {
+  const result: Array<{ name: string; amountMg: number; unit: string }> = [];
+  for (const [key, mapping] of Object.entries(MICRO_KEY_MAP)) {
+    const value = micros[key];
+    if (typeof value === "number") {
+      result.push({ name: mapping.name, amountMg: value, unit: mapping.unit });
+    }
+  }
+  return result;
+}
+
 export const nutritionRouter = router({
   /**
    * Analyze a food photo — accepts base64 image data,
@@ -153,21 +249,14 @@ export const nutritionRouter = router({
         messages: [
           {
             role: "system",
-            content: `You are a nutrition expert analyzing food photos. Identify the food and estimate macronutrients and micronutrients as accurately as possible. Be specific about portion sizes. If you see multiple food items, combine them into one total estimate. Always provide your best estimate even if uncertain — the user can correct the food name afterward. Focus on accuracy for a 226 lb male trying to lose weight on 2300 cal/day with 180g protein minimum.
-
-CRITICAL RULES FOR MICRONUTRIENTS:
-- ALWAYS return NUMERIC values for micronutrient amounts. NEVER use words like "Moderate", "High", "Low", or "Trace".
-- If you're unsure of the exact amount, provide your BEST NUMERIC ESTIMATE.
-- Include ALL micronutrients you can reasonably estimate for the food.
-- Use the correct unit: mcg for Vitamin A, D, K, B12, Folate, Biotin, Selenium, Chromium, Molybdenum, Iodine. mg for most minerals and vitamins. g for Fiber.
-- The amountMg field should contain the value in the unit specified by the unit field.`,
+            content: FOOD_ANALYSIS_SYSTEM_PROMPT,
           },
           {
             role: "user",
             content: [
               {
                 type: "text" as const,
-                text: "What food is in this photo? Estimate the calories, macros, and ALL micronutrients with specific numeric amounts.",
+                text: "What food is in this photo? Estimate the calories, macros, and ALL 29 micronutrients. Remember: break down each ingredient separately, then sum the nutrients. Every micronutrient field must have a value.",
               },
               {
                 type: "image_url" as const,
@@ -192,8 +281,22 @@ CRITICAL RULES FOR MICRONUTRIENTS:
       }
 
       const parsed = JSON.parse(content);
+
+      // Convert fixed-object micros to array format for frontend compatibility
+      const microArray = convertMicrosToArray(parsed.micronutrients);
+
       return {
-        ...parsed,
+        foodName: parsed.foodName,
+        confidence: parsed.confidence,
+        servingEstimate: parsed.servingEstimate,
+        calories: parsed.calories,
+        protein: parsed.protein,
+        carbs: parsed.carbs,
+        fat: parsed.fat,
+        fiber: parsed.micronutrients.fiber_g || 0,
+        sugar: parsed.sugar,
+        sodium: parsed.micronutrients.sodium_mg || 0,
+        micronutrients: microArray,
         imageUrl,
       };
     }),
@@ -214,17 +317,11 @@ CRITICAL RULES FOR MICRONUTRIENTS:
         messages: [
           {
             role: "system",
-            content: `You are a nutrition expert. The user has identified a food item. Estimate the macronutrients and micronutrients as accurately as possible. Focus on accuracy for a 226 lb male trying to lose weight on 2300 cal/day with 180g protein minimum.
-
-CRITICAL RULES FOR MICRONUTRIENTS:
-- ALWAYS return NUMERIC values for micronutrient amounts. NEVER use words like "Moderate", "High", "Low", or "Trace".
-- If you're unsure of the exact amount, provide your BEST NUMERIC ESTIMATE.
-- Include ALL micronutrients you can reasonably estimate for the food.
-- Use the correct unit: mcg for Vitamin A, D, K, B12, Folate, Biotin, Selenium, Chromium, Molybdenum, Iodine. mg for most minerals and vitamins. g for Fiber.`,
+            content: FOOD_ANALYSIS_SYSTEM_PROMPT,
           },
           {
             role: "user",
-            content: `Estimate the nutrition for: "${input.foodName}"${input.servingEstimate ? ` (serving: ${input.servingEstimate})` : ""}. Provide calories, macros, and ALL micronutrients with specific numeric amounts.`,
+            content: `Estimate the nutrition for: "${input.foodName}"${input.servingEstimate ? ` (serving: ${input.servingEstimate})` : ""}. Break down each ingredient separately, then sum the nutrients. Every micronutrient field must have a value.`,
           },
         ],
         response_format: {
@@ -239,7 +336,24 @@ CRITICAL RULES FOR MICRONUTRIENTS:
         throw new Error("No response from nutrition model");
       }
 
-      return JSON.parse(content);
+      const parsed = JSON.parse(content);
+
+      // Convert fixed-object micros to array format for frontend compatibility
+      const microArray = convertMicrosToArray(parsed.micronutrients);
+
+      return {
+        foodName: parsed.foodName,
+        confidence: parsed.confidence,
+        servingEstimate: parsed.servingEstimate,
+        calories: parsed.calories,
+        protein: parsed.protein,
+        carbs: parsed.carbs,
+        fat: parsed.fat,
+        fiber: parsed.micronutrients.fiber_g || 0,
+        sugar: parsed.sugar,
+        sodium: parsed.micronutrients.sodium_mg || 0,
+        micronutrients: microArray,
+      };
     }),
 
   /**

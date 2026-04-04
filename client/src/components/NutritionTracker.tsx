@@ -145,18 +145,19 @@ function getOrCreateToday(logs: DailyLog[]): { logs: DailyLog[]; today: DailyLog
 
 /**
  * Normalize micronutrients from the AI response.
- * The AI returns { name, amountMg, unit } — we convert to standard unit amounts.
+ * The server now converts the fixed-object schema into an array of
+ * { name, amountMg, unit } before sending to the client.
+ * This function handles both the new format and any legacy data in localStorage.
  */
 function normalizeMicros(aiMicros: any[]): FoodMicro[] {
   if (!Array.isArray(aiMicros)) return [];
   return aiMicros.map((m) => {
     const ref = ALL_MICRONUTRIENTS.find((r) => r.name === m.name);
+    // Support both "amountMg" (from server) and "amount" (from localStorage/presets)
     let amount = typeof m.amountMg === "number" ? m.amountMg : (typeof m.amount === "number" ? m.amount : 0);
     const unit = m.unit || ref?.unit || "mg";
-    // If the AI returns amountMg but the unit is mcg, the value IS in mcg already
-    // (the field name is misleading but the schema says "Amount in the standard unit")
     return { name: m.name, amount, unit };
-  }).filter((m) => m.amount > 0 || ALL_MICRONUTRIENTS.some((r) => r.name === m.name));
+  });
 }
 
 /* ── Macro Progress Bar ────────────────────────────── */

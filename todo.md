@@ -65,3 +65,9 @@
 - [x] Tap a logged food entry to edit its name/details
 - [x] AI re-analyzes macros/micros for the updated food
 - [x] Optional clarification question popup if AI needs more info
+
+## Micronutrient AI Consistency Fix
+- [x] Fix AI schema: change from variable array to fixed object with all 29 nutrients required
+- [x] Update AI prompt to emphasize ingredient-level nutrient analysis
+- [x] Update frontend normalizeMicros to handle new fixed-object format
+- [x] Test with "Mixed protein bowl with broccoli" to verify Vitamin K is always returned
