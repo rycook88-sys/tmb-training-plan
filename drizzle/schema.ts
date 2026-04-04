@@ -25,4 +25,18 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
-// TODO: Add your tables here
+/**
+ * Nutrition data backup table.
+ * Stores a JSON snapshot of each localStorage data type per user.
+ * dataType: 'foodLog' | 'presets' | 'commonItems' | 'weightLog'
+ */
+export const nutritionBackups = mysqlTable("nutritionBackups", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  dataType: varchar("dataType", { length: 32 }).notNull(),
+  jsonData: text("jsonData").notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type NutritionBackup = typeof nutritionBackups.$inferSelect;
+export type InsertNutritionBackup = typeof nutritionBackups.$inferInsert;

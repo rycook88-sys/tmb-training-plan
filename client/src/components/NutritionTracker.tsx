@@ -4,9 +4,10 @@ import {
   Camera, Check, Edit3, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown,
   Trash2, X, AlertTriangle, TrendingUp, Pill, Utensils, Plus, RotateCcw,
   Loader2, Sparkles, ArrowUpToLine, Zap, Bookmark, Briefcase, Coffee,
-  Square, CheckSquare, Info,
+  Square, CheckSquare, Info, Cloud, CloudOff,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import {
   DAILY_VITAMINS, getDailyVitaminTotals, MACRO_TARGETS,
   ALL_MICRONUTRIENTS, formatMicroAmount, getMicroDVPercent,
@@ -617,10 +618,12 @@ function RecommendationCard({ rec, onFeedback, existingFeedback }: {
    ██  Main NutritionTracker Component
    ══════════════════════════════════════════════════════ */
 export default function NutritionTracker({ embedded = false }: { embedded?: boolean }) {
+  const { user, isAuthenticated } = useAuth();
   const [logs, setLogs] = useState<DailyLog[]>(loadLogs);
   const [feedback, setFeedback] = useState<RecommendationFeedback[]>(loadFeedback);
   const [presets, setPresets] = useState<PresetLists>(loadPresets);
   const [commonItems, setCommonItems] = useState<CommonItem[]>(loadCommonItems);
+  const [backupStatus, setBackupStatus] = useState<"idle" | "syncing" | "synced" | "error">("idle");
 
   // UI state
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
@@ -659,8 +662,91 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const reAnalyzeMutation = trpc.nutrition.reAnalyze.useMutation();
   const trendsMutation = trpc.nutrition.getTrends.useMutation();
   const fillMacrosMutation = trpc.nutrition.fillMyMacros.useMutation();
+  const backupMutation = trpc.nutrition.backup.useMutation();
 
-  // Persist
+  // Restore from server on mount if localStorage is empty and user is logged in
+  const restoreQuery = trpc.nutrition.restore.useQuery(undefined, {
+    enabled: isAuthenticated && logs.length === 0,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+
+  useEffect(() => {
+    if (restoreQuery.data && logs.length === 0) {
+      const b = restoreQuery.data.backups;
+      let restored = false;
+      if (b.foodLog) {
+        try {
+          const parsed = JSON.parse(b.foodLog);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setLogs(parsed);
+            saveLogs(parsed);
+            restored = true;
+          }
+        } catch {}
+      }
+      if (b.presets) {
+        try {
+          const parsed = JSON.parse(b.presets);
+          if (parsed.workDay || parsed.offDay) {
+            setPresets(parsed);
+            savePresets(parsed);
+            restored = true;
+          }
+        } catch {}
+      }
+      if (b.commonItems) {
+        try {
+          const parsed = JSON.parse(b.commonItems);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setCommonItems(parsed);
+            saveCommonItems(parsed);
+            restored = true;
+          }
+        } catch {}
+      }
+      if (restored) {
+        setBackupStatus("synced");
+        console.log("[Backup] Restored nutrition data from server");
+      }
+    }
+  }, [restoreQuery.data]);
+
+  // Background backup: debounced sync to server after any data change
+  const backupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const doBackup = useCallback(() => {
+    if (!isAuthenticated) return;
+    setBackupStatus("syncing");
+    backupMutation.mutate(
+      {
+        data: [
+          { dataType: "foodLog", jsonData: JSON.stringify(logs) },
+          { dataType: "presets", jsonData: JSON.stringify(presets) },
+          { dataType: "commonItems", jsonData: JSON.stringify(commonItems) },
+        ],
+      },
+      {
+        onSuccess: () => {
+          setBackupStatus("synced");
+          console.log("[Backup] Nutrition data backed up to server");
+        },
+        onError: () => {
+          setBackupStatus("error");
+          console.warn("[Backup] Failed to backup nutrition data");
+        },
+      }
+    );
+  }, [isAuthenticated, logs, presets, commonItems, backupMutation]);
+
+  // Trigger backup 5 seconds after any data change
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (backupTimerRef.current) clearTimeout(backupTimerRef.current);
+    backupTimerRef.current = setTimeout(doBackup, 5000);
+    return () => { if (backupTimerRef.current) clearTimeout(backupTimerRef.current); };
+  }, [logs, presets, commonItems, isAuthenticated]);
+
+  // Persist to localStorage
   useEffect(() => { saveLogs(logs); }, [logs]);
   useEffect(() => { saveFeedback(feedback); }, [feedback]);
   useEffect(() => { savePresets(presets); }, [presets]);
@@ -1020,14 +1106,38 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
 
       {/* ── Header Stats ─────────────────────────── */}
       <div className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Today's Nutrition</span>
-            <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{todayKey}</span>
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Today's Nutrition</span>
+              <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{todayKey}</span>
+              {/* Backup status indicator */}
+              {isAuthenticated && (
+                <span title={backupStatus === "synced" ? "Backed up" : backupStatus === "syncing" ? "Syncing..." : backupStatus === "error" ? "Backup failed" : ""}
+                  className="ml-1">
+                  {backupStatus === "syncing" && <Cloud className="w-3 h-3 text-blue-400 animate-pulse" />}
+                  {backupStatus === "synced" && <Cloud className="w-3 h-3 text-green-500" />}
+                  {backupStatus === "error" && <CloudOff className="w-3 h-3 text-red-400" />}
+                </span>
+              )}
+            </div>
           </div>
-          <span className={`font-mono text-sm font-bold ${dailyTotals.calories > MACRO_TARGETS.calories ? "text-red-400" : "text-foreground"}`}>
-            {Math.round(dailyTotals.calories)} / {MACRO_TARGETS.calories} cal
-          </span>
+          {/* Big calorie display — right-aligned, loud */}
+          <div className="text-right">
+            <div className={`font-mono text-3xl font-black leading-none tracking-tight ${dailyTotals.calories > MACRO_TARGETS.calories ? "text-red-400" : "text-[var(--primary)]"}`}>
+              {Math.round(dailyTotals.calories)}
+            </div>
+            <div className="font-mono text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] mt-0.5">
+              / {MACRO_TARGETS.calories} cal
+            </div>
+            <div className="font-mono text-xs mt-0.5">
+              {dailyTotals.calories <= MACRO_TARGETS.calories ? (
+                <span className="text-green-500">{Math.round(MACRO_TARGETS.calories - dailyTotals.calories)} left</span>
+              ) : (
+                <span className="text-red-400">+{Math.round(dailyTotals.calories - MACRO_TARGETS.calories)} over</span>
+              )}
+            </div>
+          </div>
         </div>
 
         <MacroBar label="Calories" current={dailyTotals.calories} target={MACRO_TARGETS.calories} color="oklch(0.7 0.18 55)" unit=" cal" />

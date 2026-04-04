@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, nutritionBackups } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,57 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+/**
+ * Upsert a nutrition backup for a given user + dataType.
+ * If a row already exists for (userId, dataType), update it.
+ */
+export async function upsertNutritionBackup(
+  userId: number,
+  dataType: string,
+  jsonData: string
+): Promise<void> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot backup nutrition: database not available");
+    return;
+  }
+
+  const existing = await db
+    .select()
+    .from(nutritionBackups)
+    .where(and(eq(nutritionBackups.userId, userId), eq(nutritionBackups.dataType, dataType)))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db
+      .update(nutritionBackups)
+      .set({ jsonData, updatedAt: new Date() })
+      .where(and(eq(nutritionBackups.userId, userId), eq(nutritionBackups.dataType, dataType)));
+  } else {
+    await db.insert(nutritionBackups).values({ userId, dataType, jsonData });
+  }
+}
+
+/**
+ * Get all nutrition backups for a user, keyed by dataType.
+ */
+export async function getNutritionBackups(
+  userId: number
+): Promise<Record<string, string>> {
+  const db = await getDb();
+  if (!db) {
+    console.warn("[Database] Cannot restore nutrition: database not available");
+    return {};
+  }
+
+  const rows = await db
+    .select()
+    .from(nutritionBackups)
+    .where(eq(nutritionBackups.userId, userId));
+
+  const result: Record<string, string> = {};
+  for (const row of rows) {
+    result[row.dataType] = row.jsonData;
+  }
+  return result;
+}

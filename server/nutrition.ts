@@ -1,8 +1,9 @@
 import { z } from "zod";
-import { publicProcedure, router } from "./_core/trpc";
+import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
 import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
+import { upsertNutritionBackup, getNutritionBackups } from "./db";
 
 /**
  * Nutrition router — handles food photo analysis via LLM vision,
@@ -473,5 +474,41 @@ What should I eat to close these gaps?`,
       }
 
       return JSON.parse(content);
+    }),
+
+  /**
+   * Backup nutrition data from localStorage to the database.
+   * Accepts multiple data types in one call for efficiency.
+   */
+  backup: protectedProcedure
+    .input(
+      z.object({
+        data: z.array(
+          z.object({
+            dataType: z.string(),
+            jsonData: z.string(),
+          })
+        ),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.user.id;
+      let saved = 0;
+      for (const item of input.data) {
+        await upsertNutritionBackup(userId, item.dataType, item.jsonData);
+        saved++;
+      }
+      return { saved, timestamp: new Date().toISOString() };
+    }),
+
+  /**
+   * Restore nutrition data from the database.
+   * Returns all backed-up data types for the current user.
+   */
+  restore: protectedProcedure
+    .query(async ({ ctx }) => {
+      const userId = ctx.user.id;
+      const backups = await getNutritionBackups(userId);
+      return { backups, timestamp: new Date().toISOString() };
     }),
 });

@@ -68,9 +68,52 @@ vi.mock("./storage", () => ({
   }),
 }));
 
+vi.mock("./db", async (importOriginal) => {
+  const actual = await importOriginal() as any;
+  const backupStore = new Map<string, string>();
+  return {
+    ...actual,
+    upsertNutritionBackup: vi.fn().mockImplementation(async (userId: number, dataType: string, jsonData: string) => {
+      backupStore.set(`${userId}:${dataType}`, jsonData);
+    }),
+    getNutritionBackups: vi.fn().mockImplementation(async (userId: number) => {
+      const result: Record<string, string> = {};
+      for (const [key, val] of backupStore.entries()) {
+        if (key.startsWith(`${userId}:`)) {
+          result[key.split(":")[1]] = val;
+        }
+      }
+      return result;
+    }),
+  };
+});
+
 function createPublicContext(): TrpcContext {
   return {
     user: null,
+    req: {
+      protocol: "https",
+      headers: {},
+    } as TrpcContext["req"],
+    res: {
+      clearCookie: () => {},
+    } as TrpcContext["res"],
+  };
+}
+
+function createAuthenticatedContext(): TrpcContext {
+  return {
+    user: {
+      id: 1,
+      openId: "test-user-123",
+      name: "Test User",
+      email: "test@example.com",
+      loginMethod: "oauth",
+      role: "user" as const,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastSignedIn: new Date(),
+    },
     req: {
       protocol: "https",
       headers: {},
@@ -202,6 +245,49 @@ describe("nutrition router", () => {
     expect(result.recommendations).toHaveLength(1);
     expect(result.recommendations[0].severity).toBe("warning");
     expect(result.recommendations[0].nutrient).toBe("protein");
+  });
+
+  it("backup saves nutrition data for authenticated user", async () => {
+    const ctx = createAuthenticatedContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.nutrition.backup({
+      data: [
+        { dataType: "foodLog", jsonData: JSON.stringify([{ date: "2026-04-01", entries: [] }]) },
+        { dataType: "presets", jsonData: JSON.stringify({ workDay: [], offDay: [] }) },
+        { dataType: "commonItems", jsonData: JSON.stringify([]) },
+      ],
+    });
+
+    expect(result.saved).toBe(3);
+    expect(result.timestamp).toBeTruthy();
+  });
+
+  it("restore returns backed-up data for authenticated user", async () => {
+    const ctx = createAuthenticatedContext();
+    const caller = appRouter.createCaller(ctx);
+
+    // First backup
+    await caller.nutrition.backup({
+      data: [
+        { dataType: "foodLog", jsonData: JSON.stringify([{ date: "2026-04-03", entries: [{ id: "test" }] }]) },
+      ],
+    });
+
+    // Then restore
+    const result = await caller.nutrition.restore();
+    expect(result.backups).toHaveProperty("foodLog");
+    const parsed = JSON.parse(result.backups.foodLog);
+    expect(parsed[0].entries[0].id).toBe("test");
+  });
+
+  it("backup rejects unauthenticated users", async () => {
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.nutrition.backup({ data: [{ dataType: "foodLog", jsonData: "[]" }] })
+    ).rejects.toThrow();
   });
 
   it("MICRO_KEY_MAP covers all 29 tracked nutrients", async () => {

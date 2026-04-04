@@ -86,3 +86,14 @@
 - [x] Timestamps: format in a consistent column next to the edit button
 - [x] Trends button: manual press overrides the 3-day minimum, gives advice on current data immediately
 - [x] Keep 3-day auto-trigger rule for unprompted recommendations (prompt still prefers multi-day trends when available)
+
+## Hybrid LocalStorage + Database Backup
+- [x] Add nutritionBackup table to drizzle schema (userId, dataType, jsonData, updatedAt)
+- [x] Add server-side tRPC endpoints: nutrition.backup (save) and nutrition.restore (load)
+- [x] Add client-side background sync: auto-backup after each food log change (5s debounce)
+- [x] Add restore-from-backup logic: on app load, if localStorage is empty but backup exists, restore
+- [x] Write vitest tests for backup/restore endpoints (3 new tests: backup, restore, auth rejection)
+
+## Calorie Header Redesign
+- [x] Make current/total calories display larger and more prominent at top of tracker
+- [x] Right-align the calorie display with bold/accent styling + remaining/over indicator
