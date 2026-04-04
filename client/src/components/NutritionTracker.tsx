@@ -166,6 +166,38 @@ function saveCommonItems(items: CommonItem[]) {
   localStorage.setItem(COMMON_KEY, JSON.stringify(items));
 }
 
+// ── Saved Meal Plans ──────────────────────────────────────
+const SAVED_PLANS_KEY = "tmb-saved-meal-plans";
+
+interface SavedMealPlan {
+  id: string;
+  name: string;
+  savedAt: string;
+  type: "single" | "prep";
+  meals: {
+    name: string;
+    dayLabel?: string;
+    ingredients: string[];
+    instructions: string;
+    totalCalories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    keyMicros?: { name: string; percentDV: number }[];
+  }[];
+  summary: string;
+}
+
+function loadSavedPlans(): SavedMealPlan[] {
+  try {
+    const raw = localStorage.getItem(SAVED_PLANS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+function saveSavedPlans(plans: SavedMealPlan[]) {
+  localStorage.setItem(SAVED_PLANS_KEY, JSON.stringify(plans));
+}
+
 function getOrCreateToday(logs: DailyLog[]): { logs: DailyLog[]; today: DailyLog } {
   const key = getTodayKey();
   let today = logs.find((l) => l.date === key);
@@ -695,6 +727,10 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const [mealNotes, setMealNotes] = useState("");
   const [mealPlanResult, setMealPlanResult] = useState<any>(null);
   const [isMealPlanning, setIsMealPlanning] = useState(false);
+  const [savedPlans, setSavedPlans] = useState<SavedMealPlan[]>(() => loadSavedPlans());
+  const [showSavedPlans, setShowSavedPlans] = useState(false);
+  const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
+  const [confirmDeletePlan, setConfirmDeletePlan] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const presetFileRef = useRef<HTMLInputElement>(null);
@@ -750,6 +786,16 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
           }
         } catch {}
       }
+      if (b.savedMealPlans) {
+        try {
+          const parsed = JSON.parse(b.savedMealPlans);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setSavedPlans(parsed);
+            saveSavedPlans(parsed);
+            restored = true;
+          }
+        } catch {}
+      }
       if (restored) {
         setBackupStatus("synced");
         console.log("[Backup] Restored nutrition data from server");
@@ -768,6 +814,7 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
           { dataType: "foodLog", jsonData: JSON.stringify(logs) },
           { dataType: "presets", jsonData: JSON.stringify(presets) },
           { dataType: "commonItems", jsonData: JSON.stringify(commonItems) },
+          { dataType: "savedMealPlans", jsonData: JSON.stringify(savedPlans) },
         ],
       },
       {
@@ -781,7 +828,7 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
         },
       }
     );
-  }, [isAuthenticated, logs, presets, commonItems, backupMutation]);
+  }, [isAuthenticated, logs, presets, commonItems, savedPlans, backupMutation]);
 
   // Trigger backup 5 seconds after any data change
   useEffect(() => {
@@ -789,13 +836,14 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
     if (backupTimerRef.current) clearTimeout(backupTimerRef.current);
     backupTimerRef.current = setTimeout(doBackup, 5000);
     return () => { if (backupTimerRef.current) clearTimeout(backupTimerRef.current); };
-  }, [logs, presets, commonItems, isAuthenticated]);
+  }, [logs, presets, commonItems, savedPlans, isAuthenticated]);
 
   // Persist to localStorage
   useEffect(() => { saveLogs(logs); }, [logs]);
   useEffect(() => { saveFeedback(feedback); }, [feedback]);
   useEffect(() => { savePresets(presets); }, [presets]);
   useEffect(() => { saveCommonItems(commonItems); }, [commonItems]);
+  useEffect(() => { saveSavedPlans(savedPlans); }, [savedPlans]);
 
   // Today's data
   const todayKey = getTodayKey();
@@ -1248,6 +1296,13 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
           className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
           <ChefHat className="w-3.5 h-3.5" /> Plan Meal
         </button>
+
+        {savedPlans.length > 0 && (
+          <button onClick={() => { setShowSavedPlans(true); setExpandedPlanId(null); }}
+            className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
+            <Bookmark className="w-3.5 h-3.5" /> Saved ({savedPlans.length})
+          </button>
+        )}
       </div>
 
       {/* ── Daily Presets Panel ──────────────────── */}
@@ -2030,12 +2085,162 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                   {mealPlanResult.summary && (
                     <p className="text-[10px] font-mono text-[var(--muted-foreground)] italic">{mealPlanResult.summary}</p>
                   )}
-                  <button onClick={() => setMealPlanResult(null)}
-                    className="w-full py-2 text-xs font-mono uppercase tracking-[0.15em] border border-border text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors cursor-pointer">
-                    Plan Another
-                  </button>
+                  <div className="flex gap-2">
+                    <button onClick={() => {
+                      const plan: SavedMealPlan = {
+                        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+                        name: mealPlanResult.meals?.length === 1
+                          ? mealPlanResult.meals[0].name
+                          : `${mealPlanType === "prep" ? `${mealPrepDays}-Day Prep` : "Meal"} — ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+                        savedAt: new Date().toISOString(),
+                        type: mealPlanType,
+                        meals: mealPlanResult.meals || [],
+                        summary: mealPlanResult.summary || "",
+                      };
+                      const updated = [plan, ...savedPlans];
+                      setSavedPlans(updated);
+                      saveSavedPlans(updated);
+                      setShowMealPlanner(false);
+                      setMealPlanResult(null);
+                    }}
+                      className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] bg-[var(--primary)] text-[var(--primary-foreground)] font-bold hover:opacity-90 transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+                      <Bookmark className="w-3.5 h-3.5" /> Save Plan
+                    </button>
+                    <button onClick={() => setMealPlanResult(null)}
+                      className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] border border-border text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors cursor-pointer">
+                      Plan Another
+                    </button>
+                  </div>
                 </div>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Saved Plans Browser ──────────────────── */}
+      <AnimatePresence>
+        {showSavedPlans && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => setShowSavedPlans(false)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-card border border-border p-5 max-w-md w-full max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Bookmark className="w-4 h-4 text-[var(--primary)]" />
+                  <h3 className="text-xs font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Saved Plans ({savedPlans.length})</h3>
+                </div>
+                <button onClick={() => setShowSavedPlans(false)} className="text-[var(--muted-foreground)] hover:text-foreground p-0.5"><X className="w-4 h-4" /></button>
+              </div>
+
+              {savedPlans.length === 0 ? (
+                <p className="text-xs font-mono text-[var(--muted-foreground)] text-center py-6">No saved plans yet. Generate a meal plan and hit Save.</p>
+              ) : (
+                <div className="space-y-2">
+                  {savedPlans.map((plan) => (
+                    <div key={plan.id} className="border border-border">
+                      {/* Plan header — tap to expand */}
+                      <button
+                        onClick={() => setExpandedPlanId(expandedPlanId === plan.id ? null : plan.id)}
+                        className="w-full flex items-center justify-between p-3 hover:bg-[var(--secondary)]/50 transition-colors cursor-pointer text-left">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono font-bold text-foreground truncate">{plan.name}</span>
+                            <span className="text-[9px] font-mono uppercase tracking-wider px-1.5 py-0.5 border border-border text-[var(--muted-foreground)]">
+                              {plan.type === "prep" ? `${plan.meals.length}-day prep` : "single"}
+                            </span>
+                          </div>
+                          <span className="text-[9px] font-mono text-[var(--muted-foreground)]">
+                            {new Date(plan.savedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 ml-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setConfirmDeletePlan(plan.id); }}
+                            className="p-1 text-[var(--muted-foreground)] hover:text-red-400 transition-colors">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                          {expandedPlanId === plan.id ? <ChevronUp className="w-4 h-4 text-[var(--muted-foreground)]" /> : <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)]" />}
+                        </div>
+                      </button>
+
+                      {/* Expanded plan details */}
+                      <AnimatePresence>
+                        {expandedPlanId === plan.id && (
+                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                            <div className="px-3 pb-3 space-y-2">
+                              {plan.meals.map((meal, i) => (
+                                <div key={i} className="border border-border/50 p-2.5 bg-[var(--secondary)]/30">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <span className="font-mono text-[11px] font-bold text-foreground">{meal.name}</span>
+                                    <span className="text-[10px] font-mono text-[var(--primary)]">{meal.totalCalories} cal</span>
+                                  </div>
+                                  {meal.dayLabel && <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--muted-foreground)] mb-1 block">{meal.dayLabel}</span>}
+                                  <div className="space-y-0.5 mt-1.5">
+                                    {meal.ingredients.map((ing, j) => (
+                                      <div key={j} className="text-[10px] font-mono text-[var(--muted-foreground)] flex items-start gap-1.5">
+                                        <span className="text-[var(--primary)] mt-0.5">•</span> {ing}
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <div className="flex gap-3 mt-1.5 text-[10px] font-mono">
+                                    <span className="text-blue-400">P: {meal.protein}g</span>
+                                    <span className="text-amber-400">C: {meal.carbs}g</span>
+                                    <span className="text-rose-400">F: {meal.fat}g</span>
+                                  </div>
+                                  {meal.keyMicros && meal.keyMicros.length > 0 && (
+                                    <div className="flex flex-wrap gap-1 mt-1.5">
+                                      {meal.keyMicros.map((m, mi) => (
+                                        <span key={mi} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-mono">
+                                          {m.name} {m.percentDV}%
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {meal.instructions && (
+                                    <p className="text-[10px] text-[var(--muted-foreground)] mt-1.5 leading-relaxed italic">{meal.instructions}</p>
+                                  )}
+                                </div>
+                              ))}
+                              {plan.summary && (
+                                <p className="text-[9px] font-mono text-[var(--muted-foreground)] italic">{plan.summary}</p>
+                              )}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Delete Plan Confirmation ─────────────── */}
+      <AnimatePresence>
+        {confirmDeletePlan && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => setConfirmDeletePlan(null)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-card border border-border p-6 max-w-xs w-full" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-sm font-mono uppercase tracking-[0.15em] text-foreground font-semibold mb-2">Delete Plan?</h3>
+              <p className="text-xs font-mono text-[var(--muted-foreground)] mb-4">This saved meal plan will be permanently removed.</p>
+              <div className="flex gap-2">
+                <button onClick={() => setConfirmDeletePlan(null)}
+                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] border border-border text-[var(--muted-foreground)] hover:text-foreground hover:border-foreground/30 transition-colors cursor-pointer">Cancel</button>
+                <button onClick={() => {
+                  const updated = savedPlans.filter((p) => p.id !== confirmDeletePlan);
+                  setSavedPlans(updated);
+                  saveSavedPlans(updated);
+                  setConfirmDeletePlan(null);
+                  if (expandedPlanId === confirmDeletePlan) setExpandedPlanId(null);
+                }}
+                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer font-bold">Delete</button>
+              </div>
             </motion.div>
           </motion.div>
         )}

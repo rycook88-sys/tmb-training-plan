@@ -137,3 +137,13 @@
 - [x] AI generates meal(s) factoring in remaining macro + micro gaps
 - [x] Meal prep mode: balance nutrition across all days
 - [x] Display generated meal plan in the popup with macros/micros per meal
+
+## Saved Meal Plans
+- [x] Add "Save Plan" button on generated meal plan results
+- [x] Store saved plans in localStorage (array of { id, name, date, meals, summary })
+- [x] Include saved plans in the database backup sync
+- [x] Add "Saved Plans" button/icon to access saved plans browser
+- [x] Saved plans browser popup: list all saved plans with name, date, meal count
+- [x] Tap a saved plan to expand and see full details (meals, macros, micros, ingredients)
+- [x] Delete saved plans with confirmation
+- [x] Tap outside to close
