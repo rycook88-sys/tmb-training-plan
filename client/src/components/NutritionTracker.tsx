@@ -1,10 +1,10 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Camera, Check, Edit3, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown,
   Trash2, X, AlertTriangle, TrendingUp, Pill, Utensils, Plus, RotateCcw,
   Loader2, Sparkles, ArrowUpToLine, Zap, Bookmark, Briefcase, Coffee,
-  Square, CheckSquare,
+  Square, CheckSquare, Info,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import {
@@ -100,6 +100,24 @@ function saveFeedback(fb: RecommendationFeedback[]) {
   localStorage.setItem(FEEDBACK_KEY, JSON.stringify(fb));
 }
 
+/**
+ * Build default vitamin preset items from the DAILY_VITAMINS data.
+ */
+function buildVitaminPresetItems(): PresetItem[] {
+  return DAILY_VITAMINS.map((v, i) => ({
+    id: `preset-vitamin-${i}`,
+    foodName: v.name,
+    calories: v.nutrients.calories,
+    protein: v.nutrients.protein,
+    carbs: v.nutrients.carbs,
+    fat: v.nutrients.fat,
+    fiber: 0,
+    sugar: v.nutrients.sugars,
+    sodium: v.micronutrients.find((m) => m.name === "Sodium")?.amount || 0,
+    micronutrients: v.micronutrients.map((m) => ({ name: m.name, amount: m.amount, unit: m.unit })),
+  }));
+}
+
 interface PresetLists {
   workDay: PresetItem[];
   offDay: PresetItem[];
@@ -107,15 +125,29 @@ interface PresetLists {
 function loadPresets(): PresetLists {
   try {
     const raw = localStorage.getItem(PRESETS_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Migrate: add vitamin presets if not already present
+      const vitaminItems = buildVitaminPresetItems();
+      const vitaminIds = vitaminItems.map((v) => v.id);
+      const hasVitamins = parsed.workDay?.some((i: PresetItem) => vitaminIds.includes(i.id));
+      if (!hasVitamins) {
+        parsed.workDay = [...(parsed.workDay || []), ...vitaminItems];
+        parsed.offDay = [...(parsed.offDay || []), ...vitaminItems];
+      }
+      return parsed;
+    }
   } catch {}
-  // Default presets
+  // Default presets — include vitamins
+  const vitaminItems = buildVitaminPresetItems();
   return {
     workDay: [
       { id: "preset-coffee", foodName: "Black Coffee", calories: 2, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 5, micronutrients: [{ name: "Potassium", amount: 116, unit: "mg" }, { name: "Magnesium", amount: 7, unit: "mg" }] },
+      ...vitaminItems,
     ],
     offDay: [
       { id: "preset-coffee-off", foodName: "Black Coffee", calories: 2, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 5, micronutrients: [{ name: "Potassium", amount: 116, unit: "mg" }, { name: "Magnesium", amount: 7, unit: "mg" }] },
+      ...vitaminItems,
     ],
   };
 }
@@ -158,6 +190,13 @@ function normalizeMicros(aiMicros: any[]): FoodMicro[] {
     const unit = m.unit || ref?.unit || "mg";
     return { name: m.name, amount, unit };
   });
+}
+
+/**
+ * Format a timestamp for display in a consistent column.
+ */
+function formatTime(ts: number): string {
+  return new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
 /* ── Macro Progress Bar ────────────────────────────── */
@@ -266,22 +305,239 @@ function MicroProgressDropdown({ microTotals }: { microTotals: Map<string, numbe
   );
 }
 
-/* ── Food Entry Card (with edit) ──────────────────── */
-function FoodEntryCard({ entry, onDelete, onEdit }: {
+/* ── Food Detail Popup ───────────────────────────── */
+function FoodDetailPopup({ entry, onClose }: { entry: FoodEntry; onClose: () => void }) {
+  const nonZeroMicros = useMemo(() => {
+    return entry.micronutrients
+      .filter((m) => m.amount > 0)
+      .map((m) => {
+        const dvPct = getMicroDVPercent(m.name, m.amount);
+        return { ...m, dvPct };
+      })
+      .sort((a, b) => b.dvPct - a.dvPct);
+  }, [entry.micronutrients]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="bg-card border border-border p-4 max-w-sm w-full max-h-[80vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="flex-1 min-w-0">
+            <h3 className="font-mono text-xs font-bold text-foreground leading-relaxed">{entry.foodName}</h3>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{formatTime(entry.timestamp)}</span>
+              {entry.confidence && (
+                <span className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 ${
+                  entry.confidence === "high" ? "text-green-400 bg-green-400/10" :
+                  entry.confidence === "medium" ? "text-amber-400 bg-amber-400/10" :
+                  entry.confidence === "preset" || entry.confidence === "common" ? "text-blue-400 bg-blue-400/10" :
+                  "text-red-400 bg-red-400/10"
+                }`}>{entry.confidence}</span>
+              )}
+            </div>
+            {entry.servingEstimate && (
+              <p className="text-[10px] font-mono text-[var(--muted-foreground)] italic mt-1">{entry.servingEstimate}</p>
+            )}
+          </div>
+          <button onClick={onClose} className="text-[var(--muted-foreground)] hover:text-foreground p-0.5 flex-shrink-0 ml-2">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Macros */}
+        <div className="border border-border bg-[var(--secondary)]/30 p-3 mb-3">
+          <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-[var(--primary)] font-bold">Macros</span>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-2">
+            <div className="flex justify-between text-[11px] font-mono">
+              <span className="text-[var(--muted-foreground)]">Calories</span>
+              <span className="text-[var(--primary)] font-bold">{entry.calories}</span>
+            </div>
+            <div className="flex justify-between text-[11px] font-mono">
+              <span className="text-[var(--muted-foreground)]">Protein</span>
+              <span className="text-blue-400">{entry.protein}g</span>
+            </div>
+            <div className="flex justify-between text-[11px] font-mono">
+              <span className="text-[var(--muted-foreground)]">Carbs</span>
+              <span className="text-amber-400">{entry.carbs}g</span>
+            </div>
+            <div className="flex justify-between text-[11px] font-mono">
+              <span className="text-[var(--muted-foreground)]">Fat</span>
+              <span className="text-rose-400">{entry.fat}g</span>
+            </div>
+            <div className="flex justify-between text-[11px] font-mono">
+              <span className="text-[var(--muted-foreground)]">Fiber</span>
+              <span className="text-foreground">{entry.fiber}g</span>
+            </div>
+            <div className="flex justify-between text-[11px] font-mono">
+              <span className="text-[var(--muted-foreground)]">Sodium</span>
+              <span className="text-foreground">{entry.sodium}mg</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Micronutrients — only non-zero */}
+        {nonZeroMicros.length > 0 && (
+          <div className="border border-border bg-[var(--secondary)]/30 p-3">
+            <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-[var(--primary)] font-bold">
+              Micronutrients ({nonZeroMicros.length})
+            </span>
+            <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
+              {nonZeroMicros.map((m) => (
+                <div key={m.name} className="flex justify-between text-[10px] font-mono">
+                  <span className="text-[var(--muted-foreground)] truncate mr-1">{m.name}</span>
+                  <span className={m.dvPct >= 100 ? "text-green-400" : m.dvPct >= 50 ? "text-yellow-400" : "text-foreground"}>
+                    {m.dvPct}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ── Edit Entry Modal ────────────────────────────── */
+function EditEntryModal({ entry, onConfirm, onCancel, isLoading }: {
+  entry: FoodEntry;
+  onConfirm: (newName: string) => void;
+  onCancel: () => void;
+  isLoading: boolean;
+}) {
+  // Split food name by commas, "and", or newlines for display as separate lines
+  const foodItems = useMemo(() => {
+    return entry.foodName
+      .split(/,\s*|\s+and\s+|\n/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }, [entry.foodName]);
+
+  const [editedItems, setEditedItems] = useState<string[]>(foodItems);
+
+  const handleItemChange = useCallback((index: number, value: string) => {
+    setEditedItems((prev) => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  }, []);
+
+  const handleAddItem = useCallback(() => {
+    setEditedItems((prev) => [...prev, ""]);
+  }, []);
+
+  const handleRemoveItem = useCallback((index: number) => {
+    setEditedItems((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleConfirm = useCallback(() => {
+    const combined = editedItems.filter((s) => s.trim()).join(", ");
+    if (combined.trim()) {
+      onConfirm(combined);
+    }
+  }, [editedItems, onConfirm]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={onCancel}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="bg-card border border-border p-4 max-w-sm w-full max-h-[80vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Edit3 className="w-3.5 h-3.5 text-[var(--primary)]" />
+            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Edit Food</span>
+          </div>
+          {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--primary)]" />}
+        </div>
+
+        {/* Individual food items, each on its own line */}
+        <div className="space-y-2 mb-3">
+          {editedItems.map((item, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={item}
+                onChange={(e) => handleItemChange(i, e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleConfirm()}
+                autoFocus={i === 0}
+                className="flex-1 bg-[var(--secondary)] border border-border px-3 py-2 text-xs font-mono text-foreground focus:border-[var(--primary)] focus:outline-none"
+                placeholder={`Food item ${i + 1}`}
+              />
+              {editedItems.length > 1 && (
+                <button onClick={() => handleRemoveItem(i)}
+                  className="text-[var(--muted-foreground)] hover:text-red-400 p-1 flex-shrink-0">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <button onClick={handleAddItem}
+          className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors mb-4">
+          <Plus className="w-3 h-3" /> Add Item
+        </button>
+
+        <p className="text-[10px] font-mono text-[var(--muted-foreground)] mb-3">
+          Edit names and confirm — AI will re-estimate all nutrients.
+        </p>
+
+        <div className="flex gap-2">
+          <button onClick={onCancel}
+            className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] border border-border text-[var(--muted-foreground)] hover:text-foreground hover:border-foreground/30 transition-colors cursor-pointer">
+            Cancel
+          </button>
+          <button onClick={handleConfirm} disabled={isLoading}
+            className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] bg-[var(--primary)] text-[var(--primary-foreground)] font-bold hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer">
+            {isLoading ? "Analyzing..." : "Confirm"}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+/* ── Food Entry Card (with tap-to-detail + edit + timestamp column) ── */
+function FoodEntryCard({ entry, onDelete, onEdit, onTap }: {
   entry: FoodEntry;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
+  onTap: (entry: FoodEntry) => void;
 }) {
-  const time = new Date(entry.timestamp).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-
   return (
-    <div className="border border-border bg-card p-3 mb-2">
-      <div className="flex items-start justify-between">
+    <div
+      className="border border-border bg-card p-3 mb-2 cursor-pointer hover:border-[var(--primary)]/30 transition-colors"
+      onClick={() => onTap(entry)}
+    >
+      <div className="flex items-start gap-2">
+        {/* Main content — tappable */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
             <Utensils className="w-3 h-3 text-[var(--primary)] flex-shrink-0" />
             <span className="font-mono text-xs font-medium text-foreground truncate">{entry.foodName}</span>
-            <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{time}</span>
           </div>
           <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-[10px] font-mono">
             <span className="text-[var(--primary)]">{entry.calories} cal</span>
@@ -290,21 +546,26 @@ function FoodEntryCard({ entry, onDelete, onEdit }: {
             <span className="text-rose-400">F: {entry.fat}g</span>
           </div>
         </div>
-        <div className="flex items-center gap-0.5 flex-shrink-0">
-          <button
-            onClick={() => onEdit(entry.id)}
-            className="text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors p-1"
-            title="Edit food entry"
-          >
-            <Edit3 className="w-3 h-3" />
-          </button>
-          <button
-            onClick={() => onDelete(entry.id)}
-            className="text-[var(--muted-foreground)] hover:text-red-400 transition-colors p-1"
-            title="Delete entry"
-          >
-            <Trash2 className="w-3 h-3" />
-          </button>
+
+        {/* Right column: timestamp + actions, vertically aligned */}
+        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+          <span className="text-[10px] font-mono text-[var(--muted-foreground)] tabular-nums">{formatTime(entry.timestamp)}</span>
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={(e) => { e.stopPropagation(); onEdit(entry.id); }}
+              className="text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors p-1"
+              title="Edit food entry"
+            >
+              <Edit3 className="w-3 h-3" />
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); onDelete(entry.id); }}
+              className="text-[var(--muted-foreground)] hover:text-red-400 transition-colors p-1"
+              title="Delete entry"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -369,11 +630,16 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const [editedName, setEditedName] = useState("");
   const [showTrends, setShowTrends] = useState(false);
   const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [showVitamins, setShowVitamins] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [showFillMacros, setShowFillMacros] = useState(false);
   const [fillMacrosSuggestions, setFillMacrosSuggestions] = useState<any>(null);
+
+  // Food detail popup
+  const [detailEntry, setDetailEntry] = useState<FoodEntry | null>(null);
+
+  // Edit entry modal
+  const [editingEntry, setEditingEntry] = useState<FoodEntry | null>(null);
 
   // Presets & Common Items panels
   const [showPresetsPanel, setShowPresetsPanel] = useState(false);
@@ -383,16 +649,10 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const [addingToPreset, setAddingToPreset] = useState<"workDay" | "offDay" | null>(null);
   const [addingToCommon, setAddingToCommon] = useState(false);
 
-  // Edit existing food entry
-  const [editingEntry, setEditingEntry] = useState<string | null>(null);
-  const [editEntryName, setEditEntryName] = useState("");
-
   const fileInputRef = useRef<HTMLInputElement>(null);
   const presetFileRef = useRef<HTMLInputElement>(null);
   const commonFileRef = useRef<HTMLInputElement>(null);
-  const editEntryFileRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
-  const editEntryInputRef = useRef<HTMLInputElement>(null);
 
   // tRPC mutations
   const analyzeMutation = trpc.nutrition.analyzePhoto.useMutation();
@@ -540,33 +800,30 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
     setConfirmDelete(null);
   }, [confirmDelete, todayKey]);
 
-  /* ── Edit Existing Food Entry ──────────────────── */
+  /* ── Edit Existing Food Entry (modal) ──────────── */
   const handleStartEditEntry = useCallback((id: string) => {
     const entry = todayEntries.find((e) => e.id === id);
     if (!entry) return;
-    setEditingEntry(id);
-    setEditEntryName(entry.foodName);
-    setTimeout(() => editEntryInputRef.current?.focus(), 50);
+    setEditingEntry(entry);
   }, [todayEntries]);
 
-  const handleConfirmEditEntry = useCallback(async () => {
-    if (!editingEntry || !editEntryName.trim()) return;
-    const entry = todayEntries.find((e) => e.id === editingEntry);
-    if (!entry || editEntryName.trim() === entry.foodName) {
+  const handleConfirmEditEntry = useCallback(async (newName: string) => {
+    if (!editingEntry) return;
+    if (newName.trim() === editingEntry.foodName) {
       setEditingEntry(null);
       return;
     }
     try {
       const result = await reAnalyzeMutation.mutateAsync({
-        foodName: editEntryName.trim(),
-        servingEstimate: entry.servingEstimate,
+        foodName: newName.trim(),
+        servingEstimate: editingEntry.servingEstimate,
       });
       setLogs((prev) => prev.map((l) =>
         l.date === todayKey ? {
           ...l,
-          entries: l.entries.map((e) => e.id === editingEntry ? {
+          entries: l.entries.map((e) => e.id === editingEntry.id ? {
             ...e,
-            foodName: editEntryName.trim(),
+            foodName: newName.trim(),
             calories: result.calories,
             protein: result.protein,
             carbs: result.carbs,
@@ -582,7 +839,7 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
       ));
     } catch (err) { console.error("Edit re-analysis failed:", err); }
     setEditingEntry(null);
-  }, [editingEntry, editEntryName, todayEntries, todayKey, reAnalyzeMutation]);
+  }, [editingEntry, todayKey, reAnalyzeMutation]);
 
   /* ── Add Daily Vitamins ────────────────────────── */
   const handleAddVitamins = useCallback(() => {
@@ -700,11 +957,11 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
     setShowCommonPanel(false);
   }, [commonItems, commonSelected, todayKey]);
 
-  /* ── Fetch Trends ──────────────────────────────── */
+  /* ── Fetch Trends (manual override: skip 3-day minimum) ── */
   const handleFetchTrends = useCallback(async () => {
     setShowTrends(true);
     const recentLogs = logs.filter((l) => l.entries.length > 0).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 7);
-    if (recentLogs.length < 3) { setRecommendations([]); return; }
+    if (recentLogs.length === 0) { setRecommendations([]); return; }
     const dailyLogs = recentLogs.map((l) => {
       let cal = 0, prot = 0, carb = 0, fat = 0, fiber = 0, sodium = 0;
       for (const e of l.entries) { cal += e.calories; prot += e.protein; carb += e.carbs; fat += e.fat; fiber += e.fiber; sodium += e.sodium; }
@@ -800,24 +1057,6 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
           className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
           <Bookmark className="w-3.5 h-3.5" /> Common
         </button>
-
-        {/* Vitamins toggle */}
-        {!vitaminsAdded ? (
-          <button onClick={handleAddVitamins}
-            className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
-            <Pill className="w-3.5 h-3.5" /> Add Vitamins
-          </button>
-        ) : (
-          <button onClick={() => {
-            setLogs((prev) => prev.map((l) => l.date === todayKey ? { ...l, vitaminsAdded: false } : l));
-          }}
-            className="flex items-center gap-1.5 px-3 py-2.5 text-[10px] font-mono uppercase tracking-wider text-green-400 bg-green-400/10 hover:bg-red-400/10 hover:text-red-400 transition-colors group cursor-pointer">
-            <Check className="w-3 h-3 group-hover:hidden" />
-            <RotateCcw className="w-3 h-3 hidden group-hover:block" />
-            <span className="group-hover:hidden">Vitamins Added</span>
-            <span className="hidden group-hover:inline">Undo Vitamins</span>
-          </button>
-        )}
 
         <button onClick={handleFetchTrends} disabled={isTrendLoading}
           className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors disabled:opacity-50">
@@ -1020,20 +1259,20 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-3.5 h-3.5 text-[var(--primary)]" />
-                  <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">3-Day Trends</span>
+                  <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Nutrition Insights</span>
                 </div>
                 <button onClick={() => setShowTrends(false)} className="text-[var(--muted-foreground)] hover:text-foreground p-0.5"><X className="w-3.5 h-3.5" /></button>
               </div>
               {isTrendLoading && (
                 <div className="flex items-center gap-2 py-3">
                   <Loader2 className="w-4 h-4 animate-spin text-[var(--primary)]" />
-                  <span className="text-xs font-mono text-[var(--muted-foreground)]">Analyzing trends...</span>
+                  <span className="text-xs font-mono text-[var(--muted-foreground)]">Analyzing your data...</span>
                 </div>
               )}
               {!isTrendLoading && recommendations.length === 0 && (
                 <div className="py-3 text-center">
                   <span className="text-xs font-mono text-[var(--muted-foreground)]">
-                    {daysWithFood < 3 ? "Need at least 3 days of food data for trends" : "Looking good — no issues to flag"}
+                    {daysWithFood === 0 ? "No food data yet — log some meals first" : "Looking good — no issues to flag"}
                   </span>
                 </div>
               )}
@@ -1066,9 +1305,7 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
               {!isFillMacrosLoading && fillMacrosSuggestions && (
                 <>
                   {fillMacrosSuggestions.suggestions?.length === 0 && (
-                    <p className="text-xs font-mono text-[var(--muted-foreground)] py-2">
-                      {daysWithFood < 3 ? "Need at least 3 days of data before suggesting foods." : "You're on track — no big gaps to fill!"}
-                    </p>
+                    <p className="text-xs font-mono text-[var(--muted-foreground)] py-2">You're on track — no big gaps to fill!</p>
                   )}
                   {fillMacrosSuggestions.suggestions?.map((s: any, i: number) => (
                     <div key={i} className="border border-border p-2 mb-2">
@@ -1095,44 +1332,6 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
         )}
       </AnimatePresence>
 
-      {/* ── Vitamin Details ──────────────────────── */}
-      {vitaminsAdded && (
-        <div className="px-4 mb-3">
-          <button onClick={() => setShowVitamins(!showVitamins)}
-            className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-foreground transition-colors cursor-pointer">
-            <Pill className="w-3 h-3" /> Vitamin Details ({DAILY_VITAMINS.length} supplements)
-            {showVitamins ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-          </button>
-          <AnimatePresence>
-            {showVitamins && (
-              <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                <div className="mt-2 space-y-2">
-                  {DAILY_VITAMINS.map((v) => (
-                    <div key={v.name} className="border border-border bg-card p-2">
-                      <div className="font-mono text-[10px] font-medium text-foreground">{v.name}</div>
-                      <div className="text-[10px] text-[var(--muted-foreground)]">{v.servingSize} · {v.nutrients.calories} cal</div>
-                      <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5">
-                        {v.micronutrients.map((m) => {
-                          const dvPct = getMicroDVPercent(m.name, m.amount);
-                          return (
-                            <div key={m.name} className="flex justify-between text-[10px] font-mono">
-                              <span className="text-[var(--muted-foreground)]">{m.name}</span>
-                              <span className={dvPct >= 100 ? "text-green-400" : "text-foreground"}>
-                                {dvPct > 0 ? `${dvPct}%` : "\u2014"}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      )}
-
       {/* ── Today's Food Log ─────────────────────── */}
       {todayEntries.length > 0 && (
         <div className="px-4 pb-3">
@@ -1141,29 +1340,13 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
             <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{Math.round(todayEntries.reduce((s, e) => s + e.calories, 0))} cal from food</span>
           </div>
           {todayEntries.map((entry) => (
-            editingEntry === entry.id ? (
-              <div key={entry.id} className="border-2 border-[var(--primary)]/50 bg-[var(--primary)]/5 p-3 mb-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--primary)]">Edit Food Name</span>
-                  {isReAnalyzing && <Loader2 className="w-3 h-3 animate-spin text-[var(--primary)]" />}
-                </div>
-                <div className="flex items-center gap-2">
-                  <input ref={editEntryInputRef} type="text" value={editEntryName}
-                    onChange={(e) => setEditEntryName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleConfirmEditEntry()}
-                    className="flex-1 bg-[var(--secondary)] border border-border px-2 py-1.5 text-xs font-mono text-foreground focus:border-[var(--primary)] focus:outline-none" />
-                  <button onClick={handleConfirmEditEntry} disabled={isReAnalyzing}
-                    className="text-green-400 hover:text-green-300 p-1 disabled:opacity-50"><Check className="w-4 h-4" /></button>
-                  <button onClick={() => setEditingEntry(null)}
-                    className="text-[var(--muted-foreground)] hover:text-foreground p-1"><X className="w-4 h-4" /></button>
-                </div>
-                <p className="text-[10px] font-mono text-[var(--muted-foreground)] mt-1.5">
-                  Change the name and confirm — AI will re-estimate all nutrients for the new food.
-                </p>
-              </div>
-            ) : (
-              <FoodEntryCard key={entry.id} entry={entry} onDelete={handleDeleteEntry} onEdit={handleStartEditEntry} />
-            )
+            <FoodEntryCard
+              key={entry.id}
+              entry={entry}
+              onDelete={handleDeleteEntry}
+              onEdit={handleStartEditEntry}
+              onTap={(e) => setDetailEntry(e)}
+            />
           ))}
         </div>
       )}
@@ -1230,6 +1413,25 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
           </div>
         </div>
       )}
+
+      {/* ── Food Detail Popup ────────────────────── */}
+      <AnimatePresence>
+        {detailEntry && (
+          <FoodDetailPopup entry={detailEntry} onClose={() => setDetailEntry(null)} />
+        )}
+      </AnimatePresence>
+
+      {/* ── Edit Entry Modal ─────────────────────── */}
+      <AnimatePresence>
+        {editingEntry && (
+          <EditEntryModal
+            entry={editingEntry}
+            onConfirm={handleConfirmEditEntry}
+            onCancel={() => setEditingEntry(null)}
+            isLoading={isReAnalyzing}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── Delete Confirmation Modal ────────────── */}
       <AnimatePresence>

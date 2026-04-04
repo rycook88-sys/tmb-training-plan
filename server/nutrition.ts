@@ -384,7 +384,7 @@ export const nutritionRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      if (input.dailyLogs.length < 3) {
+      if (input.dailyLogs.length === 0) {
         return { recommendations: [] };
       }
 
@@ -395,7 +395,8 @@ export const nutritionRouter = router({
             content: `You are a nutrition coach for a 226 lb male training for a 10-day alpine hike (Tour du Mont Blanc). He's trying to lose weight on ${input.targets.calories} cal/day with ${input.targets.protein}g protein minimum. 
 
 IMPORTANT RULES:
-- Only flag TRENDS over 3+ days, not single-day misses
+- If there are 3+ days of data, flag TRENDS over multiple days, not single-day misses
+- If there are fewer than 3 days, give preliminary observations based on available data
 - Don't be annoying about small variations (within 20% is fine)
 - Focus on patterns that actually matter for health and training performance
 - Be direct and actionable, not preachy
@@ -438,12 +439,7 @@ IMPORTANT RULES:
       })
     )
     .mutation(async ({ input }) => {
-      if (input.daysTracked < 3) {
-        return {
-          suggestions: [],
-          summary: "Need at least 3 days of tracking data before suggesting foods.",
-        };
-      }
+      // No minimum day requirement — manual button press overrides any wait
 
       const result = await invokeLLM({
         messages: [

@@ -153,15 +153,12 @@ describe("nutrition router", () => {
     }
   });
 
-  it("getTrends returns empty array for fewer than 3 days", async () => {
+  it("getTrends returns empty array for zero days of data", async () => {
     const ctx = createPublicContext();
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.nutrition.getTrends({
-      dailyLogs: [
-        { date: "2026-04-01", totalCalories: 2100, totalProtein: 180, totalCarbs: 200, totalFat: 70, totalFiber: 25, totalSodium: 2000 },
-        { date: "2026-04-02", totalCalories: 2300, totalProtein: 190, totalCarbs: 210, totalFat: 75, totalFiber: 28, totalSodium: 1800 },
-      ],
+      dailyLogs: [],
       targets: { calories: 2300, protein: 180, carbs: 222, fat: 77 },
     });
 

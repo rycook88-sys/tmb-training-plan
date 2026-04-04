@@ -71,3 +71,18 @@
 - [x] Update AI prompt to emphasize ingredient-level nutrient analysis
 - [x] Update frontend normalizeMicros to handle new fixed-object format
 - [x] Test with "Mixed protein bowl with broccoli" to verify Vitamin K is always returned
+
+## Nutrition Tracker UI Overhaul v2
+- [x] Remove standalone vitamin button (user will add vitamins via daily presets instead)
+- [x] Add vitamins (Nature Made D3 + Vitafusion Multi) as default items in daily presets
+- [x] Food detail popup: tap a food entry to see full info (macros, micros) in a modal/popup
+- [x] Food detail popup: only show micros with >0% DV (skip zeros)
+- [x] Food detail popup: styled like the vitamin detail cards
+- [x] Food detail popup: tap outside to close
+- [x] Edit window: bigger/taller input so user can see full food name
+- [x] Edit window: each food item from same photo on separate lines (line breaks between items)
+- [x] Edit window: only show tabbed individual names (not full sentence) when editing
+- [x] Keep current inline formatting when NOT editing (food names in same line)
+- [x] Timestamps: format in a consistent column next to the edit button
+- [x] Trends button: manual press overrides the 3-day minimum, gives advice on current data immediately
+- [x] Keep 3-day auto-trigger rule for unprompted recommendations (prompt still prefers multi-day trends when available)
