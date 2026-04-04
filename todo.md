@@ -147,3 +147,11 @@
 - [x] Tap a saved plan to expand and see full details (meals, macros, micros, ingredients)
 - [x] Delete saved plans with confirmation
 - [x] Tap outside to close
+
+## Meal Plan Ratings
+- [x] Add rating field (1-5 stars) to SavedMealPlan interface
+- [x] Add star rating UI on each saved plan in the browser (tap to rate)
+- [x] Show rating stars in the collapsed plan header view
+- [x] Persist ratings in localStorage + database backup
+- [x] Feed rated plans into AI meal planner prompt as taste preferences
+- [x] AI prompt: favor similar ingredients/styles from highly-rated plans, avoid low-rated ones

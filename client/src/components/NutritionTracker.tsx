@@ -4,7 +4,7 @@ import {
   Camera, Check, Edit3, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown,
   Trash2, X, AlertTriangle, TrendingUp, Pill, Utensils, Plus, RotateCcw,
   Loader2, Sparkles, ArrowUpToLine, Zap, Bookmark, Briefcase, Coffee,
-  Square, CheckSquare, Settings, BarChart3, ChefHat, Shuffle,
+  Square, CheckSquare, Settings, BarChart3, ChefHat, Shuffle, Star,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -186,6 +186,7 @@ interface SavedMealPlan {
     keyMicros?: { name: string; percentDV: number }[];
   }[];
   summary: string;
+  rating?: number; // 1-5 stars, undefined = unrated
 }
 
 function loadSavedPlans(): SavedMealPlan[] {
@@ -2037,6 +2038,13 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                           remainingCarbs: Math.max(macroTargets.carbs - dailyTotals.carbs, 0),
                           remainingFat: Math.max(macroTargets.fat - dailyTotals.fat, 0),
                           microGaps,
+                          ratedPlans: savedPlans
+                            .filter((p) => p.rating)
+                            .map((p) => ({
+                              name: p.name,
+                              rating: p.rating!,
+                              meals: p.meals.map((m) => m.name),
+                            })),
                         });
                         setMealPlanResult(result);
                       } catch (err) { console.error("Meal plan failed:", err); }
@@ -2151,9 +2159,18 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                               {plan.type === "prep" ? `${plan.meals.length}-day prep` : "single"}
                             </span>
                           </div>
-                          <span className="text-[9px] font-mono text-[var(--muted-foreground)]">
-                            {new Date(plan.savedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-mono text-[var(--muted-foreground)]">
+                              {new Date(plan.savedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                            </span>
+                            {plan.rating && (
+                              <span className="flex items-center gap-0.5">
+                                {[1,2,3,4,5].map((s) => (
+                                  <Star key={s} className={`w-2.5 h-2.5 ${s <= plan.rating! ? "text-amber-400 fill-amber-400" : "text-border"}`} />
+                                ))}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-1.5 ml-2">
                           <button
@@ -2206,6 +2223,25 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                               {plan.summary && (
                                 <p className="text-[9px] font-mono text-[var(--muted-foreground)] italic">{plan.summary}</p>
                               )}
+                              {/* Star Rating */}
+                              <div className="flex items-center gap-2 pt-2 border-t border-border/50">
+                                <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--muted-foreground)]">Rate:</span>
+                                <div className="flex gap-0.5">
+                                  {[1,2,3,4,5].map((s) => (
+                                    <button key={s}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const updated = savedPlans.map((p) => p.id === plan.id ? { ...p, rating: p.rating === s ? undefined : s } : p);
+                                        setSavedPlans(updated);
+                                        saveSavedPlans(updated);
+                                      }}
+                                      className="p-0.5 transition-colors cursor-pointer hover:scale-110">
+                                      <Star className={`w-4 h-4 ${s <= (plan.rating || 0) ? "text-amber-400 fill-amber-400" : "text-[var(--muted-foreground)]/40 hover:text-amber-400/60"}`} />
+                                    </button>
+                                  ))}
+                                </div>
+                                {plan.rating && <span className="text-[9px] font-mono text-amber-400">{plan.rating}/5</span>}
+                              </div>
                             </div>
                           </motion.div>
                         )}

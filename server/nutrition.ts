@@ -549,6 +549,11 @@ What should I eat to close these gaps?`,
       remainingCarbs: z.number(),
       remainingFat: z.number(),
       microGaps: z.array(z.object({ name: z.string(), currentPercent: z.number() })).optional(),
+      ratedPlans: z.array(z.object({
+        name: z.string(),
+        rating: z.number().min(1).max(5),
+        meals: z.array(z.string()),
+      })).optional(),
     }))
     .mutation(async ({ input }) => {
       const lowMicros = (input.microGaps || []).filter((m) => m.currentPercent < 50);
@@ -567,6 +572,22 @@ What should I eat to close these gaps?`,
           : "Any style is fine.";
 
       const userNotes = input.notes ? `\nUser notes: ${input.notes}` : "";
+
+      // Build taste preference section from rated plans
+      const rated = input.ratedPlans || [];
+      const loved = rated.filter((p) => p.rating >= 4);
+      const disliked = rated.filter((p) => p.rating <= 2);
+      let tasteSection = "";
+      if (loved.length > 0 || disliked.length > 0) {
+        tasteSection = "\n\nUSER TASTE PREFERENCES (from past meal ratings):";
+        if (loved.length > 0) {
+          tasteSection += `\nHighly rated (suggest similar): ${loved.map((p) => `${p.name} (${p.rating}/5) — meals: ${p.meals.join(", ")}`).join("; ")}`;
+        }
+        if (disliked.length > 0) {
+          tasteSection += `\nLow rated (avoid similar): ${disliked.map((p) => `${p.name} (${p.rating}/5) — meals: ${p.meals.join(", ")}`).join("; ")}`;
+        }
+        tasteSection += "\nUse these ratings to guide ingredient and cuisine choices. Lean toward flavors/styles the user enjoyed. Avoid patterns from low-rated plans.";
+      }
 
       const mealSchema = {
         type: "object" as const,
@@ -619,7 +640,7 @@ Generate ${mealCount === 1 ? "1 meal" : `${mealCount} meals (one per day for mea
 Target per meal: ~${calPerMeal} calories, ~${protPerMeal}g protein.
 Total remaining macros: ${input.remainingCalories} cal, ${input.remainingProtein}g protein, ${input.remainingCarbs}g carbs, ${input.remainingFat}g fat.
 
-${styleNote}${userNotes}${microSection}
+${styleNote}${userNotes}${microSection}${tasteSection}
 
 For meal prep: make meals that store well, reheat easily, and have variety across days. Include the dayLabel field ("Day 1", "Day 2", etc.).
 For single meals: omit the dayLabel field.
