@@ -534,4 +534,116 @@ What should I eat to close these gaps?`,
       const backups = await getNutritionBackups(userId);
       return { backups, timestamp: new Date().toISOString() };
     }),
+
+  /**
+   * Plan a meal or meal prep based on remaining macro/micro gaps.
+   */
+  planMeal: protectedProcedure
+    .input(z.object({
+      type: z.enum(["single", "prep"]),
+      days: z.number().min(1).max(7),
+      style: z.string(),
+      notes: z.string().optional(),
+      remainingCalories: z.number(),
+      remainingProtein: z.number(),
+      remainingCarbs: z.number(),
+      remainingFat: z.number(),
+      microGaps: z.array(z.object({ name: z.string(), currentPercent: z.number() })).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const lowMicros = (input.microGaps || []).filter((m) => m.currentPercent < 50);
+      const microSection = lowMicros.length > 0
+        ? `\n\nMICRONUTRIENT GAPS (below 50% DV):\n${lowMicros.map((m) => `- ${m.name}: ${m.currentPercent}% DV`).join("\n")}\nPrioritize foods that address these deficiencies.`
+        : "";
+
+      const mealCount = input.type === "prep" ? input.days : 1;
+      const calPerMeal = Math.round(input.remainingCalories / mealCount);
+      const protPerMeal = Math.round(input.remainingProtein / mealCount);
+
+      const styleNote = input.style === "surprise"
+        ? "Surprise the user with something creative and unexpected. Be adventurous with cuisine and flavor combinations."
+        : input.style && input.style !== "any"
+          ? `Food style preference: ${input.style}`
+          : "Any style is fine.";
+
+      const userNotes = input.notes ? `\nUser notes: ${input.notes}` : "";
+
+      const mealSchema = {
+        type: "object" as const,
+        properties: {
+          meals: {
+            type: "array" as const,
+            items: {
+              type: "object" as const,
+              properties: {
+                name: { type: "string" as const, description: "Meal name" },
+                dayLabel: { type: "string" as const, description: "e.g. Day 1, Day 2 — only for meal prep" },
+                ingredients: { type: "array" as const, items: { type: "string" as const }, description: "List of ingredients with quantities" },
+                instructions: { type: "string" as const, description: "Brief cooking instructions (2-3 sentences)" },
+                totalCalories: { type: "number" as const },
+                protein: { type: "number" as const },
+                carbs: { type: "number" as const },
+                fat: { type: "number" as const },
+                keyMicros: {
+                  type: "array" as const,
+                  items: {
+                    type: "object" as const,
+                    properties: {
+                      name: { type: "string" as const },
+                      percentDV: { type: "number" as const },
+                    },
+                    required: ["name", "percentDV"] as const,
+                    additionalProperties: false,
+                  },
+                  description: "Top 3-5 micronutrients this meal provides (>15% DV)",
+                },
+              },
+              required: ["name", "ingredients", "instructions", "totalCalories", "protein", "carbs", "fat", "keyMicros"] as const,
+              additionalProperties: false,
+            },
+          },
+          summary: { type: "string" as const, description: "Brief overall summary of the plan" },
+        },
+        required: ["meals", "summary"] as const,
+        additionalProperties: false,
+      };
+
+      const response = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You are a sports nutrition meal planner for someone training for the Tour du Mont Blanc (a 10-day alpine trek). They need to lose weight while maintaining muscle.
+
+Generate ${mealCount === 1 ? "1 meal" : `${mealCount} meals (one per day for meal prep)`}.
+
+Target per meal: ~${calPerMeal} calories, ~${protPerMeal}g protein.
+Total remaining macros: ${input.remainingCalories} cal, ${input.remainingProtein}g protein, ${input.remainingCarbs}g carbs, ${input.remainingFat}g fat.
+
+${styleNote}${userNotes}${microSection}
+
+For meal prep: make meals that store well, reheat easily, and have variety across days. Include the dayLabel field ("Day 1", "Day 2", etc.).
+For single meals: omit the dayLabel field.
+
+Keep ingredients practical and grocery-store accessible. Include specific quantities.`,
+          },
+          {
+            role: "user",
+            content: `Plan ${input.type === "prep" ? `meal prep for ${input.days} days` : "a single meal"} for me.`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "meal_plan",
+            strict: true,
+            schema: mealSchema,
+          },
+        },
+      });
+
+      const rawContent = response.choices?.[0]?.message?.content;
+      if (!rawContent) throw new Error("No meal plan generated");
+      const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      return JSON.parse(content);
+    }),
 });

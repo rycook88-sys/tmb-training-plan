@@ -119,3 +119,21 @@
 - [x] Upgrade Fill My Macros to also analyze micronutrient gaps
 - [x] Unified AI suggestion: foods that fill both macro AND micro gaps simultaneously
 - [x] Renamed to "Fill My Gaps" with micro badges on each suggestion
+
+## Weekly Trend Chart Popup
+- [x] Add chart icon (BarChart3) next to header
+- [x] Tap opens a modal with 7-day calorie + protein bar chart
+- [x] Show daily totals with target line overlay + weekly averages
+- [x] Tap outside to close
+
+## Meal Planner Wizard
+- [x] Add meal planner icon button in the action buttons area
+- [x] Wizard popup with checkboxes: "Single Meal" vs "Meal Prep"
+- [x] Meal Prep: auto-focus days slider (2-7 days) when checked
+- [x] Food style quick-select options (comfort, lean/clean, international, etc.)
+- [x] "Surprise Me" checkbox that overrides food style selection
+- [x] Optional text box for specific requests
+- [x] Server-side AI endpoint: nutrition.planMeal — accepts meal type, days, style, current gaps
+- [x] AI generates meal(s) factoring in remaining macro + micro gaps
+- [x] Meal prep mode: balance nutrition across all days
+- [x] Display generated meal plan in the popup with macros/micros per meal

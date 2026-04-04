@@ -4,7 +4,7 @@ import {
   Camera, Check, Edit3, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown,
   Trash2, X, AlertTriangle, TrendingUp, Pill, Utensils, Plus, RotateCcw,
   Loader2, Sparkles, ArrowUpToLine, Zap, Bookmark, Briefcase, Coffee,
-  Square, CheckSquare, Settings,
+  Square, CheckSquare, Settings, BarChart3, ChefHat, Shuffle,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -683,6 +683,19 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const [editingCommonItem, setEditingCommonItem] = useState<CommonItem | null>(null);
   const [editItemName, setEditItemName] = useState("");
 
+  // Weekly chart popup
+  const [showWeeklyChart, setShowWeeklyChart] = useState(false);
+
+  // Meal planner wizard
+  const [showMealPlanner, setShowMealPlanner] = useState(false);
+  const [mealPlanType, setMealPlanType] = useState<"single" | "prep">("single");
+  const [mealPrepDays, setMealPrepDays] = useState(3);
+  const [mealStyle, setMealStyle] = useState<string>("");
+  const [mealSurpriseMe, setMealSurpriseMe] = useState(false);
+  const [mealNotes, setMealNotes] = useState("");
+  const [mealPlanResult, setMealPlanResult] = useState<any>(null);
+  const [isMealPlanning, setIsMealPlanning] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const presetFileRef = useRef<HTMLInputElement>(null);
   const commonFileRef = useRef<HTMLInputElement>(null);
@@ -694,6 +707,7 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const trendsMutation = trpc.nutrition.getTrends.useMutation();
   const fillMacrosMutation = trpc.nutrition.fillMyMacros.useMutation();
   const backupMutation = trpc.nutrition.backup.useMutation();
+  const mealPlanMutation = trpc.nutrition.planMeal.useMutation();
 
   // Restore from server on mount if localStorage is empty and user is logged in
   const restoreQuery = trpc.nutrition.restore.useQuery(undefined, {
@@ -831,6 +845,25 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   }, [todayEntries, vitaminsAdded, vitaminTotals, dailyTotals.sodium]);
 
   const daysWithFood = useMemo(() => logs.filter((l) => l.entries.length > 0).length, [logs]);
+
+  // Weekly chart data — last 7 days
+  const weeklyChartData = useMemo(() => {
+    const days: { date: string; label: string; calories: number; protein: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const dayLog = logs.find((l) => l.date === key);
+      let cal = 0, prot = 0;
+      if (dayLog) {
+        for (const e of dayLog.entries) { cal += e.calories; prot += e.protein; }
+        if (dayLog.vitaminsAdded) { const vt = getDailyVitaminTotals(); cal += vt.calories; prot += vt.protein; }
+      }
+      const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+      days.push({ date: key, label: dayNames[d.getDay()], calories: Math.round(cal), protein: Math.round(prot) });
+    }
+    return days;
+  }, [logs]);
 
   /* ── Camera / File Capture ─────────────────────── */
   const handleCapture = useCallback(() => { fileInputRef.current?.click(); }, []);
@@ -1204,6 +1237,16 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
         <button onClick={handleFillMacros} disabled={isFillMacrosLoading}
           className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors disabled:opacity-50">
           <Zap className="w-3.5 h-3.5" /> {isFillMacrosLoading ? "Thinking..." : "Fill My Gaps"}
+        </button>
+
+        <button onClick={() => setShowWeeklyChart(true)}
+          className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
+          <BarChart3 className="w-3.5 h-3.5" /> Weekly
+        </button>
+
+        <button onClick={() => { setShowMealPlanner(true); setMealPlanResult(null); setMealPlanType("single"); setMealStyle(""); setMealSurpriseMe(false); setMealNotes(""); setMealPrepDays(3); }}
+          className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
+          <ChefHat className="w-3.5 h-3.5" /> Plan Meal
         </button>
       </div>
 
@@ -1734,6 +1777,265 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                 }}
                   className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] bg-[var(--primary)] text-[var(--primary-foreground)] font-bold hover:opacity-90 transition-colors cursor-pointer">Save</button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Weekly Chart Popup ──────────────────── */}
+      <AnimatePresence>
+        {showWeeklyChart && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => setShowWeeklyChart(false)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-card border border-border p-5 max-w-md w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-[var(--primary)]" />
+                  <h3 className="text-xs font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">7-Day Overview</h3>
+                </div>
+                <button onClick={() => setShowWeeklyChart(false)} className="text-[var(--muted-foreground)] hover:text-foreground p-0.5"><X className="w-4 h-4" /></button>
+              </div>
+
+              {/* Calorie bars */}
+              <div className="mb-4">
+                <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-[var(--muted-foreground)] mb-2 block">Calories</span>
+                <div className="space-y-1.5">
+                  {weeklyChartData.map((d) => {
+                    const pct = macroTargets.calories > 0 ? Math.min((d.calories / macroTargets.calories) * 100, 100) : 0;
+                    const isToday = d.date === todayKey;
+                    return (
+                      <div key={d.date} className="flex items-center gap-2">
+                        <span className={`text-[10px] font-mono w-8 ${isToday ? "text-[var(--primary)] font-bold" : "text-[var(--muted-foreground)]"}`}>{d.label}</span>
+                        <div className="flex-1 h-5 bg-[var(--secondary)] relative">
+                          <div className="h-full bg-[var(--primary)] transition-all" style={{ width: `${pct}%` }} />
+                          {/* Target line */}
+                          <div className="absolute top-0 bottom-0 w-px bg-foreground/30" style={{ left: '100%' }} />
+                        </div>
+                        <span className={`text-[10px] font-mono w-12 text-right ${d.calories === 0 ? "text-[var(--muted-foreground)]/50" : d.calories > macroTargets.calories ? "text-red-400" : "text-foreground"}`}>{d.calories || "—"}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-end mt-1">
+                  <span className="text-[9px] font-mono text-[var(--muted-foreground)]">Target: {macroTargets.calories} cal</span>
+                </div>
+              </div>
+
+              {/* Protein bars */}
+              <div>
+                <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-[var(--muted-foreground)] mb-2 block">Protein</span>
+                <div className="space-y-1.5">
+                  {weeklyChartData.map((d) => {
+                    const pct = macroTargets.protein > 0 ? Math.min((d.protein / macroTargets.protein) * 100, 100) : 0;
+                    const isToday = d.date === todayKey;
+                    return (
+                      <div key={d.date} className="flex items-center gap-2">
+                        <span className={`text-[10px] font-mono w-8 ${isToday ? "text-[var(--primary)] font-bold" : "text-[var(--muted-foreground)]"}`}>{d.label}</span>
+                        <div className="flex-1 h-5 bg-[var(--secondary)] relative">
+                          <div className="h-full bg-red-500 transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className={`text-[10px] font-mono w-12 text-right ${d.protein === 0 ? "text-[var(--muted-foreground)]/50" : d.protein >= macroTargets.protein ? "text-green-400" : "text-foreground"}`}>{d.protein ? `${d.protein}g` : "—"}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex justify-end mt-1">
+                  <span className="text-[9px] font-mono text-[var(--muted-foreground)]">Target: {macroTargets.protein}g</span>
+                </div>
+              </div>
+
+              {/* Weekly averages */}
+              {(() => {
+                const daysWithData = weeklyChartData.filter((d) => d.calories > 0);
+                if (daysWithData.length === 0) return null;
+                const avgCal = Math.round(daysWithData.reduce((s, d) => s + d.calories, 0) / daysWithData.length);
+                const avgProt = Math.round(daysWithData.reduce((s, d) => s + d.protein, 0) / daysWithData.length);
+                return (
+                  <div className="mt-4 pt-3 border-t border-border flex justify-between">
+                    <div>
+                      <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--muted-foreground)]">Avg Calories</span>
+                      <p className={`text-sm font-mono font-bold ${avgCal > macroTargets.calories ? "text-red-400" : "text-[var(--primary)]"}`}>{avgCal}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--muted-foreground)]">Avg Protein</span>
+                      <p className={`text-sm font-mono font-bold ${avgProt >= macroTargets.protein ? "text-green-400" : "text-red-400"}`}>{avgProt}g</p>
+                    </div>
+                  </div>
+                );
+              })()}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Meal Planner Wizard ─────────────────────── */}
+      <AnimatePresence>
+        {showMealPlanner && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => setShowMealPlanner(false)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-card border border-border p-5 max-w-md w-full max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <ChefHat className="w-4 h-4 text-[var(--primary)]" />
+                  <h3 className="text-xs font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Meal Planner</h3>
+                </div>
+                <button onClick={() => setShowMealPlanner(false)} className="text-[var(--muted-foreground)] hover:text-foreground p-0.5"><X className="w-4 h-4" /></button>
+              </div>
+
+              {!mealPlanResult ? (
+                <div className="space-y-4">
+                  {/* Meal type selection */}
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-[var(--muted-foreground)] mb-2 block">What are you making?</span>
+                    <div className="flex gap-2">
+                      <button onClick={() => setMealPlanType("single")}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-mono uppercase tracking-wider border transition-colors cursor-pointer ${
+                          mealPlanType === "single" ? "border-[var(--primary)] text-[var(--primary)] bg-[var(--primary)]/10" : "border-border text-[var(--muted-foreground)] hover:border-[var(--primary)]/50"
+                        }`}>
+                        <Utensils className="w-3.5 h-3.5" /> Single Meal
+                      </button>
+                      <button onClick={() => setMealPlanType("prep")}
+                        className={`flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-mono uppercase tracking-wider border transition-colors cursor-pointer ${
+                          mealPlanType === "prep" ? "border-[var(--primary)] text-[var(--primary)] bg-[var(--primary)]/10" : "border-border text-[var(--muted-foreground)] hover:border-[var(--primary)]/50"
+                        }`}>
+                        <Briefcase className="w-3.5 h-3.5" /> Meal Prep
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Days slider — only for meal prep */}
+                  <AnimatePresence>
+                    {mealPlanType === "prep" && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+                        <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-[var(--muted-foreground)] mb-2 block">How many days?</span>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range" min={2} max={7} value={mealPrepDays}
+                            onChange={(e) => setMealPrepDays(Number(e.target.value))}
+                            className="flex-1 h-1.5 appearance-none bg-[var(--secondary)] rounded-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-[var(--primary)] [&::-webkit-slider-thumb]:cursor-pointer"
+                          />
+                          <span className="text-lg font-mono font-bold text-[var(--primary)] w-8 text-center">{mealPrepDays}</span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Food style */}
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-[var(--muted-foreground)] mb-2 block">Style</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {["Comfort", "Lean & Clean", "International", "High Protein", "Quick & Easy", "Budget"].map((style) => (
+                        <button key={style}
+                          disabled={mealSurpriseMe}
+                          onClick={() => setMealStyle(mealStyle === style ? "" : style)}
+                          className={`px-2.5 py-1.5 text-[10px] font-mono uppercase tracking-wider border transition-colors cursor-pointer disabled:opacity-30 ${
+                            mealStyle === style && !mealSurpriseMe ? "border-[var(--primary)] text-[var(--primary)] bg-[var(--primary)]/10" : "border-border text-[var(--muted-foreground)] hover:border-[var(--primary)]/50"
+                          }`}>
+                          {style}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Surprise me */}
+                  <button onClick={() => { setMealSurpriseMe(!mealSurpriseMe); if (!mealSurpriseMe) setMealStyle(""); }}
+                    className={`w-full flex items-center justify-center gap-2 py-2.5 text-xs font-mono uppercase tracking-wider border transition-colors cursor-pointer ${
+                      mealSurpriseMe ? "border-[var(--primary)] text-[var(--primary)] bg-[var(--primary)]/10" : "border-border text-[var(--muted-foreground)] hover:border-[var(--primary)]/50"
+                    }`}>
+                    <Shuffle className="w-3.5 h-3.5" /> Surprise Me
+                  </button>
+
+                  {/* Optional notes */}
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-[var(--muted-foreground)] mb-1.5 block">Anything specific? <span className="text-[var(--muted-foreground)]/50">(optional)</span></span>
+                    <textarea
+                      value={mealNotes}
+                      onChange={(e) => setMealNotes(e.target.value)}
+                      placeholder="e.g. I have chicken thighs and rice..."
+                      className="w-full bg-[var(--secondary)] border border-border text-foreground text-xs font-mono p-3 min-h-[60px] resize-none focus:outline-none focus:border-[var(--primary)] placeholder:text-[var(--muted-foreground)]/40"
+                    />
+                  </div>
+
+                  {/* Generate button */}
+                  <button
+                    disabled={isMealPlanning}
+                    onClick={async () => {
+                      setIsMealPlanning(true);
+                      const microGaps: { name: string; currentPercent: number }[] = [];
+                      for (const micro of ALL_MICRONUTRIENTS) {
+                        const current = dailyMicroTotals.get(micro.name) || 0;
+                        const pct = micro.dailyValue > 0 ? Math.round((current / micro.dailyValue) * 100) : 100;
+                        microGaps.push({ name: micro.name, currentPercent: pct });
+                      }
+                      try {
+                        const result = await mealPlanMutation.mutateAsync({
+                          type: mealPlanType,
+                          days: mealPlanType === "prep" ? mealPrepDays : 1,
+                          style: mealSurpriseMe ? "surprise" : (mealStyle || "any"),
+                          notes: mealNotes,
+                          remainingCalories: Math.max(macroTargets.calories - dailyTotals.calories, 0),
+                          remainingProtein: Math.max(macroTargets.protein - dailyTotals.protein, 0),
+                          remainingCarbs: Math.max(macroTargets.carbs - dailyTotals.carbs, 0),
+                          remainingFat: Math.max(macroTargets.fat - dailyTotals.fat, 0),
+                          microGaps,
+                        });
+                        setMealPlanResult(result);
+                      } catch (err) { console.error("Meal plan failed:", err); }
+                      setIsMealPlanning(false);
+                    }}
+                    className="w-full py-3 text-xs font-mono uppercase tracking-[0.2em] bg-[var(--primary)] text-[var(--primary-foreground)] font-bold hover:opacity-90 disabled:opacity-50 transition-colors cursor-pointer flex items-center justify-center gap-2">
+                    {isMealPlanning ? <><Loader2 className="w-4 h-4 animate-spin" /> Planning...</> : <><ChefHat className="w-4 h-4" /> Generate Plan</>}
+                  </button>
+                </div>
+              ) : (
+                /* ── Meal Plan Results ── */
+                <div className="space-y-3">
+                  {mealPlanResult.meals?.map((meal: any, i: number) => (
+                    <div key={i} className="border border-border p-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-mono text-xs font-bold text-foreground">{meal.name}</span>
+                        <span className="text-[10px] font-mono text-[var(--primary)]">{meal.totalCalories} cal</span>
+                      </div>
+                      {meal.dayLabel && <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--muted-foreground)] mb-1 block">{meal.dayLabel}</span>}
+                      <div className="space-y-1 mt-2">
+                        {meal.ingredients?.map((ing: string, j: number) => (
+                          <div key={j} className="text-[10px] font-mono text-[var(--muted-foreground)] flex items-start gap-1.5">
+                            <span className="text-[var(--primary)] mt-0.5">•</span> {ing}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex gap-3 mt-2 text-[10px] font-mono">
+                        <span className="text-blue-400">P: {meal.protein}g</span>
+                        <span className="text-amber-400">C: {meal.carbs}g</span>
+                        <span className="text-rose-400">F: {meal.fat}g</span>
+                      </div>
+                      {meal.keyMicros && meal.keyMicros.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {meal.keyMicros.map((m: { name: string; percentDV: number }, mi: number) => (
+                            <span key={mi} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-mono">
+                              {m.name} {m.percentDV}%
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {meal.instructions && (
+                        <p className="text-[10px] text-[var(--muted-foreground)] mt-2 leading-relaxed italic">{meal.instructions}</p>
+                      )}
+                    </div>
+                  ))}
+                  {mealPlanResult.summary && (
+                    <p className="text-[10px] font-mono text-[var(--muted-foreground)] italic">{mealPlanResult.summary}</p>
+                  )}
+                  <button onClick={() => setMealPlanResult(null)}
+                    className="w-full py-2 text-xs font-mono uppercase tracking-[0.15em] border border-border text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors cursor-pointer">
+                    Plan Another
+                  </button>
+                </div>
+              )}
             </motion.div>
           </motion.div>
         )}
