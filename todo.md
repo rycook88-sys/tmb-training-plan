@@ -38,3 +38,30 @@
 - [x] Fix Add Vitamins button closing out / finalizing the day — should only add vitamins to running totals
 - [x] Fix getTodayKey() to use local date instead of UTC (timezone mismatch bug)
 - [x] Add "Restore to Active" button on previous day entries to move them to current day
+
+## Micronutrient Display Overhaul
+- [x] Show only total amounts (no addition breakdowns like "118mg + 195mg + ...")
+- [x] Add mini progress bars showing % DV for each micronutrient
+- [x] Fix AI prompt to always return numeric mg/mcg values (never "Moderate", "High", etc.)
+- [x] Add all important micronutrients at 0% if missing (Omega-3, Fiber, Manganese, Copper, etc.)
+- [x] Color-code: green >=100%, yellow 50-99%, red <50%
+
+## Daily Presets (Replace Add Vitamins)
+- [x] Replace "Add Vitamins" button with "Daily Presets" button
+- [x] Opens a modal with two preset lists: "Work Day" and "Off Day"
+- [x] Each preset is editable — add/remove items
+- [x] Can snap a photo to add items to a preset
+- [x] One tap adds all checked items from a preset to today's log
+- [x] Vitamins are included as default items in both presets
+
+## Common Items Library
+- [x] New "Common Items" button/section
+- [x] Snap a photo to add a food to the library
+- [x] Shows saved common items with checkboxes
+- [x] Select multiple items and batch-post them to today's log
+- [x] Persisted to localStorage
+
+## Edit Food Entries
+- [x] Tap a logged food entry to edit its name/details
+- [x] AI re-analyzes macros/micros for the updated food
+- [x] Optional clarification question popup if AI needs more info

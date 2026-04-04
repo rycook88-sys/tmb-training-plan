@@ -40,14 +40,24 @@ const foodAnalysisSchema = {
         items: {
           type: "object" as const,
           properties: {
-            name: { type: "string" as const },
-            amount: { type: "string" as const },
-            dailyValuePct: { type: "number" as const },
+            name: {
+              type: "string" as const,
+              description: "Nutrient name. MUST match one of: Vitamin A, Vitamin C, Vitamin D, Vitamin E, Vitamin K, Vitamin B6, Vitamin B12, Thiamin (B1), Riboflavin (B2), Niacin (B3), Folate, Biotin, Pantothenic Acid, Choline, Calcium, Iron, Magnesium, Phosphorus, Potassium, Zinc, Copper, Manganese, Selenium, Chromium, Molybdenum, Iodine, Fiber, Omega-3 (EPA+DHA)",
+            },
+            amountMg: {
+              type: "number" as const,
+              description: "Amount in the standard unit for this nutrient. For nutrients measured in mg, provide mg. For nutrients measured in mcg (Vitamin A, Vitamin D, Vitamin K, Vitamin B12, Folate, Biotin, Selenium, Chromium, Molybdenum, Iodine), provide the value in mcg. For fiber (measured in g), provide grams. MUST be a specific number, never 0 unless truly absent.",
+            },
+            unit: {
+              type: "string" as const,
+              enum: ["mg", "mcg", "g"],
+              description: "The unit of the amountMg value",
+            },
           },
-          required: ["name", "amount", "dailyValuePct"] as const,
+          required: ["name", "amountMg", "unit"] as const,
           additionalProperties: false as const,
         },
-        description: "Notable micronutrients in this food",
+        description: "ALL micronutrients present in this food. Include every nutrient you can estimate, even small amounts. Use exact numeric values only — never use words like 'Moderate' or 'High'. If unsure of exact amount, provide your best numeric estimate.",
       },
     },
     required: [
@@ -90,6 +100,36 @@ const trendRecommendationSchema = {
   },
 };
 
+const fillMacrosSuggestionSchema = {
+  name: "fill_macros_suggestions",
+  strict: true,
+  schema: {
+    type: "object" as const,
+    properties: {
+      suggestions: {
+        type: "array" as const,
+        items: {
+          type: "object" as const,
+          properties: {
+            foodName: { type: "string" as const, description: "Specific food item name" },
+            portion: { type: "string" as const, description: "Suggested portion size" },
+            calories: { type: "number" as const },
+            protein: { type: "number" as const },
+            carbs: { type: "number" as const },
+            fat: { type: "number" as const },
+            reason: { type: "string" as const, description: "Why this food helps fill the gap, 1 sentence" },
+          },
+          required: ["foodName", "portion", "calories", "protein", "carbs", "fat", "reason"] as const,
+          additionalProperties: false as const,
+        },
+      },
+      summary: { type: "string" as const, description: "One-sentence summary of the suggestion strategy" },
+    },
+    required: ["suggestions", "summary"] as const,
+    additionalProperties: false as const,
+  },
+};
+
 export const nutritionRouter = router({
   /**
    * Analyze a food photo — accepts base64 image data,
@@ -113,14 +153,21 @@ export const nutritionRouter = router({
         messages: [
           {
             role: "system",
-            content: `You are a nutrition expert analyzing food photos. Identify the food and estimate macronutrients and micronutrients as accurately as possible. Be specific about portion sizes. If you see multiple food items, combine them into one total estimate. Always provide your best estimate even if uncertain — the user can correct the food name afterward. Focus on accuracy for a 226 lb male trying to lose weight on 2300 cal/day with 180g protein minimum.`,
+            content: `You are a nutrition expert analyzing food photos. Identify the food and estimate macronutrients and micronutrients as accurately as possible. Be specific about portion sizes. If you see multiple food items, combine them into one total estimate. Always provide your best estimate even if uncertain — the user can correct the food name afterward. Focus on accuracy for a 226 lb male trying to lose weight on 2300 cal/day with 180g protein minimum.
+
+CRITICAL RULES FOR MICRONUTRIENTS:
+- ALWAYS return NUMERIC values for micronutrient amounts. NEVER use words like "Moderate", "High", "Low", or "Trace".
+- If you're unsure of the exact amount, provide your BEST NUMERIC ESTIMATE.
+- Include ALL micronutrients you can reasonably estimate for the food.
+- Use the correct unit: mcg for Vitamin A, D, K, B12, Folate, Biotin, Selenium, Chromium, Molybdenum, Iodine. mg for most minerals and vitamins. g for Fiber.
+- The amountMg field should contain the value in the unit specified by the unit field.`,
           },
           {
             role: "user",
             content: [
               {
                 type: "text" as const,
-                text: "What food is in this photo? Estimate the calories, macros, and notable micronutrients.",
+                text: "What food is in this photo? Estimate the calories, macros, and ALL micronutrients with specific numeric amounts.",
               },
               {
                 type: "image_url" as const,
@@ -167,11 +214,17 @@ export const nutritionRouter = router({
         messages: [
           {
             role: "system",
-            content: `You are a nutrition expert. The user has identified a food item. Estimate the macronutrients and micronutrients as accurately as possible. Focus on accuracy for a 226 lb male trying to lose weight on 2300 cal/day with 180g protein minimum.`,
+            content: `You are a nutrition expert. The user has identified a food item. Estimate the macronutrients and micronutrients as accurately as possible. Focus on accuracy for a 226 lb male trying to lose weight on 2300 cal/day with 180g protein minimum.
+
+CRITICAL RULES FOR MICRONUTRIENTS:
+- ALWAYS return NUMERIC values for micronutrient amounts. NEVER use words like "Moderate", "High", "Low", or "Trace".
+- If you're unsure of the exact amount, provide your BEST NUMERIC ESTIMATE.
+- Include ALL micronutrients you can reasonably estimate for the food.
+- Use the correct unit: mcg for Vitamin A, D, K, B12, Folate, Biotin, Selenium, Chromium, Molybdenum, Iodine. mg for most minerals and vitamins. g for Fiber.`,
           },
           {
             role: "user",
-            content: `Estimate the nutrition for: "${input.foodName}"${input.servingEstimate ? ` (serving: ${input.servingEstimate})` : ""}. Provide calories, macros, and notable micronutrients.`,
+            content: `Estimate the nutrition for: "${input.foodName}"${input.servingEstimate ? ` (serving: ${input.servingEstimate})` : ""}. Provide calories, macros, and ALL micronutrients with specific numeric amounts.`,
           },
         ],
         response_format: {
@@ -250,6 +303,63 @@ IMPORTANT RULES:
       const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       if (!content) {
         return { recommendations: [] };
+      }
+
+      return JSON.parse(content);
+    }),
+
+  /**
+   * Fill My Macros — suggest specific foods to close remaining macro gaps.
+   * Only available after 3+ days of tracking.
+   */
+  fillMyMacros: publicProcedure
+    .input(
+      z.object({
+        remainingCalories: z.number(),
+        remainingProtein: z.number(),
+        remainingCarbs: z.number(),
+        remainingFat: z.number(),
+        timeOfDay: z.string(),
+        daysTracked: z.number(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      if (input.daysTracked < 3) {
+        return {
+          suggestions: [],
+          summary: "Need at least 3 days of tracking data before suggesting foods.",
+        };
+      }
+
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You are a practical nutrition advisor for a 226 lb male losing weight on 2300 cal/day with 180g protein minimum. He's training for a 10-day alpine hike.
+
+Suggest 2-4 specific, realistic foods that would help fill his remaining macro gaps for the day. Consider the time of day — don't suggest a full dinner at breakfast time. Prioritize closing the biggest gap (usually protein). Keep suggestions practical and easy to prepare.`,
+          },
+          {
+            role: "user",
+            content: `It's ${input.timeOfDay}. I still need to eat:
+- ${Math.round(input.remainingCalories)} more calories
+- ${Math.round(input.remainingProtein)}g more protein
+- ${Math.round(input.remainingCarbs)}g more carbs
+- ${Math.round(input.remainingFat)}g more fat
+
+What should I eat to close these gaps?`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: fillMacrosSuggestionSchema,
+        },
+      });
+
+      const rawContent = result.choices?.[0]?.message?.content;
+      const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      if (!content) {
+        return { suggestions: [], summary: "Could not generate suggestions." };
       }
 
       return JSON.parse(content);
