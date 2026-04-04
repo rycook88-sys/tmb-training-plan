@@ -290,6 +290,62 @@ describe("nutrition router", () => {
     ).rejects.toThrow();
   });
 
+  it("analyzeText returns full analysis for clear food description", async () => {
+    const { invokeLLM } = await import("./_core/llm");
+    // First call: triage — no clarification needed
+    (invokeLLM as any).mockResolvedValueOnce({
+      choices: [{ message: { content: JSON.stringify({ needsClarification: false, question: "" }) } }],
+    });
+    // Second call: full analysis
+    (invokeLLM as any).mockResolvedValueOnce({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            foodName: "Grilled Chicken Breast with Rice",
+            confidence: "high",
+            servingEstimate: "8oz chicken + 1 cup rice",
+            calories: 520, protein: 48, carbs: 45, fat: 12, sugar: 1,
+            micronutrients: {
+              vitamin_a_mcg: 120, vitamin_c_mg: 5, vitamin_d_mcg: 0.5, vitamin_e_mg: 0.8,
+              vitamin_k_mcg: 2.5, vitamin_b6_mg: 0.8, vitamin_b12_mcg: 2.4, thiamin_b1_mg: 0.15,
+              riboflavin_b2_mg: 0.2, niacin_b3_mg: 12, folate_mcg: 30, biotin_mcg: 5,
+              pantothenic_acid_mg: 1.2, choline_mg: 80, calcium_mg: 25, iron_mg: 2.5,
+              magnesium_mg: 40, phosphorus_mg: 300, potassium_mg: 450, sodium_mg: 380,
+              zinc_mg: 5.5, copper_mg: 0.15, manganese_mg: 0.6, selenium_mcg: 35,
+              chromium_mcg: 5, molybdenum_mcg: 10, iodine_mcg: 15, fiber_g: 2, omega3_epa_dha_mg: 20,
+            },
+          }),
+        },
+      }],
+    });
+
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.nutrition.analyzeText({ description: "8oz grilled chicken with a cup of rice" });
+
+    expect(result.status).toBe("analyzed");
+    expect((result as any).foodName).toBe("Grilled Chicken Breast with Rice");
+    expect((result as any).calories).toBe(520);
+    expect((result as any).protein).toBe(48);
+    expect(Array.isArray((result as any).micronutrients)).toBe(true);
+    expect((result as any).micronutrients).toHaveLength(29);
+  });
+
+  it("analyzeText returns clarification question for ambiguous input", async () => {
+    const { invokeLLM } = await import("./_core/llm");
+    // Triage: needs clarification
+    (invokeLLM as any).mockResolvedValueOnce({
+      choices: [{ message: { content: JSON.stringify({ needsClarification: true, question: "How much pasta? And was it with any sauce?" }) } }],
+    });
+
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+    const result = await caller.nutrition.analyzeText({ description: "pasta" });
+
+    expect(result.status).toBe("clarification_needed");
+    expect((result as any).question).toBe("How much pasta? And was it with any sauce?");
+  });
+
   it("MICRO_KEY_MAP covers all 29 tracked nutrients", async () => {
     const { MICRO_KEY_MAP } = await import("./nutrition");
 

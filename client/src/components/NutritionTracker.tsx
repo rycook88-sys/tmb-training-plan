@@ -5,6 +5,7 @@ import {
   Trash2, X, AlertTriangle, TrendingUp, Pill, Utensils, Plus, RotateCcw,
   Loader2, Sparkles, ArrowUpToLine, Zap, Bookmark, Briefcase, Coffee,
   Square, CheckSquare, Settings, BarChart3, ChefHat, Shuffle, Star, ShoppingCart, ImagePlus, Target,
+  MessageSquare, Send, Type,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -733,6 +734,15 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
   const [confirmDeletePlan, setConfirmDeletePlan] = useState<string | null>(null);
 
+  // Text entry
+  const [showTextEntry, setShowTextEntry] = useState(false);
+  const [textEntryInput, setTextEntryInput] = useState("");
+  const [textEntryStep, setTextEntryStep] = useState<"input" | "clarify" | "result">("input");
+  const [textClarifyQuestion, setTextClarifyQuestion] = useState("");
+  const [textClarifyAnswer, setTextClarifyAnswer] = useState("");
+  const [textEntryResult, setTextEntryResult] = useState<any>(null);
+  const [isTextAnalyzing, setIsTextAnalyzing] = useState(false);
+
   // Snap Pantry
   const [showPantry, setShowPantry] = useState(false);
   const [pantryImages, setPantryImages] = useState<Array<{ base64: string; mimeType: string; preview: string }>>([]);
@@ -757,6 +767,7 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const backupMutation = trpc.nutrition.backup.useMutation();
   const mealPlanMutation = trpc.nutrition.planMeal.useMutation();
   const snapPantryMutation = trpc.nutrition.snapPantry.useMutation();
+  const analyzeTextMutation = trpc.nutrition.analyzeText.useMutation();
 
   // Restore from server on mount if localStorage is empty and user is logged in
   const restoreQuery = trpc.nutrition.restore.useQuery(undefined, {
@@ -1225,6 +1236,80 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
     setCapturedImage(null); setAnalysisResult(null); setEditingName(false);
   }, []);
 
+  /* ── Text Entry: Submit description ───────────── */
+  const handleTextEntrySubmit = useCallback(async () => {
+    if (!textEntryInput.trim()) return;
+    setIsTextAnalyzing(true);
+    try {
+      const result = await analyzeTextMutation.mutateAsync({
+        description: textEntryInput.trim(),
+      });
+      if (result.status === "clarification_needed") {
+        setTextClarifyQuestion((result as any).question);
+        setTextClarifyAnswer("");
+        setTextEntryStep("clarify");
+      } else {
+        setTextEntryResult(result);
+        setTextEntryStep("result");
+      }
+    } catch (err) {
+      console.error("Text analysis failed:", err);
+    } finally {
+      setIsTextAnalyzing(false);
+    }
+  }, [textEntryInput, analyzeTextMutation]);
+
+  /* ── Text Entry: Submit clarification answer ──── */
+  const handleTextClarifySubmit = useCallback(async () => {
+    if (!textClarifyAnswer.trim()) return;
+    setIsTextAnalyzing(true);
+    try {
+      const result = await analyzeTextMutation.mutateAsync({
+        description: textEntryInput.trim(),
+        clarificationAnswer: textClarifyAnswer.trim(),
+        previousQuestion: textClarifyQuestion,
+      });
+      setTextEntryResult(result);
+      setTextEntryStep("result");
+    } catch (err) {
+      console.error("Clarification analysis failed:", err);
+    } finally {
+      setIsTextAnalyzing(false);
+    }
+  }, [textEntryInput, textClarifyAnswer, textClarifyQuestion, analyzeTextMutation]);
+
+  /* ── Text Entry: Confirm and add to log ──────── */
+  const handleTextEntryConfirm = useCallback(() => {
+    if (!textEntryResult) return;
+    const entry: FoodEntry = {
+      id: `food-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      timestamp: Date.now(),
+      foodName: textEntryResult.foodName,
+      confidence: textEntryResult.confidence,
+      servingEstimate: textEntryResult.servingEstimate,
+      calories: textEntryResult.calories,
+      protein: textEntryResult.protein,
+      carbs: textEntryResult.carbs,
+      fat: textEntryResult.fat,
+      fiber: textEntryResult.fiber || 0,
+      sugar: textEntryResult.sugar || 0,
+      sodium: textEntryResult.sodium || 0,
+      micronutrients: normalizeMicros(textEntryResult.micronutrients),
+      confirmed: true,
+    };
+    setLogs((prev) => {
+      const { logs: updated } = getOrCreateToday(prev);
+      return updated.map((l) => l.date === todayKey ? { ...l, entries: [...l.entries, entry] } : l);
+    });
+    // Reset text entry state
+    setShowTextEntry(false);
+    setTextEntryInput("");
+    setTextEntryStep("input");
+    setTextClarifyQuestion("");
+    setTextClarifyAnswer("");
+    setTextEntryResult(null);
+  }, [textEntryResult, todayKey]);
+
   // ── Snap Pantry handlers ────────────────────
   const handlePantryCapture = useCallback(() => { pantryFileRef.current?.click(); }, []);
 
@@ -1332,6 +1417,11 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
         <button onClick={handleCapture} disabled={isAnalyzing}
           className="flex items-center gap-2 bg-[var(--primary)] text-[var(--primary-foreground)] px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold hover:opacity-90 transition-opacity disabled:opacity-50">
           <Camera className="w-4 h-4" /> Snap Food
+        </button>
+
+        <button onClick={() => { setShowTextEntry(true); setTextEntryInput(""); setTextEntryStep("input"); setTextClarifyQuestion(""); setTextClarifyAnswer(""); setTextEntryResult(null); }}
+          className="flex items-center gap-2 bg-[var(--primary)] text-[var(--primary-foreground)] px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold hover:opacity-90 transition-opacity">
+          <Type className="w-4 h-4" /> Type Food
         </button>
 
         {/* Daily Presets button */}
@@ -1576,6 +1666,111 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
         )}
       </AnimatePresence>
 
+      {/* ── Text Entry Panel ────────────────────── */}
+      <AnimatePresence>
+        {showTextEntry && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+            <div className="mx-4 mb-3 border-2 border-[var(--primary)]/30 bg-[var(--primary)]/5 p-3">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-3.5 h-3.5 text-[var(--primary)]" />
+                  <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Type What You Ate</span>
+                </div>
+                <button onClick={() => { setShowTextEntry(false); setTextEntryInput(""); setTextEntryStep("input"); setTextClarifyQuestion(""); setTextClarifyAnswer(""); setTextEntryResult(null); }}
+                  className="text-[var(--muted-foreground)] hover:text-foreground p-0.5"><X className="w-3.5 h-3.5" /></button>
+              </div>
+
+              {/* Step 1: Text input */}
+              {textEntryStep === "input" && (
+                <div>
+                  <textarea
+                    value={textEntryInput}
+                    onChange={(e) => setTextEntryInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleTextEntrySubmit(); } }}
+                    placeholder='e.g. "8oz grilled chicken with a cup of rice and steamed broccoli"'
+                    className="w-full bg-[var(--secondary)] border border-border px-3 py-2.5 text-xs font-mono text-foreground placeholder:text-[var(--muted-foreground)]/60 focus:border-[var(--primary)] focus:outline-none resize-none"
+                    rows={3}
+                    autoFocus
+                  />
+                  <div className="flex gap-2 mt-2">
+                    <button onClick={handleTextEntrySubmit} disabled={!textEntryInput.trim() || isTextAnalyzing}
+                      className="flex items-center gap-1.5 bg-[var(--primary)] text-[var(--primary-foreground)] px-4 py-2 text-[10px] font-mono uppercase tracking-wider font-bold hover:opacity-90 transition-opacity disabled:opacity-50">
+                      {isTextAnalyzing ? <><Loader2 className="w-3 h-3 animate-spin" /> Analyzing...</> : <><Send className="w-3 h-3" /> Analyze</>}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: AI asks a clarifying question */}
+              {textEntryStep === "clarify" && (
+                <div>
+                  <div className="mb-3 p-2.5 bg-[var(--secondary)] border border-border">
+                    <div className="flex items-start gap-2">
+                      <Sparkles className="w-3.5 h-3.5 text-[var(--primary)] mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-[10px] font-mono uppercase tracking-wider text-[var(--primary)] mb-1 font-bold">Quick question</p>
+                        <p className="text-xs font-mono text-foreground">{textClarifyQuestion}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={textClarifyAnswer}
+                      onChange={(e) => setTextClarifyAnswer(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleTextClarifySubmit(); } }}
+                      placeholder="Your answer..."
+                      className="flex-1 bg-[var(--secondary)] border border-border px-3 py-2 text-xs font-mono text-foreground placeholder:text-[var(--muted-foreground)]/60 focus:border-[var(--primary)] focus:outline-none"
+                      autoFocus
+                    />
+                    <button onClick={handleTextClarifySubmit} disabled={!textClarifyAnswer.trim() || isTextAnalyzing}
+                      className="flex items-center gap-1.5 bg-[var(--primary)] text-[var(--primary-foreground)] px-3 py-2 text-[10px] font-mono uppercase tracking-wider font-bold hover:opacity-90 transition-opacity disabled:opacity-50">
+                      {isTextAnalyzing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                    </button>
+                  </div>
+                  <p className="text-[10px] font-mono text-[var(--muted-foreground)] mt-1.5 italic">
+                    You said: "{textEntryInput}"
+                  </p>
+                </div>
+              )}
+
+              {/* Step 3: Show result */}
+              {textEntryStep === "result" && textEntryResult && (
+                <div>
+                  <div className="mb-2">
+                    <span className="font-mono text-xs font-bold text-foreground">{textEntryResult.foodName}</span>
+                    {textEntryResult.confidence === "low" && (
+                      <span className="ml-2 text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 text-red-400 bg-red-400/10">⚠ low confidence</span>
+                    )}
+                  </div>
+                  <p className="text-[10px] font-mono text-[var(--muted-foreground)] italic mb-2">{textEntryResult.servingEstimate}</p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] font-mono mb-3">
+                    <span className="text-[var(--primary)] font-bold">{textEntryResult.calories} cal</span>
+                    <span className="text-blue-400">P: {textEntryResult.protein}g</span>
+                    <span className="text-amber-400">C: {textEntryResult.carbs}g</span>
+                    <span className="text-rose-400">F: {textEntryResult.fat}g</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={handleTextEntryConfirm}
+                      className="flex items-center gap-1.5 bg-[var(--primary)] text-[var(--primary-foreground)] px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider font-bold hover:opacity-90 transition-opacity">
+                      <Check className="w-3 h-3" /> Confirm
+                    </button>
+                    <button onClick={() => { setTextEntryStep("input"); setTextEntryResult(null); }}
+                      className="flex items-center gap-1.5 border border-border px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-foreground transition-colors">
+                      <Edit3 className="w-3 h-3" /> Edit
+                    </button>
+                    <button onClick={() => { setShowTextEntry(false); setTextEntryInput(""); setTextEntryStep("input"); setTextClarifyQuestion(""); setTextClarifyAnswer(""); setTextEntryResult(null); }}
+                      className="flex items-center gap-1.5 border border-border px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-foreground transition-colors">
+                      <X className="w-3 h-3" /> Discard
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Trends Panel ─────────────────────────── */}
       <AnimatePresence>
         {showTrends && (
@@ -1737,12 +1932,12 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
       )}
 
       {/* ── Empty State ──────────────────────────── */}
-      {todayEntries.length === 0 && !capturedImage && (
+      {todayEntries.length === 0 && !capturedImage && !showTextEntry && (
         <div className="px-4 pb-4">
           <div className="border border-dashed border-border p-6 text-center">
             <Camera className="w-8 h-8 text-[var(--muted-foreground)] mx-auto mb-2 opacity-40" />
             <p className="text-xs font-mono text-[var(--muted-foreground)]">
-              No meals logged today. Tap <span className="text-[var(--primary)]">Snap Food</span> to photograph your meal.
+              No meals logged today. <span className="text-[var(--primary)]">Snap</span> a photo or <span className="text-[var(--primary)]">Type</span> what you ate.
             </p>
           </div>
         </div>

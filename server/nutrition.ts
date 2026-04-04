@@ -500,6 +500,134 @@ What should I eat to close these gaps?`,
     }),
 
   /**
+   * Analyze food from a text description.
+   * Step 1: User types what they ate.
+   * Step 2: AI either returns full analysis OR asks a clarifying question.
+   * Step 3: If clarification was needed, user answers and AI returns full analysis.
+   */
+  analyzeText: publicProcedure
+    .input(
+      z.object({
+        description: z.string().describe("What the user ate, e.g. 'chicken breast with rice and broccoli'"),
+        clarificationAnswer: z.string().optional().describe("Answer to a previous clarifying question"),
+        previousQuestion: z.string().optional().describe("The clarifying question that was asked"),
+      })
+    )
+    .mutation(async ({ input }) => {
+      // If this is a follow-up after clarification, include the Q&A context
+      const clarificationContext = input.previousQuestion && input.clarificationAnswer
+        ? `\n\nYou previously asked: "${input.previousQuestion}"\nThe user answered: "${input.clarificationAnswer}"\n\nNow provide the full nutrition analysis based on this clarification.`
+        : "";
+
+      // First, decide if we need clarification or can analyze directly
+      const needsClarification = !input.clarificationAnswer;
+
+      if (needsClarification) {
+        // Step 1: Check if the description is clear enough or needs clarification
+        const triageResult = await invokeLLM({
+          messages: [
+            {
+              role: "system",
+              content: `You are a nutrition expert. The user is describing what they ate via text. Decide if you have enough information to estimate nutrition accurately, or if you need ONE clarifying question.
+
+Ask a clarifying question ONLY if:
+- The portion size is completely ambiguous and would change calories by >30% (e.g., "pasta" — how much?)
+- The cooking method is unknown and would significantly affect macros (e.g., "chicken" — grilled vs fried?)
+- A key ingredient detail is missing (e.g., "sandwich" — what kind?)
+
+Do NOT ask clarifying questions for:
+- Minor details that barely affect nutrition
+- Things you can reasonably assume (e.g., "coffee" = 1 cup black)
+- When the description is already specific enough
+
+Be concise. One question max. Keep it casual and short.`,
+            },
+            {
+              role: "user",
+              content: `I ate: ${input.description}`,
+            },
+          ],
+          response_format: {
+            type: "json_schema",
+            json_schema: {
+              name: "triage_decision",
+              strict: true,
+              schema: {
+                type: "object" as const,
+                properties: {
+                  needsClarification: {
+                    type: "boolean" as const,
+                    description: "true if a clarifying question is needed before analysis",
+                  },
+                  question: {
+                    type: "string" as const,
+                    description: "The clarifying question to ask. Empty string if no clarification needed.",
+                  },
+                },
+                required: ["needsClarification", "question"] as const,
+                additionalProperties: false as const,
+              },
+            },
+          },
+        });
+
+        const triageRaw = triageResult.choices?.[0]?.message?.content;
+        const triageContent = typeof triageRaw === "string" ? triageRaw : JSON.stringify(triageRaw);
+        if (triageContent) {
+          const triage = JSON.parse(triageContent);
+          if (triage.needsClarification && triage.question) {
+            return {
+              status: "clarification_needed" as const,
+              question: triage.question,
+            };
+          }
+        }
+      }
+
+      // Either no clarification needed, or this is the follow-up call with the answer
+      const result = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: FOOD_ANALYSIS_SYSTEM_PROMPT,
+          },
+          {
+            role: "user",
+            content: `Estimate the nutrition for: "${input.description}"${clarificationContext}. Break down each ingredient separately, then sum the nutrients. Every micronutrient field must have a value.`,
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: foodAnalysisSchema,
+        },
+      });
+
+      const rawContent = result.choices?.[0]?.message?.content;
+      const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      if (!content) {
+        throw new Error("No response from nutrition model");
+      }
+
+      const parsed = JSON.parse(content);
+      const microArray = convertMicrosToArray(parsed.micronutrients);
+
+      return {
+        status: "analyzed" as const,
+        foodName: parsed.foodName,
+        confidence: parsed.confidence,
+        servingEstimate: parsed.servingEstimate,
+        calories: parsed.calories,
+        protein: parsed.protein,
+        carbs: parsed.carbs,
+        fat: parsed.fat,
+        fiber: parsed.micronutrients.fiber_g || 0,
+        sugar: parsed.sugar,
+        sodium: parsed.micronutrients.sodium_mg || 0,
+        micronutrients: microArray,
+      };
+    }),
+
+  /**
    * Backup nutrition data from localStorage to the database.
    * Accepts multiple data types in one call for efficiency.
    */

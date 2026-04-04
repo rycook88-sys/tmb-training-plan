@@ -179,3 +179,16 @@
 - [x] "Make This One" button on expanded meal to proceed
 - [x] After selection: show selected meal summary + grocery list + "Other Meals" back button
 - [x] Keep the grocery list checkbox/strikethrough behavior
+## Text-Based Food Entry (Type Food)
+- [x] Server endpoint: nutrition.analyzeText — accepts text description, returns analysis or clarifying question
+- [x] AI triage step: decides if description is clear enough or needs one clarifying question
+- [x] Clarification flow: AI asks question → user answers → AI analyzes with context
+- [x] Direct analysis: if description is specific enough, skips clarification and analyzes immediately
+- [x] Frontend: "Type Food" button in action buttons area (same prominence as Snap Food)
+- [x] Text input panel with textarea, Enter-to-submit, Analyze button
+- [x] Clarification step UI: shows AI question with sparkle icon, input field for answer
+- [x] Result display: food name, confidence, serving estimate, macros, Confirm/Edit/Discard buttons
+- [x] Confirm adds entry to today's log (same as photo-based entries)
+- [x] Edit button returns to text input step to modify description
+- [x] Updated empty state to mention both Snap and Type options
+- [x] Vitest tests: direct analysis and clarification flow (11 tests total, all passing)
