@@ -461,6 +461,10 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
 
   /* ── Add Daily Vitamins ────────────────────────── */
   const handleAddVitamins = useCallback(() => {
+    // Only flip the vitaminsAdded flag on today's log.
+    // If today's log doesn't exist yet (no meals), create it but
+    // it won't count as a "logged day" for trends/history until
+    // actual food entries are added.
     setLogs((prev) => {
       const { logs: updated } = getOrCreateToday(prev);
       return updated.map((l) =>
@@ -473,8 +477,10 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const handleFetchTrends = useCallback(async () => {
     setShowTrends(true);
     // Get last 3+ days of data
+    // Only count days with actual food entries for trend analysis.
+    // Vitamin-only days don't represent real eating patterns.
     const recentLogs = logs
-      .filter((l) => l.entries.length > 0 || l.vitaminsAdded)
+      .filter((l) => l.entries.length > 0)
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, 7);
 
@@ -605,9 +611,22 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
         )}
 
         {vitaminsAdded && (
-          <span className="flex items-center gap-1.5 px-3 py-2.5 text-[10px] font-mono uppercase tracking-wider text-green-400 bg-green-400/10">
-            <Check className="w-3 h-3" /> Vitamins Added
-          </span>
+          <button
+            onClick={() => {
+              setLogs((prev) =>
+                prev.map((l) =>
+                  l.date === todayKey ? { ...l, vitaminsAdded: false } : l
+                )
+              );
+            }}
+            className="flex items-center gap-1.5 px-3 py-2.5 text-[10px] font-mono uppercase tracking-wider text-green-400 bg-green-400/10 hover:bg-red-400/10 hover:text-red-400 transition-colors group cursor-pointer"
+            title="Click to undo vitamins"
+          >
+            <Check className="w-3 h-3 group-hover:hidden" />
+            <RotateCcw className="w-3 h-3 hidden group-hover:block" />
+            <span className="group-hover:hidden">Vitamins Added</span>
+            <span className="hidden group-hover:inline">Undo Vitamins</span>
+          </button>
         )}
 
         <button

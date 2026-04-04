@@ -33,3 +33,6 @@
 - [ ] Verify AI food recognition returns reasonable results
 - [ ] Verify macro progress bars update correctly
 - [ ] Save checkpoint and deliver
+
+## Bug Fixes
+- [x] Fix Add Vitamins button closing out / finalizing the day — should only add vitamins to running totals
