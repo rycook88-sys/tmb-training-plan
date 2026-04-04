@@ -36,3 +36,5 @@
 
 ## Bug Fixes
 - [x] Fix Add Vitamins button closing out / finalizing the day — should only add vitamins to running totals
+- [x] Fix getTodayKey() to use local date instead of UTC (timezone mismatch bug)
+- [x] Add "Restore to Active" button on previous day entries to move them to current day

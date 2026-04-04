@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Camera, Check, Edit3, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown,
   Trash2, X, AlertTriangle, TrendingUp, Pill, Utensils, Plus, RotateCcw,
-  Loader2, Sparkles,
+  Loader2, Sparkles, ArrowUpToLine,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { DAILY_VITAMINS, getDailyVitaminTotals, MACRO_TARGETS } from "@/lib/vitamin-data";
@@ -44,7 +44,13 @@ const STORAGE_KEY = "tmb-nutrition-log";
 const FEEDBACK_KEY = "tmb-nutrition-feedback";
 
 function getTodayKey(): string {
-  return new Date().toISOString().split("T")[0];
+  // Use local date, not UTC — prevents timezone mismatch
+  // (e.g. CDT user seeing April 4 when it's still April 3 locally)
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 function loadLogs(): DailyLog[] {
@@ -887,6 +893,33 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                               <span>{e.calories} cal</span>
                             </div>
                           ))}
+                          <button
+                            onClick={() => {
+                              // Move this day's entries into today's log
+                              setLogs((prev) => {
+                                const { logs: updated } = getOrCreateToday(prev);
+                                const sourceDay = updated.find((l) => l.date === log.date);
+                                if (!sourceDay) return updated;
+                                return updated.map((l) => {
+                                  if (l.date === todayKey) {
+                                    return {
+                                      ...l,
+                                      entries: [...l.entries, ...sourceDay.entries],
+                                      vitaminsAdded: l.vitaminsAdded || sourceDay.vitaminsAdded,
+                                    };
+                                  }
+                                  if (l.date === log.date) {
+                                    return { ...l, entries: [], vitaminsAdded: false };
+                                  }
+                                  return l;
+                                });
+                              });
+                            }}
+                            className="mt-2 flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-[var(--primary)] hover:text-[var(--primary)]/80 transition-colors cursor-pointer"
+                          >
+                            <ArrowUpToLine className="w-3 h-3" />
+                            Restore to Active
+                          </button>
                         </div>
                       );
                     })}
