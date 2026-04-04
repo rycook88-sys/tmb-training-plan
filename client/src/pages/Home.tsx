@@ -697,7 +697,7 @@ function FootMobilitySection({ embedded = false }: { embedded?: boolean } = {}) 
 // ── Utility Card (for card grid) ───────────────────────────
 function UtilityCard({ accent, accentBg, icon, title, subtitle, tag, tagColor, children }: {
   accent: string; accentBg: string; icon: React.ReactNode; title: string;
-  subtitle: string; tag: string; tagColor: string; children: React.ReactNode;
+  subtitle: string; tag?: string; tagColor?: string; children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -713,7 +713,7 @@ function UtilityCard({ accent, accentBg, icon, title, subtitle, tag, tagColor, c
           <div className="flex-1 min-w-0">
             <div className="font-mono text-sm font-bold text-foreground tracking-wider">{title}</div>
             <div className="text-[11px] text-[var(--muted-foreground)] mt-0.5 font-mono">{subtitle}</div>
-            <span className={`inline-block text-[10px] font-mono uppercase tracking-wider mt-2 px-2 py-0.5 ${tagColor}`}>{tag}</span>
+            {tag && <span className={`inline-block text-[10px] font-mono uppercase tracking-wider mt-2 px-2 py-0.5 ${tagColor}`}>{tag}</span>}
           </div>
           <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.3 }}>
             <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)]" />
@@ -923,8 +923,7 @@ export default function Home() {
                 icon={<span className="text-lg">📸</span>}
                 title="Nutrition Tracker"
                 subtitle="Photo-based calorie tracking"
-                tag="2,300 cal target"
-                tagColor="text-green-400 bg-green-400/10"
+
               >
                 <NutritionTracker embedded />
               </UtilityCard>

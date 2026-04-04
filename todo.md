@@ -97,3 +97,10 @@
 ## Calorie Header Redesign
 - [x] Make current/total calories display larger and more prominent at top of tracker
 - [x] Right-align the calorie display with bold/accent styling + remaining/over indicator
+
+## UI Fixes v3
+- [x] Remove green cloud backup status icon (keep backup working silently)
+- [x] Remove "calories left" / "over" text under the big calorie number
+- [x] Fix food detail popup showing "HIGH" confidence label — removed
+- [x] Add food detail popup to common items and daily preset items (tap to see macros/micros)
+- [x] Remove "2,300 CAL TARGET" tag from the Nutrition Tracker banner in Home.tsx

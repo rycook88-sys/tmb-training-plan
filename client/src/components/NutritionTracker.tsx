@@ -4,7 +4,7 @@ import {
   Camera, Check, Edit3, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown,
   Trash2, X, AlertTriangle, TrendingUp, Pill, Utensils, Plus, RotateCcw,
   Loader2, Sparkles, ArrowUpToLine, Zap, Bookmark, Briefcase, Coffee,
-  Square, CheckSquare, Info, Cloud, CloudOff,
+  Square, CheckSquare, Info,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -339,14 +339,7 @@ function FoodDetailPopup({ entry, onClose }: { entry: FoodEntry; onClose: () => 
             <h3 className="font-mono text-xs font-bold text-foreground leading-relaxed">{entry.foodName}</h3>
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{formatTime(entry.timestamp)}</span>
-              {entry.confidence && (
-                <span className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 ${
-                  entry.confidence === "high" ? "text-green-400 bg-green-400/10" :
-                  entry.confidence === "medium" ? "text-amber-400 bg-amber-400/10" :
-                  entry.confidence === "preset" || entry.confidence === "common" ? "text-blue-400 bg-blue-400/10" :
-                  "text-red-400 bg-red-400/10"
-                }`}>{entry.confidence}</span>
-              )}
+
             </div>
             {entry.servingEstimate && (
               <p className="text-[10px] font-mono text-[var(--muted-foreground)] italic mt-1">{entry.servingEstimate}</p>
@@ -1111,15 +1104,7 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Today's Nutrition</span>
               <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{todayKey}</span>
-              {/* Backup status indicator */}
-              {isAuthenticated && (
-                <span title={backupStatus === "synced" ? "Backed up" : backupStatus === "syncing" ? "Syncing..." : backupStatus === "error" ? "Backup failed" : ""}
-                  className="ml-1">
-                  {backupStatus === "syncing" && <Cloud className="w-3 h-3 text-blue-400 animate-pulse" />}
-                  {backupStatus === "synced" && <Cloud className="w-3 h-3 text-green-500" />}
-                  {backupStatus === "error" && <CloudOff className="w-3 h-3 text-red-400" />}
-                </span>
-              )}
+
             </div>
           </div>
           {/* Big calorie display — right-aligned, loud */}
@@ -1130,13 +1115,7 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
             <div className="font-mono text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] mt-0.5">
               / {MACRO_TARGETS.calories} cal
             </div>
-            <div className="font-mono text-xs mt-0.5">
-              {dailyTotals.calories <= MACRO_TARGETS.calories ? (
-                <span className="text-green-500">{Math.round(MACRO_TARGETS.calories - dailyTotals.calories)} left</span>
-              ) : (
-                <span className="text-red-400">+{Math.round(dailyTotals.calories - MACRO_TARGETS.calories)} over</span>
-              )}
-            </div>
+
           </div>
         </div>
 
@@ -1207,9 +1186,15 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
               )}
               {presets[activePresetTab].map((item) => (
                 <div key={item.id} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
-                  <div>
+                  <div className="cursor-pointer" onClick={() => setDetailEntry({
+                    id: item.id, foodName: item.foodName, timestamp: Date.now(),
+                    calories: item.calories, protein: item.protein, carbs: item.carbs,
+                    fat: item.fat, fiber: item.fiber, sugar: item.sugar, sodium: item.sodium,
+                    micronutrients: item.micronutrients, confidence: "preset", servingEstimate: "", confirmed: true,
+                  })}>
                     <span className="text-[11px] font-mono text-foreground">{item.foodName}</span>
                     <span className="text-[10px] font-mono text-[var(--muted-foreground)] ml-2">{item.calories} cal</span>
+                    <Info className="w-3 h-3 text-[var(--muted-foreground)] inline ml-1 opacity-50" />
                   </div>
                   <button onClick={() => {
                     setPresets((prev) => ({
@@ -1263,11 +1248,17 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                   }} className="flex-shrink-0">
                     {commonSelected.has(item.id) ? <CheckSquare className="w-4 h-4 text-[var(--primary)]" /> : <Square className="w-4 h-4 text-[var(--muted-foreground)]" />}
                   </button>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setDetailEntry({
+                    id: item.id, foodName: item.foodName, timestamp: Date.now(),
+                    calories: item.calories, protein: item.protein, carbs: item.carbs,
+                    fat: item.fat, fiber: item.fiber, sugar: item.sugar, sodium: item.sodium,
+                    micronutrients: item.micronutrients, confidence: "common", servingEstimate: "", confirmed: true,
+                  })}>
                     <span className="text-[11px] font-mono text-foreground truncate block">{item.foodName}</span>
                     <span className="text-[10px] font-mono text-[var(--muted-foreground)]">
                       {item.calories} cal · P:{item.protein}g · C:{item.carbs}g · F:{item.fat}g
                     </span>
+                    <Info className="w-3 h-3 text-[var(--muted-foreground)] inline ml-1 opacity-50" />
                   </div>
                   <button onClick={() => setCommonItems((prev) => prev.filter((i) => i.id !== item.id))}
                     className="text-[var(--muted-foreground)] hover:text-red-400 p-0.5 flex-shrink-0"><Trash2 className="w-3 h-3" /></button>
