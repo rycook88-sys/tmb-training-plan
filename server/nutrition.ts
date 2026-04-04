@@ -717,6 +717,47 @@ Keep ingredients practical and grocery-store accessible. Include specific quanti
         if (disliked.length > 0) tasteSection += ` Disliked: ${disliked.map((p) => p.meals.join(", ")).join("; ")}.`;
       }
 
+      const mealOptionSchema = {
+        type: "object" as const,
+        properties: {
+          name: { type: "string" as const, description: "Brief meal name, 2-5 words max" },
+          calorieFlexible: { type: "boolean" as const, description: "true if this option ignores calorie limit but still considers protein/micros" },
+          ingredients: {
+            type: "array" as const,
+            items: {
+              type: "object" as const,
+              properties: {
+                item: { type: "string" as const },
+                quantity: { type: "string" as const },
+                fromPantry: { type: "boolean" as const, description: "true if this ingredient was seen in the pantry photos" },
+              },
+              required: ["item", "quantity", "fromPantry"] as const,
+              additionalProperties: false as const,
+            },
+          },
+          instructions: { type: "string" as const, description: "Brief cooking instructions, 3-4 sentences" },
+          totalCalories: { type: "number" as const },
+          protein: { type: "number" as const },
+          carbs: { type: "number" as const },
+          fat: { type: "number" as const },
+          keyMicros: {
+            type: "array" as const,
+            items: {
+              type: "object" as const,
+              properties: {
+                name: { type: "string" as const },
+                percentDV: { type: "number" as const },
+              },
+              required: ["name", "percentDV"] as const,
+              additionalProperties: false as const,
+            },
+            description: "Top 3-5 micronutrients this meal provides",
+          },
+        },
+        required: ["name", "calorieFlexible", "ingredients", "instructions", "totalCalories", "protein", "carbs", "fat", "keyMicros"] as const,
+        additionalProperties: false as const,
+      };
+
       const pantryMealSchema = {
         type: "object" as const,
         properties: {
@@ -733,44 +774,10 @@ Keep ingredients practical and grocery-store accessible. Include specific quanti
             },
             description: "3-5 items the user should consider buying to unlock better meals with what they have",
           },
-          meal: {
-            type: "object" as const,
-            properties: {
-              name: { type: "string" as const },
-              ingredients: {
-                type: "array" as const,
-                items: {
-                  type: "object" as const,
-                  properties: {
-                    item: { type: "string" as const },
-                    quantity: { type: "string" as const },
-                    fromPantry: { type: "boolean" as const, description: "true if this ingredient was seen in the pantry photos" },
-                  },
-                  required: ["item", "quantity", "fromPantry"] as const,
-                  additionalProperties: false as const,
-                },
-              },
-              instructions: { type: "string" as const, description: "Brief cooking instructions, 3-4 sentences" },
-              totalCalories: { type: "number" as const },
-              protein: { type: "number" as const },
-              carbs: { type: "number" as const },
-              fat: { type: "number" as const },
-              keyMicros: {
-                type: "array" as const,
-                items: {
-                  type: "object" as const,
-                  properties: {
-                    name: { type: "string" as const },
-                    percentDV: { type: "number" as const },
-                  },
-                  required: ["name", "percentDV"] as const,
-                  additionalProperties: false as const,
-                },
-                description: "Top 3-5 micronutrients this meal provides",
-              },
-            },
-            required: ["name", "ingredients", "instructions", "totalCalories", "protein", "carbs", "fat", "keyMicros"] as const,
-            additionalProperties: false as const,
+          meals: {
+            type: "array" as const,
+            items: mealOptionSchema,
+            description: "3-5 meal options. At least 2 should fit remaining calorie budget. Up to 2 can be calorie-flexible (ignore cals, still consider protein/micros).",
           },
           groceryList: {
             type: "array" as const,
@@ -780,14 +787,19 @@ Keep ingredients practical and grocery-store accessible. Include specific quanti
                 item: { type: "string" as const },
                 quantity: { type: "string" as const },
                 category: { type: "string" as const, description: "Aisle category: produce, meat, dairy, pantry, spices, frozen, other" },
+                forMeals: {
+                  type: "array" as const,
+                  items: { type: "string" as const },
+                  description: "Which meal option name(s) need this ingredient",
+                },
               },
-              required: ["item", "quantity", "category"] as const,
+              required: ["item", "quantity", "category", "forMeals"] as const,
               additionalProperties: false as const,
             },
-            description: "Only ingredients NOT found in the pantry photos that need to be purchased",
+            description: "Combined grocery list for ALL meal options — only ingredients NOT found in pantry",
           },
         },
-        required: ["wishlist", "meal", "groceryList"] as const,
+        required: ["wishlist", "meals", "groceryList"] as const,
         additionalProperties: false as const,
       };
 
@@ -806,12 +818,12 @@ Keep ingredients practical and grocery-store accessible. Include specific quanti
 You will receive photos of the user's fridge, pantry, or groceries. Your job:
 1. Silently identify all visible food items from the photos
 2. Generate a SHORT wishlist (3-5 items max) of things they should consider buying that would unlock significantly better meals with what they already have
-3. Recommend ONE meal they can make primarily with what they have, targeting their remaining daily macros/micros
-4. List ONLY the ingredients they need to BUY (not in their pantry) as a grocery list with quantities and aisle categories
+3. Recommend 3-5 DIFFERENT meal options they can make primarily with what they have. Keep meal names SHORT (2-5 words). IMPORTANT: At least 2 meals MUST fit within the remaining calorie budget. Up to 2 meals can be "calorie-flexible" — these ignore the calorie limit but still target protein and micronutrient needs. Calorie-flexible meals should be more indulgent or hearty options.
+4. List ALL ingredients they need to BUY across all meal options — tag each item with which meal(s) need it
 
 Remaining daily targets: ${input.remainingCalories} cal, ${input.remainingProtein}g protein, ${input.remainingCarbs}g carbs, ${input.remainingFat}g fat.${microSection}${tasteSection}
 
-Keep the wishlist brief and practical. The meal should use mostly pantry items. The grocery list should only include what's missing.`,
+Keep the wishlist brief and practical. Meals should use mostly pantry items. Provide variety — different cuisines, cooking methods, or ingredient combos. The grocery list should only include what's missing from the pantry.`,
           },
           {
             role: "user",

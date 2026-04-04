@@ -4,7 +4,7 @@ import {
   Camera, Check, Edit3, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown,
   Trash2, X, AlertTriangle, TrendingUp, Pill, Utensils, Plus, RotateCcw,
   Loader2, Sparkles, ArrowUpToLine, Zap, Bookmark, Briefcase, Coffee,
-  Square, CheckSquare, Settings, BarChart3, ChefHat, Shuffle, Star, ShoppingCart, ImagePlus,
+  Square, CheckSquare, Settings, BarChart3, ChefHat, Shuffle, Star, ShoppingCart, ImagePlus, Target,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -738,7 +738,9 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const [pantryImages, setPantryImages] = useState<Array<{ base64: string; mimeType: string; preview: string }>>([]);
   const [pantryResult, setPantryResult] = useState<any>(null);
   const [isPantryScanning, setIsPantryScanning] = useState(false);
-  const [pantryStep, setPantryStep] = useState<"capture" | "result">("capture");
+  const [pantryStep, setPantryStep] = useState<"capture" | "meals" | "detail" | "grocery">("capture");
+  const [selectedPantryMeal, setSelectedPantryMeal] = useState<number | null>(null);
+  const [expandedPantryMeal, setExpandedPantryMeal] = useState<number | null>(null);
   const [groceryChecked, setGroceryChecked] = useState<Set<number>>(new Set());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1243,7 +1245,7 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const handlePantryScan = useCallback(async () => {
     if (pantryImages.length === 0) return;
     setIsPantryScanning(true);
-    setPantryStep("result");
+    setPantryStep("meals");
     setGroceryChecked(new Set());
 
     const microGaps: { name: string; currentPercent: number }[] = [];
@@ -2406,23 +2408,23 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                   </div>
                 )}
 
-                {pantryStep === "result" && (
+                {/* Meals step: loading or meal selection cards */}
+                {pantryStep === "meals" && (
                   <div>
                     {isPantryScanning ? (
                       <div className="flex flex-col items-center justify-center py-12 gap-3">
                         <Loader2 className="w-8 h-8 text-[var(--primary)] animate-spin" />
                         <p className="text-xs font-mono text-[var(--muted-foreground)] animate-pulse">Scanning your kitchen...</p>
-                        <p className="text-[10px] font-mono text-[var(--muted-foreground)]">Identifying items, planning meal, building grocery list</p>
+                        <p className="text-[10px] font-mono text-[var(--muted-foreground)]">Identifying items, planning meals, building grocery list</p>
                       </div>
-                    ) : pantryResult ? (
-                      <div className="space-y-4">
+                    ) : pantryResult?.meals?.length > 0 ? (
+                      <div className="space-y-3">
                         {/* Wishlist */}
                         <div>
                           <h4 className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold mb-2 flex items-center gap-1.5">
                             <Sparkles className="w-3 h-3" /> Wishlist
                           </h4>
-                          <p className="text-[10px] font-mono text-[var(--muted-foreground)] mb-2">Items that would unlock better meals:</p>
-                          <div className="space-y-1.5">
+                          <div className="space-y-1">
                             {pantryResult.wishlist?.map((item: any, i: number) => (
                               <div key={i} className="flex gap-2 text-xs font-mono">
                                 <span className="text-[var(--primary)] font-bold shrink-0">•</span>
@@ -2432,84 +2434,96 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                           </div>
                         </div>
 
-                        {/* Recommended Meal */}
-                        <div className="border border-[var(--primary)]/30 bg-[var(--primary)]/5 p-3">
+                        {/* Meal Options */}
+                        <div>
                           <h4 className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold mb-2 flex items-center gap-1.5">
-                            <ChefHat className="w-3 h-3" /> Recommended Meal
+                            <ChefHat className="w-3 h-3" /> Pick a Meal
                           </h4>
-                          <p className="text-sm font-mono font-bold text-foreground mb-2">{pantryResult.meal?.name}</p>
+                          <div className="space-y-2">
+                            {pantryResult.meals.map((meal: any, i: number) => (
+                              <div key={i}>
+                                <button
+                                  onClick={() => setExpandedPantryMeal(expandedPantryMeal === i ? null : i)}
+                                  className={`w-full text-left p-3 border transition-all ${
+                                    expandedPantryMeal === i
+                                      ? "border-[var(--primary)] bg-[var(--primary)]/5"
+                                      : "border-border hover:border-[var(--primary)]/50"
+                                  }`}>
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-mono font-bold text-foreground">{meal.name}</span>
+                                      {meal.calorieFlexible && (
+                                        <span className="text-[8px] font-mono bg-yellow-900/40 text-yellow-400 px-1.5 py-0.5 uppercase">Flex</span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[10px] font-mono text-[var(--primary)]">{meal.totalCalories} cal</span>
+                                      <ChevronDown className={`w-3.5 h-3.5 text-[var(--muted-foreground)] transition-transform ${
+                                        expandedPantryMeal === i ? "rotate-180" : ""
+                                      }`} />
+                                    </div>
+                                  </div>
+                                  <div className="flex gap-3 text-[10px] font-mono mt-1">
+                                    <span className="text-red-400">P: {meal.protein}g</span>
+                                    <span className="text-yellow-400">C: {meal.carbs}g</span>
+                                    <span className="text-orange-400">F: {meal.fat}g</span>
+                                  </div>
+                                </button>
 
-                          {/* Macros */}
-                          <div className="flex gap-3 text-[10px] font-mono mb-2">
-                            <span className="text-[var(--primary)]">{pantryResult.meal?.totalCalories} cal</span>
-                            <span className="text-red-400">P: {pantryResult.meal?.protein}g</span>
-                            <span className="text-yellow-400">C: {pantryResult.meal?.carbs}g</span>
-                            <span className="text-orange-400">F: {pantryResult.meal?.fat}g</span>
-                          </div>
+                                {/* Expanded detail */}
+                                <AnimatePresence>
+                                  {expandedPantryMeal === i && (
+                                    <motion.div
+                                      initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+                                      className="overflow-hidden border-x border-b border-[var(--primary)]/30">
+                                      <div className="p-3 space-y-2">
+                                        {/* Key Micros */}
+                                        {meal.keyMicros?.length > 0 && (
+                                          <div className="flex flex-wrap gap-1">
+                                            {meal.keyMicros.map((m: any, j: number) => (
+                                              <span key={j} className="text-[9px] font-mono bg-green-900/30 text-green-400 px-1.5 py-0.5">
+                                                {m.name} {m.percentDV}%
+                                              </span>
+                                            ))}
+                                          </div>
+                                        )}
 
-                          {/* Key Micros */}
-                          {pantryResult.meal?.keyMicros?.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mb-2">
-                              {pantryResult.meal.keyMicros.map((m: any, i: number) => (
-                                <span key={i} className="text-[9px] font-mono bg-green-900/30 text-green-400 px-1.5 py-0.5">
-                                  {m.name} {m.percentDV}%
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                                        {/* Ingredients */}
+                                        <div>
+                                          <p className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-wider mb-1">Ingredients:</p>
+                                          {meal.ingredients?.map((ing: any, j: number) => (
+                                            <div key={j} className="flex items-center gap-2 text-xs font-mono py-0.5">
+                                              <span className={ing.fromPantry ? "text-green-400" : "text-yellow-400"}>{ing.fromPantry ? "✓" : "○"}</span>
+                                              <span className="text-foreground">{ing.quantity} {ing.item}</span>
+                                              {ing.fromPantry && <span className="text-[9px] text-green-400/60">(have)</span>}
+                                            </div>
+                                          ))}
+                                        </div>
 
-                          {/* Ingredients */}
-                          <div className="mb-2">
-                            <p className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-wider mb-1">Ingredients:</p>
-                            {pantryResult.meal?.ingredients?.map((ing: any, i: number) => (
-                              <div key={i} className="flex items-center gap-2 text-xs font-mono py-0.5">
-                                <span className={ing.fromPantry ? "text-green-400" : "text-yellow-400"}>{ing.fromPantry ? "✓" : "○"}</span>
-                                <span className="text-foreground">{ing.quantity} {ing.item}</span>
-                                {ing.fromPantry && <span className="text-[9px] text-green-400/60">(have)</span>}
+                                        {/* Instructions */}
+                                        <p className="text-xs font-mono text-[var(--muted-foreground)] leading-relaxed">{meal.instructions}</p>
+
+                                        {/* Select This Meal button */}
+                                        <button
+                                          onClick={() => {
+                                            setSelectedPantryMeal(i);
+                                            setGroceryChecked(new Set());
+                                            setPantryStep("grocery");
+                                          }}
+                                          className="w-full flex items-center justify-center gap-2 bg-[var(--primary)] text-[var(--primary-foreground)] py-2.5 text-xs font-mono uppercase tracking-wider font-bold hover:opacity-90 transition-opacity mt-1">
+                                          <Target className="w-3.5 h-3.5" /> Make This One
+                                        </button>
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
                               </div>
                             ))}
                           </div>
-
-                          {/* Instructions */}
-                          <p className="text-xs font-mono text-[var(--muted-foreground)] leading-relaxed">{pantryResult.meal?.instructions}</p>
                         </div>
 
-                        {/* Grocery List */}
-                        {pantryResult.groceryList?.length > 0 && (
-                          <div>
-                            <h4 className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold mb-2 flex items-center gap-1.5">
-                              <ShoppingCart className="w-3 h-3" /> Grocery List
-                            </h4>
-                            <div className="space-y-1">
-                              {pantryResult.groceryList.map((item: any, i: number) => {
-                                const checked = groceryChecked.has(i);
-                                return (
-                                  <button key={i}
-                                    onClick={() => setGroceryChecked((prev) => {
-                                      const next = new Set(prev);
-                                      if (next.has(i)) next.delete(i); else next.add(i);
-                                      return next;
-                                    })}
-                                    className={`w-full flex items-center gap-2 text-xs font-mono py-1.5 px-2 text-left transition-all ${
-                                      checked ? "opacity-40 line-through" : "hover:bg-muted/30"
-                                    }`}>
-                                    {checked
-                                      ? <CheckSquare className="w-3.5 h-3.5 text-green-400 shrink-0" />
-                                      : <Square className="w-3.5 h-3.5 text-[var(--muted-foreground)] shrink-0" />}
-                                    <span className="flex-1">{item.quantity} {item.item}</span>
-                                    <span className="text-[9px] text-[var(--muted-foreground)] uppercase">{item.category}</span>
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            <p className="text-[10px] font-mono text-[var(--muted-foreground)] mt-2">
-                              {groceryChecked.size}/{pantryResult.groceryList.length} items checked
-                            </p>
-                          </div>
-                        )}
-
                         {/* Scan Again */}
-                        <button onClick={() => { setPantryStep("capture"); setPantryImages([]); setPantryResult(null); }}
+                        <button onClick={() => { setPantryStep("capture"); setPantryImages([]); setPantryResult(null); setExpandedPantryMeal(null); }}
                           className="w-full flex items-center justify-center gap-2 border border-border py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
                           <RotateCcw className="w-3.5 h-3.5" /> Scan Again
                         </button>
@@ -2523,6 +2537,95 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                     )}
                   </div>
                 )}
+
+                {/* Grocery step: selected meal summary + grocery list */}
+                {pantryStep === "grocery" && pantryResult && selectedPantryMeal !== null && (() => {
+                  const meal = pantryResult.meals[selectedPantryMeal];
+                  // Filter grocery list to only items needed for the selected meal
+                  const relevantGroceries = pantryResult.groceryList?.filter((item: any) =>
+                    item.forMeals?.some((m: string) => m.toLowerCase() === meal.name.toLowerCase())
+                  ) || [];
+                  // If no meal-specific filtering matched, show all (fallback)
+                  const groceries = relevantGroceries.length > 0 ? relevantGroceries : pantryResult.groceryList || [];
+                  return (
+                    <div className="space-y-4">
+                      {/* Selected meal summary */}
+                      <div className="border border-[var(--primary)]/30 bg-[var(--primary)]/5 p-3">
+                        <h4 className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold mb-1 flex items-center gap-1.5">
+                          <ChefHat className="w-3 h-3" /> Selected Meal
+                        </h4>
+                        <p className="text-sm font-mono font-bold text-foreground mb-1">{meal.name}</p>
+                        <div className="flex gap-3 text-[10px] font-mono mb-2">
+                          <span className="text-[var(--primary)]">{meal.totalCalories} cal</span>
+                          <span className="text-red-400">P: {meal.protein}g</span>
+                          <span className="text-yellow-400">C: {meal.carbs}g</span>
+                          <span className="text-orange-400">F: {meal.fat}g</span>
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-wider mb-1">Ingredients:</p>
+                          {meal.ingredients?.map((ing: any, j: number) => (
+                            <div key={j} className="flex items-center gap-2 text-xs font-mono py-0.5">
+                              <span className={ing.fromPantry ? "text-green-400" : "text-yellow-400"}>{ing.fromPantry ? "✓" : "○"}</span>
+                              <span className="text-foreground">{ing.quantity} {ing.item}</span>
+                              {ing.fromPantry && <span className="text-[9px] text-green-400/60">(have)</span>}
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs font-mono text-[var(--muted-foreground)] leading-relaxed mt-2">{meal.instructions}</p>
+                      </div>
+
+                      {/* Grocery List */}
+                      {groceries.length > 0 ? (
+                        <div>
+                          <h4 className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold mb-2 flex items-center gap-1.5">
+                            <ShoppingCart className="w-3 h-3" /> Grocery List
+                          </h4>
+                          <div className="space-y-1">
+                            {groceries.map((item: any, i: number) => {
+                              const checked = groceryChecked.has(i);
+                              return (
+                                <button key={i}
+                                  onClick={() => setGroceryChecked((prev) => {
+                                    const next = new Set(prev);
+                                    if (next.has(i)) next.delete(i); else next.add(i);
+                                    return next;
+                                  })}
+                                  className={`w-full flex items-center gap-2 text-xs font-mono py-1.5 px-2 text-left transition-all ${
+                                    checked ? "opacity-40 line-through" : "hover:bg-muted/30"
+                                  }`}>
+                                  {checked
+                                    ? <CheckSquare className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                                    : <Square className="w-3.5 h-3.5 text-[var(--muted-foreground)] shrink-0" />}
+                                  <span className="flex-1">{item.quantity} {item.item}</span>
+                                  <span className="text-[9px] text-[var(--muted-foreground)] uppercase">{item.category}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="text-[10px] font-mono text-[var(--muted-foreground)] mt-2">
+                            {groceryChecked.size}/{groceries.length} items checked
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="text-center py-4">
+                          <p className="text-xs font-mono text-green-400">You have everything you need!</p>
+                        </div>
+                      )}
+
+                      {/* Back / Scan Again */}
+                      <div className="flex gap-2">
+                        <button onClick={() => { setPantryStep("meals"); setSelectedPantryMeal(null); setGroceryChecked(new Set()); }}
+                          className="flex-1 flex items-center justify-center gap-2 border border-border py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
+                          ← Other Meals
+                        </button>
+                        <button onClick={() => { setPantryStep("capture"); setPantryImages([]); setPantryResult(null); setSelectedPantryMeal(null); setExpandedPantryMeal(null); }}
+                          className="flex-1 flex items-center justify-center gap-2 border border-border py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
+                          <RotateCcw className="w-3.5 h-3.5" /> Scan Again
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </motion.div>
           </motion.div>

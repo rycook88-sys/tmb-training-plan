@@ -169,3 +169,13 @@
 - [x] Factor in remaining daily macros/micros when recommending meal
 - [x] Factor in taste preferences from rated saved plans
 - [x] Tap outside to close
+
+## Snap Pantry Multi-Meal Options
+- [x] Update AI schema to return up to 5 meal options instead of 1 (already done server-side)
+- [x] Up to 50% of meals can be calorie-flexible ("Flex" badge on card)
+- [x] Each meal has a brief name (2-5 words)
+- [x] Frontend: show meal options as compact cards with brief names + macros
+- [x] Tap a meal card to expand and see full details (ingredients, macros, micros, instructions)
+- [x] "Make This One" button on expanded meal to proceed
+- [x] After selection: show selected meal summary + grocery list + "Other Meals" back button
+- [x] Keep the grocery list checkbox/strikethrough behavior
