@@ -104,3 +104,10 @@
 - [x] Fix food detail popup showing "HIGH" confidence label — removed
 - [x] Add food detail popup to common items and daily preset items (tap to see macros/micros)
 - [x] Remove "2,300 CAL TARGET" tag from the Nutrition Tracker banner in Home.tsx
+
+## UI Fixes v4
+- [x] Show confidence badge only when LOW (not high/medium) — warn user when AI is unsure
+- [x] Add edit button to daily preset items (re-analyze with new name)
+- [x] Add edit button to common items (re-analyze with new name)
+- [x] Remove "(X left)" and "(+X over)" parentheses from macro progress bars
+- [x] Remove info ⓘ icon from daily and common item rows

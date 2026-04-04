@@ -4,7 +4,7 @@ import {
   Camera, Check, Edit3, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown,
   Trash2, X, AlertTriangle, TrendingUp, Pill, Utensils, Plus, RotateCcw,
   Loader2, Sparkles, ArrowUpToLine, Zap, Bookmark, Briefcase, Coffee,
-  Square, CheckSquare, Info,
+  Square, CheckSquare,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -215,8 +215,7 @@ function MacroBar({ label, current, target, color, unit = "g" }: {
         <span className="text-[10px] font-mono text-[var(--muted-foreground)]">
           <span className={over ? "text-red-400" : "text-foreground"}>{Math.round(current)}</span>
           <span className="text-[var(--muted-foreground)]"> / {target}{unit}</span>
-          {!over && <span className="text-[var(--muted-foreground)] ml-1">({Math.round(remaining)} left)</span>}
-          {over && <span className="text-red-400 ml-1">(+{Math.round(current - target)} over)</span>}
+
         </span>
       </div>
       <div className="h-2.5 bg-[var(--secondary)] border border-border overflow-hidden">
@@ -644,6 +643,9 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const [commonSelected, setCommonSelected] = useState<Set<string>>(new Set());
   const [addingToPreset, setAddingToPreset] = useState<"workDay" | "offDay" | null>(null);
   const [addingToCommon, setAddingToCommon] = useState(false);
+  const [editingPresetItem, setEditingPresetItem] = useState<{ tab: "workDay" | "offDay"; item: PresetItem } | null>(null);
+  const [editingCommonItem, setEditingCommonItem] = useState<CommonItem | null>(null);
+  const [editItemName, setEditItemName] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const presetFileRef = useRef<HTMLInputElement>(null);
@@ -1194,14 +1196,16 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                   })}>
                     <span className="text-[11px] font-mono text-foreground">{item.foodName}</span>
                     <span className="text-[10px] font-mono text-[var(--muted-foreground)] ml-2">{item.calories} cal</span>
-                    <Info className="w-3 h-3 text-[var(--muted-foreground)] inline ml-1 opacity-50" />
                   </div>
-                  <button onClick={() => {
-                    setPresets((prev) => ({
-                      ...prev,
-                      [activePresetTab]: prev[activePresetTab].filter((i) => i.id !== item.id),
-                    }));
-                  }} className="text-[var(--muted-foreground)] hover:text-red-400 p-0.5"><Trash2 className="w-3 h-3" /></button>
+                  <div className="flex items-center gap-1">
+                    <button onClick={(e) => { e.stopPropagation(); setEditingPresetItem({ tab: activePresetTab, item }); }} className="text-[var(--muted-foreground)] hover:text-[var(--primary)] p-0.5"><Edit3 className="w-3 h-3" /></button>
+                    <button onClick={() => {
+                      setPresets((prev) => ({
+                        ...prev,
+                        [activePresetTab]: prev[activePresetTab].filter((i) => i.id !== item.id),
+                      }));
+                    }} className="text-[var(--muted-foreground)] hover:text-red-400 p-0.5"><Trash2 className="w-3 h-3" /></button>
+                  </div>
                 </div>
               ))}
 
@@ -1258,10 +1262,12 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                     <span className="text-[10px] font-mono text-[var(--muted-foreground)]">
                       {item.calories} cal · P:{item.protein}g · C:{item.carbs}g · F:{item.fat}g
                     </span>
-                    <Info className="w-3 h-3 text-[var(--muted-foreground)] inline ml-1 opacity-50" />
                   </div>
-                  <button onClick={() => setCommonItems((prev) => prev.filter((i) => i.id !== item.id))}
-                    className="text-[var(--muted-foreground)] hover:text-red-400 p-0.5 flex-shrink-0"><Trash2 className="w-3 h-3" /></button>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={(e) => { e.stopPropagation(); setEditingCommonItem(item); }} className="text-[var(--muted-foreground)] hover:text-[var(--primary)] p-0.5"><Edit3 className="w-3 h-3" /></button>
+                    <button onClick={() => setCommonItems((prev) => prev.filter((i) => i.id !== item.id))}
+                      className="text-[var(--muted-foreground)] hover:text-red-400 p-0.5"><Trash2 className="w-3 h-3" /></button>
+                  </div>
                 </div>
               ))}
 
@@ -1321,10 +1327,9 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                         )}
                       </div>
                       <div className="flex items-center gap-2 mb-1.5">
-                        <span className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 ${
-                          analysisResult.confidence === "high" ? "text-green-400 bg-green-400/10" :
-                          analysisResult.confidence === "medium" ? "text-amber-400 bg-amber-400/10" : "text-red-400 bg-red-400/10"
-                        }`}>{analysisResult.confidence} confidence</span>
+                        {analysisResult.confidence === "low" && (
+                          <span className="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 text-red-400 bg-red-400/10">⚠ low confidence</span>
+                        )}
                         <span className="text-[10px] font-mono text-[var(--muted-foreground)] italic">{analysisResult.servingEstimate}</span>
                       </div>
                       <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] font-mono mb-2">
@@ -1531,6 +1536,98 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
             onCancel={() => setEditingEntry(null)}
             isLoading={isReAnalyzing}
           />
+        )}
+      </AnimatePresence>
+
+      {/* ── Edit Preset Item Modal ─────────────── */}
+      <AnimatePresence>
+        {editingPresetItem && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => setEditingPresetItem(null)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-card border border-border p-4 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-xs font-mono uppercase tracking-[0.15em] text-[var(--primary)] font-bold mb-3">Edit Preset Item</h3>
+              <textarea
+                className="w-full bg-[var(--secondary)] border border-border text-foreground text-xs font-mono p-3 min-h-[80px] resize-none focus:outline-none focus:border-[var(--primary)]"
+                defaultValue={editingPresetItem.item.foodName}
+                onChange={(e) => setEditItemName(e.target.value)}
+                autoFocus
+              />
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => setEditingPresetItem(null)}
+                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] border border-border text-[var(--muted-foreground)] hover:text-foreground transition-colors cursor-pointer">Cancel</button>
+                <button
+                  disabled={isReAnalyzing}
+                  onClick={async () => {
+                    const name = editItemName.trim() || editingPresetItem.item.foodName;
+                    if (name === editingPresetItem.item.foodName) { setEditingPresetItem(null); return; }
+                    try {
+                      const result = await reAnalyzeMutation.mutateAsync({ foodName: name, servingEstimate: "" });
+                      const updated: PresetItem = {
+                        ...editingPresetItem.item,
+                        foodName: name,
+                        calories: result.calories, protein: result.protein, carbs: result.carbs,
+                        fat: result.fat, fiber: result.fiber || 0, sugar: result.sugar || 0, sodium: result.sodium || 0,
+                        micronutrients: normalizeMicros(result.micronutrients),
+                      };
+                      setPresets((prev) => ({
+                        ...prev,
+                        [editingPresetItem.tab]: prev[editingPresetItem.tab].map((i) => i.id === editingPresetItem.item.id ? updated : i),
+                      }));
+                    } catch (err) { console.error("Preset edit failed:", err); }
+                    setEditingPresetItem(null);
+                  }}
+                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] bg-[var(--primary)] text-[var(--primary-foreground)] font-bold hover:opacity-90 disabled:opacity-50 transition-colors cursor-pointer">
+                  {isReAnalyzing ? "Analyzing..." : "Save"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Edit Common Item Modal ─────────────── */}
+      <AnimatePresence>
+        {editingCommonItem && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => setEditingCommonItem(null)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-card border border-border p-4 max-w-sm w-full" onClick={(e) => e.stopPropagation()}>
+              <h3 className="text-xs font-mono uppercase tracking-[0.15em] text-[var(--primary)] font-bold mb-3">Edit Common Item</h3>
+              <textarea
+                className="w-full bg-[var(--secondary)] border border-border text-foreground text-xs font-mono p-3 min-h-[80px] resize-none focus:outline-none focus:border-[var(--primary)]"
+                defaultValue={editingCommonItem.foodName}
+                onChange={(e) => setEditItemName(e.target.value)}
+                autoFocus
+              />
+              <div className="flex gap-2 mt-3">
+                <button onClick={() => setEditingCommonItem(null)}
+                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] border border-border text-[var(--muted-foreground)] hover:text-foreground transition-colors cursor-pointer">Cancel</button>
+                <button
+                  disabled={isReAnalyzing}
+                  onClick={async () => {
+                    const name = editItemName.trim() || editingCommonItem.foodName;
+                    if (name === editingCommonItem.foodName) { setEditingCommonItem(null); return; }
+                    try {
+                      const result = await reAnalyzeMutation.mutateAsync({ foodName: name, servingEstimate: "" });
+                      setCommonItems((prev) => prev.map((i) => i.id === editingCommonItem.id ? {
+                        ...i,
+                        foodName: name,
+                        calories: result.calories, protein: result.protein, carbs: result.carbs,
+                        fat: result.fat, fiber: result.fiber || 0, sugar: result.sugar || 0, sodium: result.sodium || 0,
+                        micronutrients: normalizeMicros(result.micronutrients),
+                      } : i));
+                    } catch (err) { console.error("Common item edit failed:", err); }
+                    setEditingCommonItem(null);
+                  }}
+                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] bg-[var(--primary)] text-[var(--primary-foreground)] font-bold hover:opacity-90 disabled:opacity-50 transition-colors cursor-pointer">
+                  {isReAnalyzing ? "Analyzing..." : "Save"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
