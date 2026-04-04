@@ -4,7 +4,7 @@ import {
   Camera, Check, Edit3, ChevronDown, ChevronUp, ThumbsUp, ThumbsDown,
   Trash2, X, AlertTriangle, TrendingUp, Pill, Utensils, Plus, RotateCcw,
   Loader2, Sparkles, ArrowUpToLine, Zap, Bookmark, Briefcase, Coffee,
-  Square, CheckSquare, Settings, BarChart3, ChefHat, Shuffle, Star,
+  Square, CheckSquare, Settings, BarChart3, ChefHat, Shuffle, Star, ShoppingCart, ImagePlus,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -733,9 +733,18 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
   const [confirmDeletePlan, setConfirmDeletePlan] = useState<string | null>(null);
 
+  // Snap Pantry
+  const [showPantry, setShowPantry] = useState(false);
+  const [pantryImages, setPantryImages] = useState<Array<{ base64: string; mimeType: string; preview: string }>>([]);
+  const [pantryResult, setPantryResult] = useState<any>(null);
+  const [isPantryScanning, setIsPantryScanning] = useState(false);
+  const [pantryStep, setPantryStep] = useState<"capture" | "result">("capture");
+  const [groceryChecked, setGroceryChecked] = useState<Set<number>>(new Set());
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const presetFileRef = useRef<HTMLInputElement>(null);
   const commonFileRef = useRef<HTMLInputElement>(null);
+  const pantryFileRef = useRef<HTMLInputElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   // tRPC mutations
@@ -745,6 +754,7 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
   const fillMacrosMutation = trpc.nutrition.fillMyMacros.useMutation();
   const backupMutation = trpc.nutrition.backup.useMutation();
   const mealPlanMutation = trpc.nutrition.planMeal.useMutation();
+  const snapPantryMutation = trpc.nutrition.snapPantry.useMutation();
 
   // Restore from server on mount if localStorage is empty and user is logged in
   const restoreQuery = trpc.nutrition.restore.useQuery(undefined, {
@@ -1213,6 +1223,61 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
     setCapturedImage(null); setAnalysisResult(null); setEditingName(false);
   }, []);
 
+  // ── Snap Pantry handlers ────────────────────
+  const handlePantryCapture = useCallback(() => { pantryFileRef.current?.click(); }, []);
+
+  const handlePantryFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1];
+      const mimeType = file.type || "image/jpeg";
+      const preview = reader.result as string;
+      setPantryImages((prev) => [...prev, { base64, mimeType, preview }]);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }, []);
+
+  const handlePantryScan = useCallback(async () => {
+    if (pantryImages.length === 0) return;
+    setIsPantryScanning(true);
+    setPantryStep("result");
+    setGroceryChecked(new Set());
+
+    const microGaps: { name: string; currentPercent: number }[] = [];
+    for (const micro of ALL_MICRONUTRIENTS) {
+      const current = dailyMicroTotals.get(micro.name) || 0;
+      const pct = micro.dailyValue > 0 ? Math.round((current / micro.dailyValue) * 100) : 100;
+      microGaps.push({ name: micro.name, currentPercent: pct });
+    }
+
+    const rated = savedPlans.filter((p) => p.rating && p.rating > 0).map((p) => ({
+      name: p.name,
+      rating: p.rating!,
+      meals: p.meals.map((m: any) => m.name || m.foodName || "meal"),
+    }));
+
+    try {
+      const result = await snapPantryMutation.mutateAsync({
+        images: pantryImages.map((img) => ({ imageBase64: img.base64, mimeType: img.mimeType })),
+        remainingCalories: Math.max(macroTargets.calories - dailyTotals.calories, 0),
+        remainingProtein: Math.max(macroTargets.protein - dailyTotals.protein, 0),
+        remainingCarbs: Math.max(macroTargets.carbs - dailyTotals.carbs, 0),
+        remainingFat: Math.max(macroTargets.fat - dailyTotals.fat, 0),
+        microGaps,
+        ratedPlans: rated,
+      });
+      setPantryResult(result);
+    } catch (err) {
+      console.error("Pantry scan failed:", err);
+      setPantryResult(null);
+    } finally {
+      setIsPantryScanning(false);
+    }
+  }, [pantryImages, dailyTotals, dailyMicroTotals, macroTargets, savedPlans, snapPantryMutation]);
+
   const isAnalyzing = analyzeMutation.isPending;
   const isReAnalyzing = reAnalyzeMutation.isPending;
   const isTrendLoading = trendsMutation.isPending;
@@ -1224,6 +1289,7 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
       <input ref={fileInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleFileChange} />
       <input ref={presetFileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePresetPhotoCapture} />
       <input ref={commonFileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleCommonPhotoCapture} />
+      <input ref={pantryFileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePantryFileChange} />
 
       {/* ── Header Stats ─────────────────────────── */}
       <div className="p-4">
@@ -1304,6 +1370,11 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
             <Bookmark className="w-3.5 h-3.5" /> Saved ({savedPlans.length})
           </button>
         )}
+
+        <button onClick={() => { setShowPantry(true); setPantryStep("capture"); setPantryImages([]); setPantryResult(null); setGroceryChecked(new Set()); }}
+          className="flex items-center gap-2 border border-[var(--primary)] px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--primary)] hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)] transition-colors">
+          <ShoppingCart className="w-3.5 h-3.5" /> Snap Pantry
+        </button>
       </div>
 
       {/* ── Daily Presets Panel ──────────────────── */}
@@ -2276,6 +2347,182 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                   if (expandedPlanId === confirmDeletePlan) setExpandedPlanId(null);
                 }}
                   className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer font-bold">Delete</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Snap Pantry Modal ──────────────────── */}
+      <AnimatePresence>
+        {showPantry && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4"
+            onClick={() => setShowPantry(false)}>
+            <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
+              className="bg-card border border-border w-full sm:max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <h3 className="text-sm font-mono uppercase tracking-[0.15em] text-[var(--primary)] font-bold flex items-center gap-2">
+                  <ShoppingCart className="w-4 h-4" /> Snap Pantry
+                </h3>
+                <button onClick={() => setShowPantry(false)} className="text-[var(--muted-foreground)] hover:text-foreground p-0.5"><X className="w-4 h-4" /></button>
+              </div>
+
+              <div className="p-4">
+                {pantryStep === "capture" && (
+                  <div>
+                    <p className="text-xs font-mono text-[var(--muted-foreground)] mb-3">
+                      Take photos of your fridge, pantry, or groceries. Add as many as you need, then hit Scan.
+                    </p>
+
+                    {/* Photo grid */}
+                    {pantryImages.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mb-3">
+                        {pantryImages.map((img, i) => (
+                          <div key={i} className="relative aspect-square border border-border overflow-hidden">
+                            <img src={img.preview} alt={`Pantry ${i + 1}`} className="w-full h-full object-cover" />
+                            <button onClick={() => setPantryImages((prev) => prev.filter((_, idx) => idx !== i))}
+                              className="absolute top-1 right-1 bg-black/70 text-white p-0.5 rounded-full hover:bg-red-600 transition-colors">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button onClick={handlePantryCapture}
+                        className="flex-1 flex items-center justify-center gap-2 border border-dashed border-border py-3 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
+                        <ImagePlus className="w-4 h-4" /> Add Photo {pantryImages.length > 0 ? `(${pantryImages.length})` : ""}
+                      </button>
+
+                      {pantryImages.length > 0 && (
+                        <button onClick={handlePantryScan}
+                          className="flex-1 flex items-center justify-center gap-2 bg-[var(--primary)] text-[var(--primary-foreground)] py-3 text-xs font-mono uppercase tracking-wider font-bold hover:opacity-90 transition-opacity">
+                          <Sparkles className="w-4 h-4" /> Scan & Plan
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {pantryStep === "result" && (
+                  <div>
+                    {isPantryScanning ? (
+                      <div className="flex flex-col items-center justify-center py-12 gap-3">
+                        <Loader2 className="w-8 h-8 text-[var(--primary)] animate-spin" />
+                        <p className="text-xs font-mono text-[var(--muted-foreground)] animate-pulse">Scanning your kitchen...</p>
+                        <p className="text-[10px] font-mono text-[var(--muted-foreground)]">Identifying items, planning meal, building grocery list</p>
+                      </div>
+                    ) : pantryResult ? (
+                      <div className="space-y-4">
+                        {/* Wishlist */}
+                        <div>
+                          <h4 className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold mb-2 flex items-center gap-1.5">
+                            <Sparkles className="w-3 h-3" /> Wishlist
+                          </h4>
+                          <p className="text-[10px] font-mono text-[var(--muted-foreground)] mb-2">Items that would unlock better meals:</p>
+                          <div className="space-y-1.5">
+                            {pantryResult.wishlist?.map((item: any, i: number) => (
+                              <div key={i} className="flex gap-2 text-xs font-mono">
+                                <span className="text-[var(--primary)] font-bold shrink-0">•</span>
+                                <span><span className="text-foreground font-semibold">{item.item}</span> <span className="text-[var(--muted-foreground)]">— {item.reason}</span></span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Recommended Meal */}
+                        <div className="border border-[var(--primary)]/30 bg-[var(--primary)]/5 p-3">
+                          <h4 className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold mb-2 flex items-center gap-1.5">
+                            <ChefHat className="w-3 h-3" /> Recommended Meal
+                          </h4>
+                          <p className="text-sm font-mono font-bold text-foreground mb-2">{pantryResult.meal?.name}</p>
+
+                          {/* Macros */}
+                          <div className="flex gap-3 text-[10px] font-mono mb-2">
+                            <span className="text-[var(--primary)]">{pantryResult.meal?.totalCalories} cal</span>
+                            <span className="text-red-400">P: {pantryResult.meal?.protein}g</span>
+                            <span className="text-yellow-400">C: {pantryResult.meal?.carbs}g</span>
+                            <span className="text-orange-400">F: {pantryResult.meal?.fat}g</span>
+                          </div>
+
+                          {/* Key Micros */}
+                          {pantryResult.meal?.keyMicros?.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {pantryResult.meal.keyMicros.map((m: any, i: number) => (
+                                <span key={i} className="text-[9px] font-mono bg-green-900/30 text-green-400 px-1.5 py-0.5">
+                                  {m.name} {m.percentDV}%
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Ingredients */}
+                          <div className="mb-2">
+                            <p className="text-[10px] font-mono text-[var(--muted-foreground)] uppercase tracking-wider mb-1">Ingredients:</p>
+                            {pantryResult.meal?.ingredients?.map((ing: any, i: number) => (
+                              <div key={i} className="flex items-center gap-2 text-xs font-mono py-0.5">
+                                <span className={ing.fromPantry ? "text-green-400" : "text-yellow-400"}>{ing.fromPantry ? "✓" : "○"}</span>
+                                <span className="text-foreground">{ing.quantity} {ing.item}</span>
+                                {ing.fromPantry && <span className="text-[9px] text-green-400/60">(have)</span>}
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Instructions */}
+                          <p className="text-xs font-mono text-[var(--muted-foreground)] leading-relaxed">{pantryResult.meal?.instructions}</p>
+                        </div>
+
+                        {/* Grocery List */}
+                        {pantryResult.groceryList?.length > 0 && (
+                          <div>
+                            <h4 className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold mb-2 flex items-center gap-1.5">
+                              <ShoppingCart className="w-3 h-3" /> Grocery List
+                            </h4>
+                            <div className="space-y-1">
+                              {pantryResult.groceryList.map((item: any, i: number) => {
+                                const checked = groceryChecked.has(i);
+                                return (
+                                  <button key={i}
+                                    onClick={() => setGroceryChecked((prev) => {
+                                      const next = new Set(prev);
+                                      if (next.has(i)) next.delete(i); else next.add(i);
+                                      return next;
+                                    })}
+                                    className={`w-full flex items-center gap-2 text-xs font-mono py-1.5 px-2 text-left transition-all ${
+                                      checked ? "opacity-40 line-through" : "hover:bg-muted/30"
+                                    }`}>
+                                    {checked
+                                      ? <CheckSquare className="w-3.5 h-3.5 text-green-400 shrink-0" />
+                                      : <Square className="w-3.5 h-3.5 text-[var(--muted-foreground)] shrink-0" />}
+                                    <span className="flex-1">{item.quantity} {item.item}</span>
+                                    <span className="text-[9px] text-[var(--muted-foreground)] uppercase">{item.category}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <p className="text-[10px] font-mono text-[var(--muted-foreground)] mt-2">
+                              {groceryChecked.size}/{pantryResult.groceryList.length} items checked
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Scan Again */}
+                        <button onClick={() => { setPantryStep("capture"); setPantryImages([]); setPantryResult(null); }}
+                          className="w-full flex items-center justify-center gap-2 border border-border py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
+                          <RotateCcw className="w-3.5 h-3.5" /> Scan Again
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <p className="text-xs font-mono text-red-400">Scan failed. Try again with clearer photos.</p>
+                        <button onClick={() => { setPantryStep("capture"); setPantryImages([]); }}
+                          className="mt-3 text-xs font-mono text-[var(--primary)] hover:underline">Try Again</button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </motion.div>
           </motion.div>

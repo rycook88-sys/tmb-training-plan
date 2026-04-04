@@ -667,4 +667,173 @@ Keep ingredients practical and grocery-store accessible. Include specific quanti
       const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       return JSON.parse(content);
     }),
+
+  /**
+   * Snap Pantry — accepts multiple pantry/fridge photos, identifies items,
+   * generates a wishlist, recommends a meal using what's available + daily gaps,
+   * and produces a grocery list for missing ingredients.
+   */
+  snapPantry: protectedProcedure
+    .input(z.object({
+      images: z.array(z.object({
+        imageBase64: z.string(),
+        mimeType: z.string().default("image/jpeg"),
+      })).min(1).max(10),
+      remainingCalories: z.number(),
+      remainingProtein: z.number(),
+      remainingCarbs: z.number(),
+      remainingFat: z.number(),
+      microGaps: z.array(z.object({ name: z.string(), currentPercent: z.number() })).optional(),
+      ratedPlans: z.array(z.object({
+        name: z.string(),
+        rating: z.number().min(1).max(5),
+        meals: z.array(z.string()),
+      })).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      // Upload all images to S3
+      const imageUrls: string[] = [];
+      for (const img of input.images) {
+        const buf = Buffer.from(img.imageBase64, "base64");
+        const key = `pantry-photos/${nanoid()}.${img.mimeType === "image/png" ? "png" : "jpg"}`;
+        const { url } = await storagePut(key, buf, img.mimeType);
+        imageUrls.push(url);
+      }
+
+      // Build micro gaps section
+      const lowMicros = (input.microGaps || []).filter((m) => m.currentPercent < 50);
+      const microSection = lowMicros.length > 0
+        ? `\nMICRONUTRIENT GAPS (below 50% DV): ${lowMicros.map((m) => `${m.name}: ${m.currentPercent}%`).join(", ")}`
+        : "";
+
+      // Build taste preferences
+      const rated = input.ratedPlans || [];
+      const loved = rated.filter((p) => p.rating >= 4);
+      const disliked = rated.filter((p) => p.rating <= 2);
+      let tasteSection = "";
+      if (loved.length > 0 || disliked.length > 0) {
+        tasteSection = "\nTASTE PREFERENCES:";
+        if (loved.length > 0) tasteSection += ` Liked: ${loved.map((p) => p.meals.join(", ")).join("; ")}.`;
+        if (disliked.length > 0) tasteSection += ` Disliked: ${disliked.map((p) => p.meals.join(", ")).join("; ")}.`;
+      }
+
+      const pantryMealSchema = {
+        type: "object" as const,
+        properties: {
+          wishlist: {
+            type: "array" as const,
+            items: {
+              type: "object" as const,
+              properties: {
+                item: { type: "string" as const, description: "Item name" },
+                reason: { type: "string" as const, description: "Why this item would help, 1 short sentence" },
+              },
+              required: ["item", "reason"] as const,
+              additionalProperties: false as const,
+            },
+            description: "3-5 items the user should consider buying to unlock better meals with what they have",
+          },
+          meal: {
+            type: "object" as const,
+            properties: {
+              name: { type: "string" as const },
+              ingredients: {
+                type: "array" as const,
+                items: {
+                  type: "object" as const,
+                  properties: {
+                    item: { type: "string" as const },
+                    quantity: { type: "string" as const },
+                    fromPantry: { type: "boolean" as const, description: "true if this ingredient was seen in the pantry photos" },
+                  },
+                  required: ["item", "quantity", "fromPantry"] as const,
+                  additionalProperties: false as const,
+                },
+              },
+              instructions: { type: "string" as const, description: "Brief cooking instructions, 3-4 sentences" },
+              totalCalories: { type: "number" as const },
+              protein: { type: "number" as const },
+              carbs: { type: "number" as const },
+              fat: { type: "number" as const },
+              keyMicros: {
+                type: "array" as const,
+                items: {
+                  type: "object" as const,
+                  properties: {
+                    name: { type: "string" as const },
+                    percentDV: { type: "number" as const },
+                  },
+                  required: ["name", "percentDV"] as const,
+                  additionalProperties: false as const,
+                },
+                description: "Top 3-5 micronutrients this meal provides",
+              },
+            },
+            required: ["name", "ingredients", "instructions", "totalCalories", "protein", "carbs", "fat", "keyMicros"] as const,
+            additionalProperties: false as const,
+          },
+          groceryList: {
+            type: "array" as const,
+            items: {
+              type: "object" as const,
+              properties: {
+                item: { type: "string" as const },
+                quantity: { type: "string" as const },
+                category: { type: "string" as const, description: "Aisle category: produce, meat, dairy, pantry, spices, frozen, other" },
+              },
+              required: ["item", "quantity", "category"] as const,
+              additionalProperties: false as const,
+            },
+            description: "Only ingredients NOT found in the pantry photos that need to be purchased",
+          },
+        },
+        required: ["wishlist", "meal", "groceryList"] as const,
+        additionalProperties: false as const,
+      };
+
+      // Build the multi-image content array
+      const imageContent = imageUrls.map((url) => ({
+        type: "image_url" as const,
+        image_url: { url, detail: "high" as const },
+      }));
+
+      const response = await invokeLLM({
+        messages: [
+          {
+            role: "system",
+            content: `You are a sports nutrition meal planner for someone training for the Tour du Mont Blanc (10-day alpine trek). They need to lose weight while maintaining muscle (2300 cal/day, 180g protein minimum).
+
+You will receive photos of the user's fridge, pantry, or groceries. Your job:
+1. Silently identify all visible food items from the photos
+2. Generate a SHORT wishlist (3-5 items max) of things they should consider buying that would unlock significantly better meals with what they already have
+3. Recommend ONE meal they can make primarily with what they have, targeting their remaining daily macros/micros
+4. List ONLY the ingredients they need to BUY (not in their pantry) as a grocery list with quantities and aisle categories
+
+Remaining daily targets: ${input.remainingCalories} cal, ${input.remainingProtein}g protein, ${input.remainingCarbs}g carbs, ${input.remainingFat}g fat.${microSection}${tasteSection}
+
+Keep the wishlist brief and practical. The meal should use mostly pantry items. The grocery list should only include what's missing.`,
+          },
+          {
+            role: "user",
+            content: [
+              { type: "text" as const, text: `Here are ${imageUrls.length} photo(s) of my fridge/pantry/groceries. What can I make? What should I buy?` },
+              ...imageContent,
+            ],
+          },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
+            name: "pantry_meal_plan",
+            strict: true,
+            schema: pantryMealSchema,
+          },
+        },
+      });
+
+      const rawContent = response.choices?.[0]?.message?.content;
+      if (!rawContent) throw new Error("No pantry analysis generated");
+      const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+      return JSON.parse(content);
+    }),
 });

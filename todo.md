@@ -155,3 +155,17 @@
 - [x] Persist ratings in localStorage + database backup
 - [x] Feed rated plans into AI meal planner prompt as taste preferences
 - [x] AI prompt: favor similar ingredients/styles from highly-rated plans, avoid low-rated ones
+
+## Snap Pantry Feature
+- [x] Server endpoint: nutrition.snapPantry — single AI call: identifies items, generates wishlist + meal + grocery list
+- [x] Snap Pantry button in NutritionTracker action buttons area
+- [x] Multi-photo capture flow (take multiple photos, then submit all at once)
+- [x] Loading state while AI processes photos
+- [x] AI silently identifies pantry items (user doesn't see raw list)
+- [x] Short wishlist of items that would unlock better meals
+- [x] Recommended meal using pantry items + daily nutrition gaps
+- [x] Grocery list with checkboxes — checked items get strikethrough/grey
+- [x] Ingredients marked as "have" vs "need" in meal display
+- [x] Factor in remaining daily macros/micros when recommending meal
+- [x] Factor in taste preferences from rated saved plans
+- [x] Tap outside to close
