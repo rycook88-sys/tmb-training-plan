@@ -237,3 +237,15 @@
 - [x] Keep subtitle "Photo-based calorie tracking"
 - [x] Add dynamic calorie badge showing current/target cal in translucent green pill
 - [x] Badge updates in real-time as food entries are added/removed
+
+## Fill My Gaps Rebuild (Multi-Day Nutrient Analysis)
+- [x] Server endpoint: analyze multi-day nutrient intake from all available food log days
+- [x] Average daily micronutrient intake across all days, compare against RDV
+- [x] Flag consistently low micronutrients (below 60% of target)
+- [x] Flag significant macro imbalances (protein, carbs, fat)
+- [x] AI suggests specific foods that efficiently cover multiple deficiencies
+- [x] Graceful degradation: works with 1-2 days, notes limited data, improves with more
+- [x] Show number of days analyzed and confidence note
+- [x] Rebuild Fill My Gaps UI panel with multi-day analysis display
+- [x] Prioritize micronutrients, show macro notes when significantly off
+- [x] Write tests for the new endpoint

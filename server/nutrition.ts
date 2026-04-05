@@ -196,45 +196,76 @@ const trendRecommendationSchema = {
   },
 };
 
-const fillMacrosSuggestionSchema = {
-  name: "fill_macros_suggestions",
+const fillGapsResponseSchema = {
+  name: "fill_gaps_analysis",
   strict: true,
   schema: {
     type: "object" as const,
     properties: {
+      microDeficiencies: {
+        type: "array" as const,
+        description: "Micronutrients consistently below 60% of daily target, sorted worst first",
+        items: {
+          type: "object" as const,
+          properties: {
+            name: { type: "string" as const, description: "Micronutrient name" },
+            avgPercent: { type: "number" as const, description: "Average %DV across tracked days" },
+            severity: { type: "string" as const, enum: ["critical", "low", "moderate"], description: "critical <25%, low 25-40%, moderate 40-60%" },
+          },
+          required: ["name", "avgPercent", "severity"] as const,
+          additionalProperties: false as const,
+        },
+      },
+      macroNotes: {
+        type: "array" as const,
+        description: "Only include macros that are significantly off target (>15% deviation). Empty array if macros are fine.",
+        items: {
+          type: "object" as const,
+          properties: {
+            macro: { type: "string" as const, description: "protein, carbs, or fat" },
+            avgDaily: { type: "number" as const, description: "Average daily grams" },
+            target: { type: "number" as const, description: "Target daily grams" },
+            note: { type: "string" as const, description: "Brief note about the gap, e.g. 'Averaging 25g below protein target'" },
+          },
+          required: ["macro", "avgDaily", "target", "note"] as const,
+          additionalProperties: false as const,
+        },
+      },
       suggestions: {
         type: "array" as const,
+        description: "3-5 specific foods to add to the diet that efficiently cover multiple deficiencies",
         items: {
           type: "object" as const,
           properties: {
             foodName: { type: "string" as const, description: "Specific food item name" },
-            portion: { type: "string" as const, description: "Suggested portion size" },
+            portion: { type: "string" as const, description: "Suggested daily portion" },
             calories: { type: "number" as const },
             protein: { type: "number" as const },
             carbs: { type: "number" as const },
             fat: { type: "number" as const },
-            keyMicros: {
+            coversNutrients: {
               type: "array" as const,
-              description: "Top 2-3 micronutrients this food is rich in, with approximate %DV it provides",
+              description: "Which deficient nutrients this food helps cover, with %DV per serving",
               items: {
                 type: "object" as const,
                 properties: {
-                  name: { type: "string" as const, description: "Micronutrient name, e.g. Vitamin K" },
-                  percentDV: { type: "number" as const, description: "Approximate %DV this food provides" },
+                  name: { type: "string" as const },
+                  percentDV: { type: "number" as const },
                 },
                 required: ["name", "percentDV"] as const,
                 additionalProperties: false as const,
               },
             },
-            reason: { type: "string" as const, description: "Why this food helps fill macro AND micro gaps, 1 sentence" },
+            reason: { type: "string" as const, description: "Why this food is a good addition, 1 sentence" },
           },
-          required: ["foodName", "portion", "calories", "protein", "carbs", "fat", "keyMicros", "reason"] as const,
+          required: ["foodName", "portion", "calories", "protein", "carbs", "fat", "coversNutrients", "reason"] as const,
           additionalProperties: false as const,
         },
       },
-      summary: { type: "string" as const, description: "One-sentence summary of the suggestion strategy, mentioning both macro and micro coverage" },
+      overallSummary: { type: "string" as const, description: "2-3 sentence summary of the analysis: how many days analyzed, biggest gaps, and the strategy for the suggestions" },
+      confidenceNote: { type: "string" as const, description: "Brief note about data confidence based on days tracked, e.g. 'Based on 2 days — accuracy improves with more data'" },
     },
-    required: ["suggestions", "summary"] as const,
+    required: ["microDeficiencies", "macroNotes", "suggestions", "overallSummary", "confidenceNote"] as const,
     additionalProperties: false as const,
   },
 };
@@ -459,56 +490,75 @@ IMPORTANT RULES:
   fillMyMacros: publicProcedure
     .input(
       z.object({
-        remainingCalories: z.number(),
-        remainingProtein: z.number(),
-        remainingCarbs: z.number(),
-        remainingFat: z.number(),
-        timeOfDay: z.string(),
         daysTracked: z.number(),
-        microGaps: z.array(z.object({
+        // Multi-day averaged micro data: each entry has name, avgPercent of DV
+        multiDayMicros: z.array(z.object({
           name: z.string(),
-          currentPercent: z.number(),
-        })).optional(),
+          avgPercent: z.number(), // average %DV across all tracked days
+        })),
+        // Multi-day averaged macro data
+        avgMacros: z.object({
+          calories: z.number(),
+          protein: z.number(),
+          carbs: z.number(),
+          fat: z.number(),
+        }),
+        macroTargets: z.object({
+          calories: z.number(),
+          protein: z.number(),
+          carbs: z.number(),
+          fat: z.number(),
+        }),
       })
     )
     .mutation(async ({ input }) => {
-      // No minimum day requirement — manual button press overrides any wait
+      // Build micro gap summary — only include those below 60% DV
+      const lowMicros = input.multiDayMicros.filter(m => m.avgPercent < 60);
+      const microText = lowMicros.length > 0
+        ? `Micronutrient averages below 60% DV (sorted worst first):\n${lowMicros.sort((a, b) => a.avgPercent - b.avgPercent).map(m => `- ${m.name}: ${Math.round(m.avgPercent)}% DV avg`).join("\n")}`
+        : "All micronutrients are above 60% DV on average — no major deficiencies.";
 
-      // Build micro gap summary for the prompt
-      const lowMicros = (input.microGaps || []).filter(m => m.currentPercent < 50);
-      const microGapText = lowMicros.length > 0
-        ? `\n\nMicronutrient gaps (below 50% DV):\n${lowMicros.map(m => `- ${m.name}: ${m.currentPercent}% DV`).join("\n")}\n\nPrioritize foods that are naturally rich in these deficient micronutrients while also filling macro gaps. For each suggestion, highlight which of these low micronutrients it helps cover.`
-        : "";
+      // Build macro summary
+      const macroText = `Daily macro averages vs targets:
+- Calories: ${Math.round(input.avgMacros.calories)} / ${input.macroTargets.calories} cal
+- Protein: ${Math.round(input.avgMacros.protein)}g / ${input.macroTargets.protein}g
+- Carbs: ${Math.round(input.avgMacros.carbs)}g / ${input.macroTargets.carbs}g
+- Fat: ${Math.round(input.avgMacros.fat)}g / ${input.macroTargets.fat}g`;
 
       const result = await invokeLLM({
         messages: [
           {
             role: "system",
-            content: `You are a practical nutrition advisor for a male losing weight with a high protein target. He's training for a 10-day alpine hike.
+            content: `You are a practical nutrition advisor analyzing multi-day eating patterns for a male losing weight with a high protein target. He's training for a 10-day alpine hike (Tour du Mont Blanc).
 
-Suggest 2-4 specific, realistic foods that would help fill his remaining macro AND micronutrient gaps for the day. Consider the time of day — don't suggest a full dinner at breakfast time. Prioritize closing the biggest macro gap (usually protein) while also targeting micronutrient deficiencies. Keep suggestions practical and easy to prepare.`,
+You are given averaged daily nutrient data across ${input.daysTracked} day(s) of food tracking. Your job is to:
+1. Identify which micronutrients are consistently deficient (below 60% DV average)
+2. Note any significant macro imbalances (>15% off target)
+3. Suggest 3-5 specific, practical foods to ADD to the regular diet that would efficiently cover the biggest gaps
+
+Prioritize foods that hit MULTIPLE deficiencies at once. Focus on micronutrient gaps first (these are harder to notice), then macro gaps. Be specific about portions. Keep it practical — real foods someone can easily buy and prepare.`,
           },
           {
             role: "user",
-            content: `It's ${input.timeOfDay}. I still need to eat:
-- ${Math.round(input.remainingCalories)} more calories
-- ${Math.round(input.remainingProtein)}g more protein
-- ${Math.round(input.remainingCarbs)}g more carbs
-- ${Math.round(input.remainingFat)}g more fat${microGapText}
-
-What should I eat to close these gaps?`,
+            content: `Here is my ${input.daysTracked}-day nutrition analysis:\n\n${macroText}\n\n${microText}\n\nWhat are my biggest nutritional gaps and what specific foods should I add to my diet to fill them?`,
           },
         ],
         response_format: {
           type: "json_schema",
-          json_schema: fillMacrosSuggestionSchema,
+          json_schema: fillGapsResponseSchema,
         },
       });
 
       const rawContent = result.choices?.[0]?.message?.content;
       const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
       if (!content) {
-        return { suggestions: [], summary: "Could not generate suggestions." };
+        return {
+          microDeficiencies: [],
+          macroNotes: [],
+          suggestions: [],
+          overallSummary: "Could not generate analysis.",
+          confidenceNote: "",
+        };
       }
 
       return JSON.parse(content);

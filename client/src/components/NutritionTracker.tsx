@@ -1177,28 +1177,71 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
   /* ── Fill My Macros ────────────────────────────── */
   const handleFillMacros = useCallback(async () => {
     setShowFillMacros(true);
-    const hour = new Date().getHours();
-    const timeOfDay = hour < 11 ? "morning" : hour < 15 ? "afternoon" : hour < 19 ? "evening" : "night";
-    // Compute micronutrient gaps from dailyMicroTotals
-    const microGaps: { name: string; currentPercent: number }[] = [];
-    for (const micro of ALL_MICRONUTRIENTS) {
-      const current = dailyMicroTotals.get(micro.name) || 0;
-      const pct = micro.dailyValue > 0 ? Math.round((current / micro.dailyValue) * 100) : 100;
-      microGaps.push({ name: micro.name, currentPercent: pct });
+
+    // Gather all days with food entries
+    const daysWithEntries = logs.filter((l) => l.entries.length > 0);
+    const numDays = daysWithEntries.length;
+    if (numDays === 0) { setFillMacrosSuggestions(null); return; }
+
+    // Compute per-day macro totals, then average
+    let totalCal = 0, totalProt = 0, totalCarbs = 0, totalFat = 0;
+    // Compute per-day micro totals
+    const microSums = new Map<string, number>();
+    for (const micro of ALL_MICRONUTRIENTS) microSums.set(micro.name, 0);
+
+    for (const day of daysWithEntries) {
+      let dayCal = 0, dayProt = 0, dayCarbs = 0, dayFat = 0;
+      for (const e of day.entries) {
+        dayCal += e.calories; dayProt += e.protein; dayCarbs += e.carbs; dayFat += e.fat;
+        // Accumulate micros from food entries
+        for (const m of e.micronutrients || []) {
+          const prev = microSums.get(m.name) || 0;
+          microSums.set(m.name, prev + (m.amount ?? 0));
+        }
+      }
+      // Add vitamin supplements if the day had vitaminsAdded
+      if (day.vitaminsAdded) {
+        for (const supp of DAILY_VITAMINS) {
+          dayCal += supp.nutrients.calories;
+          dayProt += supp.nutrients.protein;
+          dayCarbs += supp.nutrients.carbs;
+          dayFat += supp.nutrients.fat;
+          for (const mn of supp.micronutrients) {
+            const prev = microSums.get(mn.name) || 0;
+            microSums.set(mn.name, prev + mn.amount);
+          }
+        }
+      }
+      totalCal += dayCal; totalProt += dayProt; totalCarbs += dayCarbs; totalFat += dayFat;
     }
+
+    // Average macros
+    const avgMacros = {
+      calories: totalCal / numDays,
+      protein: totalProt / numDays,
+      carbs: totalCarbs / numDays,
+      fat: totalFat / numDays,
+    };
+
+    // Average micros as %DV
+    const multiDayMicros: { name: string; avgPercent: number }[] = [];
+    for (const micro of ALL_MICRONUTRIENTS) {
+      const totalAmount = microSums.get(micro.name) || 0;
+      const avgAmount = totalAmount / numDays;
+      const pct = micro.dailyValue > 0 ? Math.round((avgAmount / micro.dailyValue) * 100) : 100;
+      multiDayMicros.push({ name: micro.name, avgPercent: pct });
+    }
+
     try {
       const result = await fillMacrosMutation.mutateAsync({
-        remainingCalories: Math.max(macroTargets.calories - dailyTotals.calories, 0),
-        remainingProtein: Math.max(macroTargets.protein - dailyTotals.protein, 0),
-        remainingCarbs: Math.max(macroTargets.carbs - dailyTotals.carbs, 0),
-        remainingFat: Math.max(macroTargets.fat - dailyTotals.fat, 0),
-        timeOfDay,
-        daysTracked: daysWithFood,
-        microGaps,
+        daysTracked: numDays,
+        multiDayMicros,
+        avgMacros,
+        macroTargets,
       });
       setFillMacrosSuggestions(result);
-    } catch (err) { console.error("Fill macros failed:", err); setFillMacrosSuggestions(null); }
-  }, [dailyTotals, dailyMicroTotals, daysWithFood, fillMacrosMutation, macroTargets]);
+    } catch (err) { console.error("Fill gaps failed:", err); setFillMacrosSuggestions(null); }
+  }, [logs, fillMacrosMutation, macroTargets]);
 
   /* ── Feedback ──────────────────────────────────── */
   const handleFeedback = useCallback((id: string, thumbsUp: boolean) => {
@@ -1802,7 +1845,7 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
         )}
       </AnimatePresence>
 
-      {/* ── Fill My Macros Panel ──────────────────── */}
+      {/* ── Fill My Gaps Panel (Multi-Day Analysis) ── */}
       <AnimatePresence>
         {showFillMacros && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
@@ -1815,42 +1858,94 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
                 <button onClick={() => setShowFillMacros(false)} className="text-[var(--muted-foreground)] hover:text-foreground p-0.5"><X className="w-3.5 h-3.5" /></button>
               </div>
               {isFillMacrosLoading && (
-                <div className="flex items-center gap-2 py-3">
+                <div className="flex items-center gap-2 py-4">
                   <Loader2 className="w-4 h-4 animate-spin text-[var(--primary)]" />
-                  <span className="text-xs font-mono text-[var(--muted-foreground)]">Finding foods to fill your gaps...</span>
+                  <span className="text-xs font-mono text-[var(--muted-foreground)]">Analyzing your multi-day nutrition patterns...</span>
                 </div>
               )}
               {!isFillMacrosLoading && fillMacrosSuggestions && (
                 <>
-                  {fillMacrosSuggestions.suggestions?.length === 0 && (
-                    <p className="text-xs font-mono text-[var(--muted-foreground)] py-2">You're on track — no big gaps to fill!</p>
+                  {/* Confidence note */}
+                  {fillMacrosSuggestions.confidenceNote && (
+                    <p className="text-[10px] font-mono text-[var(--muted-foreground)] italic mb-2 px-1">{fillMacrosSuggestions.confidenceNote}</p>
                   )}
-                  {fillMacrosSuggestions.suggestions?.map((s: any, i: number) => (
-                    <div key={i} className="border border-border p-2 mb-2">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs font-medium text-foreground">{s.foodName}</span>
-                        <span className="text-[10px] font-mono text-[var(--primary)]">{s.calories} cal</span>
+
+                  {/* Micronutrient Deficiencies */}
+                  {fillMacrosSuggestions.microDeficiencies?.length > 0 && (
+                    <div className="mb-3">
+                      <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-rose-400 font-bold">Micronutrient Gaps</span>
+                      <div className="mt-1.5 space-y-1">
+                        {fillMacrosSuggestions.microDeficiencies.map((d: any, i: number) => (
+                          <div key={i} className="flex items-center gap-2">
+                            <span className={`inline-block w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                              d.severity === "critical" ? "bg-red-500" : d.severity === "low" ? "bg-orange-400" : "bg-yellow-400"
+                            }`} />
+                            <span className="text-[10px] font-mono text-foreground flex-1">{d.name}</span>
+                            <span className={`text-[10px] font-mono font-bold ${
+                              d.severity === "critical" ? "text-red-400" : d.severity === "low" ? "text-orange-400" : "text-yellow-400"
+                            }`}>{Math.round(d.avgPercent)}% avg</span>
+                          </div>
+                        ))}
                       </div>
-                      <span className="text-[10px] font-mono text-[var(--muted-foreground)] italic">{s.portion}</span>
-                      <div className="flex gap-3 mt-1 text-[10px] font-mono">
-                        <span className="text-blue-400">P: {s.protein}g</span>
-                        <span className="text-amber-400">C: {s.carbs}g</span>
-                        <span className="text-rose-400">F: {s.fat}g</span>
-                      </div>
-                      {s.keyMicros && s.keyMicros.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1.5">
-                          {s.keyMicros.map((m: { name: string; percentDV: number }, mi: number) => (
-                            <span key={mi} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-mono">
-                              {m.name} {m.percentDV}%
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      <p className="text-[10px] text-[var(--muted-foreground)] mt-1">{s.reason}</p>
                     </div>
-                  ))}
-                  {fillMacrosSuggestions.summary && (
-                    <p className="text-[10px] font-mono text-[var(--muted-foreground)] italic mt-1">{fillMacrosSuggestions.summary}</p>
+                  )}
+
+                  {/* Macro Notes */}
+                  {fillMacrosSuggestions.macroNotes?.length > 0 && (
+                    <div className="mb-3">
+                      <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-amber-400 font-bold">Macro Imbalances</span>
+                      <div className="mt-1.5 space-y-1">
+                        {fillMacrosSuggestions.macroNotes.map((m: any, i: number) => (
+                          <div key={i} className="flex items-center justify-between">
+                            <span className="text-[10px] font-mono text-foreground capitalize">{m.macro}</span>
+                            <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{Math.round(m.avgDaily)}g avg / {m.target}g target</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* No gaps */}
+                  {fillMacrosSuggestions.microDeficiencies?.length === 0 && fillMacrosSuggestions.macroNotes?.length === 0 && (
+                    <p className="text-xs font-mono text-emerald-400 py-2">Looking good — no major nutritional gaps detected!</p>
+                  )}
+
+                  {/* Food Suggestions */}
+                  {fillMacrosSuggestions.suggestions?.length > 0 && (
+                    <div className="mb-2">
+                      <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-emerald-400 font-bold">Add to Your Diet</span>
+                      <div className="mt-1.5 space-y-2">
+                        {fillMacrosSuggestions.suggestions.map((s: any, i: number) => (
+                          <div key={i} className="border border-border p-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-mono text-xs font-medium text-foreground">{s.foodName}</span>
+                              <span className="text-[10px] font-mono text-[var(--primary)]">{s.calories} cal</span>
+                            </div>
+                            <span className="text-[10px] font-mono text-[var(--muted-foreground)] italic">{s.portion}</span>
+                            <div className="flex gap-3 mt-1 text-[10px] font-mono">
+                              <span className="text-blue-400">P: {s.protein}g</span>
+                              <span className="text-amber-400">C: {s.carbs}g</span>
+                              <span className="text-rose-400">F: {s.fat}g</span>
+                            </div>
+                            {s.coversNutrients && s.coversNutrients.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {s.coversNutrients.map((c: { name: string; percentDV: number }, ci: number) => (
+                                  <span key={ci} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[9px] font-mono">
+                                    {c.name} +{c.percentDV}%
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                            <p className="text-[10px] text-[var(--muted-foreground)] mt-1">{s.reason}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Overall Summary */}
+                  {fillMacrosSuggestions.overallSummary && (
+                    <p className="text-[10px] font-mono text-[var(--muted-foreground)] italic mt-1 border-t border-border pt-2">{fillMacrosSuggestions.overallSummary}</p>
                   )}
                 </>
               )}

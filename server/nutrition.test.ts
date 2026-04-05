@@ -346,6 +346,67 @@ describe("nutrition router", () => {
     expect((result as any).question).toBe("How much pasta? And was it with any sauce?");
   });
 
+  it("fillMyMacros returns multi-day gap analysis with deficiencies and suggestions", async () => {
+    const { invokeLLM } = await import("./_core/llm");
+    (invokeLLM as any).mockResolvedValueOnce({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            microDeficiencies: [
+              { name: "Vitamin D", avgPercent: 22, severity: "critical" },
+              { name: "Omega-3 (EPA+DHA)", avgPercent: 35, severity: "low" },
+            ],
+            macroNotes: [
+              { macro: "fat", avgDaily: 55, target: 77, note: "Averaging 22g below fat target" },
+            ],
+            suggestions: [
+              {
+                foodName: "Wild Salmon Fillet",
+                portion: "6oz fillet, 3x per week",
+                calories: 350,
+                protein: 40,
+                carbs: 0,
+                fat: 20,
+                coversNutrients: [
+                  { name: "Vitamin D", percentDV: 120 },
+                  { name: "Omega-3 (EPA+DHA)", percentDV: 200 },
+                ],
+                reason: "Covers both your biggest micro gaps in one food.",
+              },
+            ],
+            overallSummary: "Your biggest gaps are Vitamin D and Omega-3. Adding salmon 3x/week would cover both.",
+            confidenceNote: "Based on 3 days of tracking. Accuracy improves with more data.",
+          }),
+        },
+      }],
+    });
+
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.nutrition.fillMyMacros({
+      daysTracked: 3,
+      multiDayMicros: [
+        { name: "Vitamin D", avgPercent: 22 },
+        { name: "Omega-3 (EPA+DHA)", avgPercent: 35 },
+        { name: "Vitamin C", avgPercent: 110 },
+      ],
+      avgMacros: { calories: 1900, protein: 160, carbs: 200, fat: 55 },
+      macroTargets: { calories: 2300, protein: 180, carbs: 222, fat: 77 },
+    });
+
+    expect(result.microDeficiencies).toHaveLength(2);
+    expect(result.microDeficiencies[0].name).toBe("Vitamin D");
+    expect(result.microDeficiencies[0].severity).toBe("critical");
+    expect(result.macroNotes).toHaveLength(1);
+    expect(result.macroNotes[0].macro).toBe("fat");
+    expect(result.suggestions).toHaveLength(1);
+    expect(result.suggestions[0].foodName).toBe("Wild Salmon Fillet");
+    expect(result.suggestions[0].coversNutrients).toHaveLength(2);
+    expect(result.overallSummary).toBeTruthy();
+    expect(result.confidenceNote).toBeTruthy();
+  });
+
   it("MICRO_KEY_MAP covers all 29 tracked nutrients", async () => {
     const { MICRO_KEY_MAP } = await import("./nutrition");
 
