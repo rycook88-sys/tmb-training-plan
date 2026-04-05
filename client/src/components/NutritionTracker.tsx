@@ -2072,8 +2072,10 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
                           className="w-7 h-7 flex items-center justify-center border border-border text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors font-mono text-sm font-bold cursor-pointer">−</button>
                         <input
                           type="number"
+                          inputMode="decimal"
                           value={tempTargets[key]}
                           onChange={(e) => setTempTargets((p) => ({ ...p, [key]: Math.max(0, Number(e.target.value) || 0) }))}
+                          onFocus={e => { const v = e.target.value; e.target.value = ''; e.target.value = v; }}
                           className="w-16 text-center bg-[var(--secondary)] border border-border text-foreground text-xs font-mono py-1 focus:outline-none focus:border-[var(--primary)] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                         <span className="text-[10px] font-mono text-[var(--muted-foreground)] w-6">{unit}</span>

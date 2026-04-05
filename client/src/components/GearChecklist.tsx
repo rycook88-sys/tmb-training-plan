@@ -142,12 +142,14 @@ function AddItemForm({ onAdd, onCancel }: { onAdd: (item: GearItem) => void; onC
           {/* Weight */}
           <input
             type="number"
+            inputMode="decimal"
             value={weightOz}
             onChange={(e) => setWeightOz(e.target.value)}
+            onFocus={e => { const v = e.target.value; e.target.value = ''; e.target.value = v; }}
             placeholder={u.ozUnit}
             step="0.5"
             min="0"
-            className="bg-[var(--secondary)] border border-border px-3 py-2 text-xs font-mono text-foreground placeholder:text-[var(--muted-foreground)] focus:outline-none focus:border-[var(--primary)]/50 w-20"
+            className="bg-[var(--secondary)] border border-border px-3 py-2 text-xs font-mono text-foreground text-right placeholder:text-[var(--muted-foreground)] focus:outline-none focus:border-[var(--primary)]/50 w-20"
           />
         </div>
 

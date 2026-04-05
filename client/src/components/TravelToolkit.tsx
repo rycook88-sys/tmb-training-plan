@@ -137,7 +137,8 @@ function CurrencyConverter() {
             inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-700 text-foreground text-lg font-mono px-3 py-2 rounded focus:outline-none focus:border-[var(--primary)] transition-colors"
+            onFocus={e => { const v = e.target.value; e.target.value = ''; e.target.value = v; }}
+            className="w-full bg-slate-800 border border-slate-700 text-foreground text-lg font-mono px-3 py-2 text-right rounded focus:outline-none focus:border-[var(--primary)] transition-colors"
             placeholder="0.00"
           />
         </div>

@@ -386,18 +386,22 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                   <div className="flex items-center gap-1.5">
                     <input
                       type="number"
+                      inputMode="decimal"
                       value={heightFt}
                       onChange={e => setHeightFt(e.target.value)}
-                      className="w-14 bg-background border border-border text-foreground text-sm font-mono px-2 py-1.5 text-center focus:outline-none focus:border-[var(--primary)] transition-colors"
+                      onFocus={e => { const v = e.target.value; e.target.value = ''; e.target.value = v; }}
+                      className="w-14 bg-background border border-border text-foreground text-sm font-mono px-2 py-1.5 text-right focus:outline-none focus:border-[var(--primary)] transition-colors"
                       placeholder={uu.isMetric ? "cm" : "ft"}
                     />
                     <span className="text-xs font-mono text-muted-foreground">{uu.isMetric ? "cm" : "ft"}</span>
                     {!uu.isMetric && (<>
                     <input
                       type="number"
+                      inputMode="decimal"
                       value={heightInR}
                       onChange={e => setHeightInR(e.target.value)}
-                      className="w-14 bg-background border border-border text-foreground text-sm font-mono px-2 py-1.5 text-center focus:outline-none focus:border-[var(--primary)] transition-colors"
+                      onFocus={e => { const v = e.target.value; e.target.value = ''; e.target.value = v; }}
+                      className="w-14 bg-background border border-border text-foreground text-sm font-mono px-2 py-1.5 text-right focus:outline-none focus:border-[var(--primary)] transition-colors"
                       placeholder="in"
                     />
                     <span className="text-xs font-mono text-muted-foreground">in</span>
@@ -426,11 +430,13 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                   <label className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground block mb-1.5">Weight ({uu.wtUnit})</label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     step="0.5"
                     value={weightInput}
                     onChange={e => setWeightInput(e.target.value)}
+                    onFocus={e => { const v = e.target.value; e.target.value = ''; e.target.value = v; }}
                     placeholder={String(gaugeWeight)}
-                    className="w-20 bg-background border border-border text-foreground text-sm font-mono px-2 py-1.5 text-center focus:outline-none focus:border-[var(--primary)] transition-colors"
+                    className="w-20 bg-background border border-border text-foreground text-sm font-mono px-2 py-1.5 text-right focus:outline-none focus:border-[var(--primary)] transition-colors"
                   />
                   <span className="text-[9px] font-mono text-muted-foreground ml-1">{weightInput ? '' : `(gauge: ${gaugeWeight})` }</span>
                 </div>
@@ -454,14 +460,15 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                       <div className="flex-1 flex items-center border border-border bg-background focus-within:border-[var(--primary)] transition-colors">
                         <span className="text-xs font-mono text-muted-foreground pl-3 pr-2 w-20 shrink-0">
                           {field.label}
-                          {field.required && <span className="text-[var(--primary)] ml-0.5">*</span>}
                         </span>
                         <input
                           type="number"
+                          inputMode="decimal"
                           step="0.25"
                           value={measurements[field.key]}
                           onChange={e => handleMeasurement(field.key, e.target.value)}
-                          className="flex-1 bg-transparent text-foreground text-sm font-mono px-2 py-2 focus:outline-none"
+                          onFocus={e => { const v = e.target.value; e.target.value = ''; e.target.value = v; }}
+                          className="flex-1 bg-transparent text-foreground text-sm font-mono px-2 py-2 text-right focus:outline-none"
                           placeholder={`0.0 ${unit}`}
                         />
                       </div>
@@ -469,8 +476,8 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                   ))}
                 </div>
                 <p className="text-[9px] font-mono text-muted-foreground/60 mt-1">
-                  <span className="text-[var(--primary)]">*</span> Required for Navy formula. More measurements = more formulas = better accuracy.
-                </p>
+                   More measurements = more formulas = better accuracy.
+                 </p>
               </div>
 
               {/* Multi-formula results */}

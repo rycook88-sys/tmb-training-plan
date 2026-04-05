@@ -116,9 +116,10 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
           <div className="mt-4">
             {showInput ? (
               <form onSubmit={handleSubmit} className="flex gap-2">
-                <input type="number" step="0.1" value={inputVal} onChange={(e) => setInputVal(e.target.value)}
+                <input type="number" inputMode="decimal" step="0.1" value={inputVal} onChange={(e) => setInputVal(e.target.value)}
+                  onFocus={e => { const v = e.target.value; e.target.value = ''; e.target.value = v; }}
                   placeholder="226.0" autoFocus
-                  className="w-24 bg-[var(--secondary)] border border-border px-2 py-1 text-xs font-mono text-foreground focus:border-[var(--primary)] focus:outline-none" />
+                  className="w-24 bg-[var(--secondary)] border border-border px-2 py-1 text-xs font-mono text-foreground text-right focus:border-[var(--primary)] focus:outline-none" />
                 <button type="submit" className="bg-[var(--primary)] text-[var(--primary-foreground)] px-3 py-1 text-xs font-mono font-bold uppercase tracking-wider hover:opacity-90 transition-opacity">Log</button>
                 <button type="button" onClick={() => setShowInput(false)} className="text-xs text-[var(--muted-foreground)] hover:text-foreground">✕</button>
               </form>
@@ -948,7 +949,7 @@ export default function Home() {
                 icon={<span className="text-lg">📏</span>}
                 title="Body Fat Estimator"
                 subtitle="Multi-formula composite"
-                tag="Navy method"
+                tag="Multi-formula composite"
                 tagColor="text-[var(--primary)] bg-[var(--primary)]/10"
               >
                 <BodyFatEstimator embedded />

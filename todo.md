@@ -224,3 +224,10 @@
 - [x] Add generous column spacing between weight, BF%, lean, fat
 - [x] Add colored left border on NOW (orange) and GOAL (green) rows
 - [x] Remove "fat" label from NOW/GOAL rows (badge replaces it)
+
+## BF Estimator Header Cleanup & Cursor Fix
+- [x] Remove NAVY METHOD badge from header
+- [x] Add translucent orange MULTI-FORMULA COMPOSITE pill badge
+- [x] Remove asterisks (*) from Neck and Waist labels
+- [x] Remove "Required for Navy formula" from bottom note
+- [x] Fix number input cursor to land at end of value on focus (all inputs app-wide)
