@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ATHLETE, TMB_ITINERARY, WORKOUT_PLAN, FOOT_VIDEOS,
@@ -695,10 +695,31 @@ function FootMobilitySection({ embedded = false }: { embedded?: boolean } = {}) 
   );
 }
 
+// ── Nutrition Card (wraps UtilityCard with dynamic calorie badge) ──
+function NutritionCard() {
+  const [calData, setCalData] = useState<{ current: number; target: number }>({ current: 0, target: 2300 });
+  const handleCalorieUpdate = useCallback((current: number, target: number) => {
+    setCalData({ current, target });
+  }, []);
+  return (
+    <UtilityCard
+      accent="border-l-green-500"
+      accentBg="bg-green-500/5"
+      icon={<span className="text-lg">🍎</span>}
+      title="Nutrition Tracker"
+      subtitle="Photo-based calorie tracking"
+      tag={<>{calData.current.toLocaleString()} / {calData.target.toLocaleString()} CAL</>}
+      tagColor="text-green-400 bg-green-400/10"
+    >
+      <NutritionTracker embedded onCalorieUpdate={handleCalorieUpdate} />
+    </UtilityCard>
+  );
+}
+
 // ── Utility Card (for card grid) ───────────────────────────
 function UtilityCard({ accent, accentBg, icon, title, subtitle, tag, tagColor, children }: {
   accent: string; accentBg: string; icon: React.ReactNode; title: string;
-  subtitle: string; tag?: string; tagColor?: string; children: React.ReactNode;
+  subtitle: string; tag?: React.ReactNode; tagColor?: string; children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -918,16 +939,7 @@ export default function Home() {
             <h3 className="text-[10px] uppercase tracking-[0.4em] text-[var(--muted-foreground)] font-mono mb-4">Training Tools</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {/* Nutrition Tracker Card */}
-              <UtilityCard
-                accent="border-l-green-500"
-                accentBg="bg-green-500/5"
-                icon={<span className="text-lg">📸</span>}
-                title="Nutrition Tracker"
-                subtitle="Photo-based calorie tracking"
-
-              >
-                <NutritionTracker embedded />
-              </UtilityCard>
+              <NutritionCard />
 
               {/* Garmin Analytics Card */}
               <UtilityCard

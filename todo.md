@@ -231,3 +231,9 @@
 - [x] Remove asterisks (*) from Neck and Waist labels
 - [x] Remove "Required for Navy formula" from bottom note
 - [x] Fix number input cursor to land at end of value on focus (all inputs app-wide)
+
+## Nutrition Tracker Header Update
+- [x] Change emoji from camera (📸) to apple (🍎)
+- [x] Keep subtitle "Photo-based calorie tracking"
+- [x] Add dynamic calorie badge showing current/target cal in translucent green pill
+- [x] Badge updates in real-time as food entries are added/removed

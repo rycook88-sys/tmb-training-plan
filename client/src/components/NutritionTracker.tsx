@@ -649,7 +649,7 @@ function RecommendationCard({ rec, onFeedback, existingFeedback }: {
 /* ══════════════════════════════════════════════════════
    ██  Main NutritionTracker Component
    ══════════════════════════════════════════════════════ */
-export default function NutritionTracker({ embedded = false }: { embedded?: boolean }) {
+export default function NutritionTracker({ embedded = false, onCalorieUpdate }: { embedded?: boolean; onCalorieUpdate?: (current: number, target: number) => void }) {
   const { user, isAuthenticated } = useAuth();
   const [logs, setLogs] = useState<DailyLog[]>(loadLogs);
   const [feedback, setFeedback] = useState<RecommendationFeedback[]>(loadFeedback);
@@ -863,6 +863,11 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
     }
     return { calories: cal, protein: prot, carbs: carb, fat, fiber, sugar, sodium };
   }, [todayEntries, vitaminsAdded, vitaminTotals]);
+
+  // Notify parent of calorie updates
+  useEffect(() => {
+    onCalorieUpdate?.(Math.round(dailyTotals.calories), macroTargets.calories);
+  }, [dailyTotals.calories, macroTargets.calories, onCalorieUpdate]);
 
   // Combine ALL micronutrients — numeric totals only
   const dailyMicroTotals = useMemo(() => {
