@@ -1385,61 +1385,76 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
         <MicroProgressDropdown microTotals={dailyMicroTotals} />
       </div>
 
-      {/* ── Action Buttons ───────────────────────── */}
-      <div className="px-4 pb-3 flex flex-wrap gap-2">
-        <button onClick={handleCapture} disabled={isAnalyzing}
-          className="flex items-center gap-2 bg-[var(--primary)] text-[var(--primary-foreground)] px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold hover:opacity-90 transition-opacity disabled:opacity-50">
-          <Camera className="w-4 h-4" /> Snap Food
-        </button>
-
-        <button onClick={() => { setShowTextEntry(true); setTextEntryInput(""); setTextEntryStep("input"); setTextClarifyQuestion(""); setTextClarifyAnswer(""); setTextEntryResult(null); }}
-          className="flex items-center gap-2 bg-[var(--primary)] text-[var(--primary-foreground)] px-4 py-2.5 text-xs font-mono uppercase tracking-wider font-bold hover:opacity-90 transition-opacity">
-          <Type className="w-4 h-4" /> Type Food
-        </button>
-
-        {/* Daily Presets button */}
-        <button onClick={() => setShowPresetsPanel(!showPresetsPanel)}
-          className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
-          <Coffee className="w-3.5 h-3.5" /> Daily Items
-        </button>
-
-        {/* Common Items button */}
-        <button onClick={() => setShowCommonPanel(!showCommonPanel)}
-          className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
-          <Bookmark className="w-3.5 h-3.5" /> Common
-        </button>
-
-        <button onClick={handleFetchTrends} disabled={isTrendLoading}
-          className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors disabled:opacity-50">
-          <TrendingUp className="w-3.5 h-3.5" /> {isTrendLoading ? "Analyzing..." : "Trends"}
-        </button>
-
-        <button onClick={handleFillMacros} disabled={isFillMacrosLoading}
-          className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors disabled:opacity-50">
-          <Zap className="w-3.5 h-3.5" /> {isFillMacrosLoading ? "Thinking..." : "Fill My Gaps"}
-        </button>
-
-        <button onClick={() => setShowWeeklyChart(true)}
-          className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
-          <BarChart3 className="w-3.5 h-3.5" /> Weekly
-        </button>
-
-        <button onClick={() => { setShowMealPlanner(true); setMealPlanResult(null); setMealPlanType("single"); setMealStyle(""); setMealSurpriseMe(false); setMealNotes(""); setMealPrepDays(3); }}
-          className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
-          <ChefHat className="w-3.5 h-3.5" /> Plan Meal
-        </button>
-
-        {savedPlans.length > 0 && (
-          <button onClick={() => { setShowSavedPlans(true); setExpandedPlanId(null); }}
-            className="flex items-center gap-2 border border-border px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] hover:border-[var(--primary)] transition-colors">
-            <Bookmark className="w-3.5 h-3.5" /> Saved ({savedPlans.length})
+      {/* ── Action Buttons (3×3 Color-Coded Grid) ──── */}
+      <div className="px-4 pb-3">
+        <div className="grid grid-cols-3 gap-2">
+          {/* Row 1 — Food Input (Orange) */}
+          <button onClick={handleCapture} disabled={isAnalyzing}
+            className="flex flex-col items-center justify-center gap-1.5 border border-[#e8772e] bg-transparent py-4 text-[#e8772e] hover:bg-[#e8772e]/10 transition-colors disabled:opacity-50 rounded">
+            <Camera className="w-5 h-5" />
+            <span className="text-[9px] font-mono uppercase tracking-[0.15em] font-bold">Snap Food</span>
           </button>
-        )}
 
-        <button onClick={() => { setShowPantry(true); setPantryStep("capture"); setPantryImages([]); setPantryResult(null); setGroceryChecked(new Set()); }}
-          className="flex items-center gap-2 border border-[var(--primary)] px-3 py-2.5 text-xs font-mono uppercase tracking-wider text-[var(--primary)] hover:bg-[var(--primary)] hover:text-[var(--primary-foreground)] transition-colors">
-          <ShoppingCart className="w-3.5 h-3.5" /> Snap Pantry
-        </button>
+          <button onClick={() => { setShowTextEntry(true); setTextEntryInput(""); setTextEntryStep("input"); setTextClarifyQuestion(""); setTextClarifyAnswer(""); setTextEntryResult(null); }}
+            className="flex flex-col items-center justify-center gap-1.5 border border-[#e8772e] bg-transparent py-4 text-[#e8772e] hover:bg-[#e8772e]/10 transition-colors rounded">
+            <Type className="w-5 h-5" />
+            <span className="text-[9px] font-mono uppercase tracking-[0.15em] font-bold">Type Food</span>
+          </button>
+
+          <button onClick={() => { setShowPantry(true); setPantryStep("capture"); setPantryImages([]); setPantryResult(null); setGroceryChecked(new Set()); }}
+            className="flex flex-col items-center justify-center gap-1.5 border border-[#e8772e] bg-transparent py-4 text-[#e8772e] hover:bg-[#e8772e]/10 transition-colors rounded">
+            <ShoppingCart className="w-5 h-5" />
+            <span className="text-[9px] font-mono uppercase tracking-[0.15em] font-bold">Snap Pantry</span>
+          </button>
+
+          {/* Row 2 — Quick Access (Teal) */}
+          <button onClick={() => setShowPresetsPanel(!showPresetsPanel)}
+            className="flex flex-col items-center justify-center gap-1.5 border border-[#2dd4bf] bg-transparent py-4 text-[#2dd4bf] hover:bg-[#2dd4bf]/10 transition-colors rounded">
+            <Coffee className="w-5 h-5" />
+            <span className="text-[9px] font-mono uppercase tracking-[0.15em] font-bold">Daily Items</span>
+          </button>
+
+          <button onClick={() => setShowCommonPanel(!showCommonPanel)}
+            className="flex flex-col items-center justify-center gap-1.5 border border-[#2dd4bf] bg-transparent py-4 text-[#2dd4bf] hover:bg-[#2dd4bf]/10 transition-colors rounded">
+            <Bookmark className="w-5 h-5" />
+            <span className="text-[9px] font-mono uppercase tracking-[0.15em] font-bold">Common</span>
+          </button>
+
+          <button onClick={handleFillMacros} disabled={isFillMacrosLoading}
+            className="flex flex-col items-center justify-center gap-1.5 border border-[#2dd4bf] bg-transparent py-4 text-[#2dd4bf] hover:bg-[#2dd4bf]/10 transition-colors disabled:opacity-50 rounded">
+            <Zap className="w-5 h-5" />
+            <span className="text-[9px] font-mono uppercase tracking-[0.15em] font-bold">{isFillMacrosLoading ? "Thinking..." : "Fill My Gaps"}</span>
+          </button>
+
+          {/* Row 3 — Analytics (Purple) */}
+          <button onClick={handleFetchTrends} disabled={isTrendLoading}
+            className="flex flex-col items-center justify-center gap-1.5 border border-[#a78bfa] bg-transparent py-4 text-[#a78bfa] hover:bg-[#a78bfa]/10 transition-colors disabled:opacity-50 rounded">
+            <TrendingUp className="w-5 h-5" />
+            <span className="text-[9px] font-mono uppercase tracking-[0.15em] font-bold">{isTrendLoading ? "Analyzing..." : "Trends"}</span>
+          </button>
+
+          <button onClick={() => setShowWeeklyChart(true)}
+            className="flex flex-col items-center justify-center gap-1.5 border border-[#a78bfa] bg-transparent py-4 text-[#a78bfa] hover:bg-[#a78bfa]/10 transition-colors rounded">
+            <BarChart3 className="w-5 h-5" />
+            <span className="text-[9px] font-mono uppercase tracking-[0.15em] font-bold">Weekly</span>
+          </button>
+
+          <button onClick={() => { setShowMealPlanner(true); setMealPlanResult(null); setMealPlanType("single"); setMealStyle(""); setMealSurpriseMe(false); setMealNotes(""); setMealPrepDays(3); }}
+            className="flex flex-col items-center justify-center gap-1.5 border border-[#a78bfa] bg-transparent py-4 text-[#a78bfa] hover:bg-[#a78bfa]/10 transition-colors rounded">
+            <ChefHat className="w-5 h-5" />
+            <span className="text-[9px] font-mono uppercase tracking-[0.15em] font-bold">Plan Meal</span>
+          </button>
+        </div>
+
+        {/* Saved Plans — shown as extra row when plans exist */}
+        {savedPlans.length > 0 && (
+          <div className="mt-2">
+            <button onClick={() => { setShowSavedPlans(true); setExpandedPlanId(null); }}
+              className="flex items-center justify-center gap-2 w-full border border-[#a78bfa]/50 bg-transparent py-2 text-[#a78bfa] hover:bg-[#a78bfa]/10 transition-colors rounded text-[9px] font-mono uppercase tracking-[0.15em] font-bold">
+              <Bookmark className="w-3.5 h-3.5" /> Saved Plans ({savedPlans.length})
+            </button>
+          </div>
+        )}
       </div>
       <div className="px-4 pb-2">
         <p className="text-[10px] font-mono text-[var(--muted-foreground)]/60 italic">

@@ -209,3 +209,12 @@
 - [x] Update helper text to "Edit the full description — AI will re-estimate all nutrients."
 - [x] Condensed log view stays comma-separated (no change)
 - [x] On confirm, convert bullet-pointed text back to comma-separated for storage/analysis
+
+## Button Grid Redesign (3x3 Color-Coded)
+- [x] Replace 4-row button layout with 3x3 grid of square tiles
+- [x] Row 1 (orange outlined): SNAP FOOD, TYPE FOOD, SNAP PANTRY
+- [x] Row 2 (teal outlined): DAILY ITEMS, COMMON, FILL MY GAPS
+- [x] Row 3 (purple outlined): TRENDS, WEEKLY, PLAN MEAL
+- [x] Icons stacked above text labels in each tile
+- [x] All tiles dark background with colored border, icon, and text
+- [x] Remove separate SNAP PANTRY button below the grid
