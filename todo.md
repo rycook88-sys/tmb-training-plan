@@ -192,3 +192,10 @@
 - [x] Edit button returns to text input step to modify description
 - [x] Updated empty state to mention both Snap and Type options
 - [x] Vitest tests: direct analysis and clarification flow (11 tests total, all passing)
+
+## Reference Object Portion Scaling
+- [x] Update AI photo analysis prompt to detect known reference objects in frame
+- [x] Include common object dimensions: cans, bottles, plates, utensils, phones, hands/fingers, credit cards
+- [x] AI uses detected reference to calibrate portion size estimates
+- [x] AI notes in servingEstimate when a reference object was used
+- [x] Add subtle tip near Snap Food button about placing a known object next to food

@@ -148,6 +148,21 @@ CRITICAL INSTRUCTIONS:
 
 5. UNITS: Each field name includes the unit (e.g., vitamin_k_mcg means the value is in micrograms). Fiber is in grams. Most minerals are in mg.
 
+6. REFERENCE OBJECT SCALING: When analyzing a photo, ACTIVELY LOOK for known reference objects near the food that can help estimate portion size more accurately. Common references and their real-world dimensions:
+   - Soda/beer can (standard 12oz): 4.83" tall, 2.6" diameter
+   - Water bottle (standard 16.9oz): ~8" tall, 2.5" diameter
+   - Smartphone: ~6" x 3"
+   - Credit card / ID card: 3.37" x 2.13"
+   - Standard dinner plate: 10-11" diameter
+   - Salad/dessert plate: 7-8" diameter
+   - Fork: ~7.5" long
+   - Knife: ~9" long
+   - Spoon: ~7" long
+   - Human hand/palm width: ~3.5" (adult male), ~3" (adult female)
+   - Index finger length: ~3" (adult)
+   - Thumb tip to first knuckle: ~1"
+   If a reference object is detected, USE IT to calibrate your portion size estimate and mention it in servingEstimate (e.g., "~8oz chicken breast, scaled against can in frame" or "~1.5 cups rice, estimated from plate size"). If no reference object is visible, estimate as usual.
+
 Focus on accuracy for a 226 lb male trying to lose weight on 2300 cal/day with 180g protein minimum.`;
 
 const trendRecommendationSchema = {
@@ -270,7 +285,7 @@ export const nutritionRouter = router({
             content: [
               {
                 type: "text" as const,
-                text: "What food is in this photo? Estimate the calories, macros, and ALL 29 micronutrients. Remember: break down each ingredient separately, then sum the nutrients. Every micronutrient field must have a value.",
+                text: "What food is in this photo? First, check if there are any reference objects visible (cans, bottles, utensils, plates, hands, phones, etc.) that can help estimate portion size. Then identify the food, estimate the calories, macros, and ALL 29 micronutrients. Remember: break down each ingredient separately, then sum the nutrients. Every micronutrient field must have a value.",
               },
               {
                 type: "image_url" as const,

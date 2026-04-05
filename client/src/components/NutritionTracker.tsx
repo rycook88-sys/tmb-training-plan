@@ -1468,6 +1468,11 @@ export default function NutritionTracker({ embedded = false }: { embedded?: bool
           <ShoppingCart className="w-3.5 h-3.5" /> Snap Pantry
         </button>
       </div>
+      <div className="px-4 pb-2">
+        <p className="text-[10px] font-mono text-[var(--muted-foreground)]/60 italic">
+          ✨ Tip: Place a can, fork, or your hand next to food when snapping for more accurate portions
+        </p>
+      </div>
 
       {/* ── Daily Presets Panel ──────────────────── */}
       <AnimatePresence>
