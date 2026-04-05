@@ -444,38 +444,29 @@ function EditEntryModal({ entry, onConfirm, onCancel, isLoading }: {
   onCancel: () => void;
   isLoading: boolean;
 }) {
-  // Split food name by commas, "and", or newlines for display as separate lines
-  const foodItems = useMemo(() => {
-    return entry.foodName
+  // Convert food name to bullet-pointed format for multi-item entries
+  const initialText = useMemo(() => {
+    const items = entry.foodName
       .split(/,\s*|\s+and\s+|\n/)
       .map((s) => s.trim())
       .filter(Boolean);
+    if (items.length <= 1) return entry.foodName;
+    return items.map((item) => `\u2022 ${item}`).join("\n");
   }, [entry.foodName]);
 
-  const [editedItems, setEditedItems] = useState<string[]>(foodItems);
-
-  const handleItemChange = useCallback((index: number, value: string) => {
-    setEditedItems((prev) => {
-      const next = [...prev];
-      next[index] = value;
-      return next;
-    });
-  }, []);
-
-  const handleAddItem = useCallback(() => {
-    setEditedItems((prev) => [...prev, ""]);
-  }, []);
-
-  const handleRemoveItem = useCallback((index: number) => {
-    setEditedItems((prev) => prev.filter((_, i) => i !== index));
-  }, []);
+  const [editText, setEditText] = useState(initialText);
 
   const handleConfirm = useCallback(() => {
-    const combined = editedItems.filter((s) => s.trim()).join(", ");
-    if (combined.trim()) {
-      onConfirm(combined);
+    // Convert bullet-pointed text back to comma-separated for storage/analysis
+    const cleaned = editText
+      .split("\n")
+      .map((line) => line.replace(/^[\u2022\-\*]\s*/, "").trim())
+      .filter(Boolean)
+      .join(", ");
+    if (cleaned.trim()) {
+      onConfirm(cleaned);
     }
-  }, [editedItems, onConfirm]);
+  }, [editText, onConfirm]);
 
   return (
     <motion.div
@@ -500,36 +491,18 @@ function EditEntryModal({ entry, onConfirm, onCancel, isLoading }: {
           {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--primary)]" />}
         </div>
 
-        {/* Individual food items, each on its own line */}
-        <div className="space-y-2 mb-3">
-          {editedItems.map((item, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={item}
-                onChange={(e) => handleItemChange(i, e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleConfirm()}
-                autoFocus={i === 0}
-                className="flex-1 bg-[var(--secondary)] border border-border px-3 py-2 text-xs font-mono text-foreground focus:border-[var(--primary)] focus:outline-none"
-                placeholder={`Food item ${i + 1}`}
-              />
-              {editedItems.length > 1 && (
-                <button onClick={() => handleRemoveItem(i)}
-                  className="text-[var(--muted-foreground)] hover:text-red-400 p-1 flex-shrink-0">
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
+        {/* Single large textarea for editing */}
+        <textarea
+          value={editText}
+          onChange={(e) => setEditText(e.target.value)}
+          autoFocus
+          rows={6}
+          className="w-full bg-[var(--secondary)] border border-[var(--primary)] px-3 py-3 text-[13px] font-mono text-foreground focus:outline-none focus:border-[var(--primary)] resize-y leading-relaxed mb-3"
+          placeholder="Describe the food..."
+        />
 
-        <button onClick={handleAddItem}
-          className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-wider text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors mb-4">
-          <Plus className="w-3 h-3" /> Add Item
-        </button>
-
-        <p className="text-[10px] font-mono text-[var(--muted-foreground)] mb-3">
-          Edit names and confirm — AI will re-estimate all nutrients.
+        <p className="text-[10px] font-mono text-[var(--muted-foreground)] italic mb-3">
+          Edit the full description — AI will re-estimate all nutrients.
         </p>
 
         <div className="flex gap-2">

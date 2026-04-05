@@ -199,3 +199,13 @@
 - [x] AI uses detected reference to calibrate portion size estimates
 - [x] AI notes in servingEstimate when a reference object was used
 - [x] Add subtle tip near Snap Food button about placing a known object next to food
+
+## Edit Food Modal Redesign
+- [x] Replace multiple separate text boxes with single large textarea
+- [x] Remove individual X delete buttons and "+ ADD ITEM" link
+- [x] Auto-format multi-item entries with bullet points (•) when opening edit modal
+- [x] Single-item entries show plain text without bullet
+- [x] Textarea tall enough to see full description (~6 lines)
+- [x] Update helper text to "Edit the full description — AI will re-estimate all nutrients."
+- [x] Condensed log view stays comma-separated (no change)
+- [x] On confirm, convert bullet-pointed text back to comma-separated for storage/analysis
