@@ -390,7 +390,7 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                       value={heightFt}
                       onChange={e => setHeightFt(e.target.value)}
                       onFocus={e => { const v = e.target.value; e.target.value = ''; e.target.value = v; }}
-                      className="w-14 bg-background border border-border text-foreground text-sm font-mono px-2 py-1.5 text-right focus:outline-none focus:border-[var(--primary)] transition-colors"
+                      className="w-14 bg-background border border-border text-foreground text-sm font-mono px-2 py-1.5 text-center focus:outline-none focus:border-[var(--primary)] transition-colors"
                       placeholder={uu.isMetric ? "cm" : "ft"}
                     />
                     <span className="text-xs font-mono text-muted-foreground">{uu.isMetric ? "cm" : "ft"}</span>
@@ -401,7 +401,7 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                       value={heightInR}
                       onChange={e => setHeightInR(e.target.value)}
                       onFocus={e => { const v = e.target.value; e.target.value = ''; e.target.value = v; }}
-                      className="w-14 bg-background border border-border text-foreground text-sm font-mono px-2 py-1.5 text-right focus:outline-none focus:border-[var(--primary)] transition-colors"
+                      className="w-14 bg-background border border-border text-foreground text-sm font-mono px-2 py-1.5 text-center focus:outline-none focus:border-[var(--primary)] transition-colors"
                       placeholder="in"
                     />
                     <span className="text-xs font-mono text-muted-foreground">in</span>
@@ -436,7 +436,7 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                     onChange={e => setWeightInput(e.target.value)}
                     onFocus={e => { const v = e.target.value; e.target.value = ''; e.target.value = v; }}
                     placeholder={String(gaugeWeight)}
-                    className="w-20 bg-background border border-border text-foreground text-sm font-mono px-2 py-1.5 text-right focus:outline-none focus:border-[var(--primary)] transition-colors"
+                    className="w-20 bg-background border border-border text-foreground text-sm font-mono px-2 py-1.5 text-center focus:outline-none focus:border-[var(--primary)] transition-colors"
                   />
                   <span className="text-[9px] font-mono text-muted-foreground ml-1">{weightInput ? '' : `(gauge: ${gaugeWeight})` }</span>
                 </div>
@@ -468,16 +468,14 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                           value={measurements[field.key]}
                           onChange={e => handleMeasurement(field.key, e.target.value)}
                           onFocus={e => { const v = e.target.value; e.target.value = ''; e.target.value = v; }}
-                          className="flex-1 bg-transparent text-foreground text-sm font-mono px-2 py-2 text-right focus:outline-none"
+                          className="flex-1 bg-transparent text-foreground text-sm font-mono px-3 py-2 text-center focus:outline-none"
                           placeholder={`0.0 ${unit}`}
                         />
                       </div>
                     </div>
                   ))}
                 </div>
-                <p className="text-[9px] font-mono text-muted-foreground/60 mt-1">
-                   More measurements = more formulas = better accuracy.
-                 </p>
+
               </div>
 
               {/* Multi-formula results */}
