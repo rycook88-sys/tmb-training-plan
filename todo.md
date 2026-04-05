@@ -218,3 +218,9 @@
 - [x] Icons stacked above text labels in each tile
 - [x] All tiles dark background with colored border, icon, and text
 - [x] Remove separate SNAP PANTRY button below the grid
+
+## BF% Projection Table Spacing Fix
+- [x] Separate NOW/GOAL into pill badges instead of appending to fat text
+- [x] Add generous column spacing between weight, BF%, lean, fat
+- [x] Add colored left border on NOW (orange) and GOAL (green) rows
+- [x] Remove "fat" label from NOW/GOAL rows (badge replaces it)
