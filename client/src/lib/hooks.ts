@@ -147,6 +147,20 @@ export function useWorkoutLog() {
 
   const cancelSession = () => setActiveSession(null);
 
+  const updateSession = (date: string, dayId: string, sessionIndex: number, updatedSession: WorkoutSession) => {
+    setSessions((prev) => {
+      let matchCount = 0;
+      return prev.map((s) => {
+        if (s.date === date && s.dayId === dayId) {
+          const isTarget = matchCount === sessionIndex;
+          matchCount++;
+          return isTarget ? updatedSession : s;
+        }
+        return s;
+      });
+    });
+  };
+
   const deleteSession = (date: string, dayId: string, sessionIndex: number) => {
     setSessions((prev) => {
       // Find all sessions matching this date+dayId, then remove the one at sessionIndex
@@ -226,6 +240,7 @@ export function useWorkoutLog() {
     saveSession,
     cancelSession,
     deleteSession,
+    updateSession,
     hasHitGoal,
     getBestPerformance,
   };

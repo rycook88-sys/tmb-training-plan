@@ -9,7 +9,7 @@ import { useWeightTracker, useWorkoutLog, generateSummary } from "@/lib/hooks";
 import type { ExerciseLog, WorkoutSession } from "@/lib/hooks";
 import {
   Mountain, ChevronDown, ChevronUp, ExternalLink, Footprints,
-  Target, ArrowDown, ArrowUp, Play, Calendar, Trophy, Save, X, Trash2, Dumbbell,
+  Target, ArrowDown, ArrowUp, Play, Calendar, Trophy, Save, X, Trash2, Dumbbell, Pencil, Check,
 } from "lucide-react";
 import TrainingAnalytics from "@/components/TrainingAnalytics";
 import SwipeToDelete from "@/components/SwipeToDelete";
@@ -394,9 +394,14 @@ function SummaryModal({ session, allSessions, onClose }: {
 }
 
 // ── Workout History Calendar ─────────────────────────────
-function WorkoutCalendar({ sessions, onDelete }: { sessions: WorkoutSession[]; onDelete: (date: string, dayId: string, sessionIndex: number) => void }) {
+function WorkoutCalendar({ sessions, onDelete, onUpdate }: {
+  sessions: WorkoutSession[];
+  onDelete: (date: string, dayId: string, sessionIndex: number) => void;
+  onUpdate: (date: string, dayId: string, sessionIndex: number, updated: WorkoutSession) => void;
+}) {
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ date: string; dayId: string; sessionIndex: number } | null>(null);
+  const [editing, setEditing] = useState<{ date: string; dayId: string; sessionIndex: number; exercises: ExerciseLog[] } | null>(null);
   if (sessions.length === 0) return null;
 
   const grouped: Record<string, WorkoutSession[]> = {};
@@ -405,6 +410,36 @@ function WorkoutCalendar({ sessions, onDelete }: { sessions: WorkoutSession[]; o
     grouped[s.date].push(s);
   }
   const dates = Object.keys(grouped).sort().reverse();
+
+  const startEdit = (s: WorkoutSession, si: number) => {
+    setEditing({
+      date: s.date,
+      dayId: s.dayId,
+      sessionIndex: si,
+      exercises: s.exercises.map(ex => ({ ...ex })),
+    });
+  };
+
+  const updateEditExercise = (exIndex: number, field: keyof ExerciseLog, value: string | boolean) => {
+    if (!editing) return;
+    setEditing(prev => {
+      if (!prev) return prev;
+      const updated = [...prev.exercises];
+      updated[exIndex] = { ...updated[exIndex], [field]: value };
+      return { ...prev, exercises: updated };
+    });
+  };
+
+  const saveEdit = () => {
+    if (!editing) return;
+    const original = sessions.find(s => s.date === editing.date && s.dayId === editing.dayId);
+    if (!original) return;
+    onUpdate(editing.date, editing.dayId, editing.sessionIndex, {
+      ...original,
+      exercises: editing.exercises,
+    });
+    setEditing(null);
+  };
 
   return (
     <div className="border border-border bg-card">
@@ -437,35 +472,119 @@ function WorkoutCalendar({ sessions, onDelete }: { sessions: WorkoutSession[]; o
                 {isExpanded && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                    {daySessions.map((s, si) => (
-                      <div key={si} className="px-4 pb-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="text-[10px] font-mono text-[var(--primary)] uppercase tracking-wider">{s.dayTitle}</div>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setConfirmDelete({ date: s.date, dayId: s.dayId, sessionIndex: si }); }}
-                            className="text-[var(--muted-foreground)] hover:text-red-400 transition-colors p-1"
-                            title="Delete this session"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                        {s.exercises.filter((e) => e.done).map((ex) => (
-                          <div key={ex.name} className="flex justify-between text-xs font-mono text-[var(--muted-foreground)] py-0.5">
-                            <span className="text-foreground">{ex.name}</span>
-                            <span>{ex.weight || "BW"} {ex.reps ? `× ${ex.reps}` : ""}</span>
-                          </div>
-                        ))}
-                        {s.exercises.filter((e) => !e.done).length > 0 && (() => {
-                          const dayDef = WORKOUT_PLAN.find((d) => d.id === s.dayId);
-                          if (dayDef?.pickOne) return null; // Don't show skipped for pick-one days
-                          return (
-                            <div className="text-[10px] text-red-400/70 mt-1">
-                              Skipped: {s.exercises.filter((e) => !e.done).map((e) => e.name).join(", ")}
+                    {daySessions.map((s, si) => {
+                      const isEditing = editing && editing.date === s.date && editing.dayId === s.dayId && editing.sessionIndex === si;
+                      return (
+                        <div key={si} className="px-4 pb-3">
+                          <div className="flex items-center justify-between mb-1">
+                            <div className="text-[10px] font-mono text-[var(--primary)] uppercase tracking-wider">{s.dayTitle}</div>
+                            <div className="flex items-center gap-1">
+                              {isEditing ? (
+                                <>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); saveEdit(); }}
+                                    className="text-green-400 hover:text-green-300 transition-colors p-1"
+                                    title="Save changes"
+                                  >
+                                    <Check className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setEditing(null); }}
+                                    className="text-[var(--muted-foreground)] hover:text-foreground transition-colors p-1"
+                                    title="Cancel edit"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); startEdit(s, si); }}
+                                    className="text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors p-1"
+                                    title="Edit this session"
+                                  >
+                                    <Pencil className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setConfirmDelete({ date: s.date, dayId: s.dayId, sessionIndex: si }); }}
+                                    className="text-[var(--muted-foreground)] hover:text-red-400 transition-colors p-1"
+                                    title="Delete this session"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </button>
+                                </>
+                              )}
                             </div>
-                          );
-                        })()}
-                      </div>
-                    ))}
+                          </div>
+
+                          {isEditing && editing ? (
+                            /* ── Edit Mode ── */
+                            <div className="space-y-2">
+                              {editing.exercises.map((ex, exIdx) => (
+                                <div key={exIdx} className={`border border-border p-2 transition-colors ${
+                                  ex.done ? "bg-[var(--primary)]/5" : "bg-transparent opacity-60"
+                                }`}>
+                                  <div className="flex items-center gap-2 mb-1.5">
+                                    <button
+                                      onClick={() => updateEditExercise(exIdx, "done", !ex.done)}
+                                      className={`w-4 h-4 border flex items-center justify-center shrink-0 transition-colors ${
+                                        ex.done ? "border-[var(--primary)] bg-[var(--primary)]/20 text-[var(--primary)]" : "border-border"
+                                      }`}
+                                    >
+                                      {ex.done && <Check className="w-2.5 h-2.5" />}
+                                    </button>
+                                    <span className="text-xs font-mono text-foreground flex-1">{ex.name}</span>
+                                  </div>
+                                  {ex.done && (
+                                    <div className="flex gap-2 ml-6">
+                                      <div className="flex-1">
+                                        <label className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase block mb-0.5">Weight</label>
+                                        <input
+                                          type="text"
+                                          value={ex.weight}
+                                          onChange={(e) => updateEditExercise(exIdx, "weight", e.target.value)}
+                                          className="w-full bg-background border border-border text-xs font-mono text-foreground px-2 py-1 focus:outline-none focus:border-[var(--primary)]"
+                                          placeholder="BW"
+                                        />
+                                      </div>
+                                      <div className="flex-1">
+                                        <label className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase block mb-0.5">Reps</label>
+                                        <input
+                                          type="text"
+                                          value={ex.reps}
+                                          onChange={(e) => updateEditExercise(exIdx, "reps", e.target.value)}
+                                          className="w-full bg-background border border-border text-xs font-mono text-foreground px-2 py-1 focus:outline-none focus:border-[var(--primary)]"
+                                          placeholder="—"
+                                        />
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            /* ── View Mode ── */
+                            <>
+                              {s.exercises.filter((e) => e.done).map((ex) => (
+                                <div key={ex.name} className="flex justify-between text-xs font-mono text-[var(--muted-foreground)] py-0.5">
+                                  <span className="text-foreground">{ex.name}</span>
+                                  <span>{ex.weight || "BW"} {ex.reps ? `× ${ex.reps}` : ""}</span>
+                                </div>
+                              ))}
+                              {s.exercises.filter((e) => !e.done).length > 0 && (() => {
+                                const dayDef = WORKOUT_PLAN.find((d) => d.id === s.dayId);
+                                if (dayDef?.pickOne) return null;
+                                return (
+                                  <div className="text-[10px] text-red-400/70 mt-1">
+                                    Skipped: {s.exercises.filter((e) => !e.done).map((e) => e.name).join(", ")}
+                                  </div>
+                                );
+                              })()}
+                            </>
+                          )}
+                        </div>
+                      );
+                    })}
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -933,7 +1052,7 @@ export default function Home() {
                 ))}
               </div>
               <div className="mt-6">
-                <WorkoutCalendar sessions={wl.sessions} onDelete={wl.deleteSession} />
+                <WorkoutCalendar sessions={wl.sessions} onDelete={wl.deleteSession} onUpdate={wl.updateSession} />
               </div>
             </motion.div>
           )}

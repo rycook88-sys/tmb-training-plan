@@ -290,3 +290,9 @@
 
 ## Body Fat Estimator Banner
 - [x] Replace composite banner image with dynamic current BF% display
+
+## Editable Workout Sessions
+- [x] Make logged workout sessions editable (tap to edit exercises, sets, reps, weights)
+- [x] Add edit button/icon to each logged session
+- [x] Create edit modal/popup with pre-filled session data
+- [x] Save edited session back to localStorage
