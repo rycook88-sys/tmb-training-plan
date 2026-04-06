@@ -5,6 +5,7 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Info, X, Camera, Trash2, RotateCcw } from "lucide-react";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { useUnits } from "@/contexts/UnitContext";
 
 // ── Guide images (CDN) ──────────────────────────────────────
@@ -817,43 +818,13 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
       </AnimatePresence>
 
       {/* Delete confirmation modal */}
-      <AnimatePresence>
-        {confirmDeleteId && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-            onClick={() => setConfirmDeleteId(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="bg-card border border-border p-6 max-w-xs w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-sm font-mono uppercase tracking-[0.15em] text-foreground font-semibold mb-2">Delete Entry?</h3>
-              <p className="text-xs font-mono text-muted-foreground mb-4">This measurement entry will be permanently removed. This cannot be undone.</p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setConfirmDeleteId(null)}
-                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => { handleDelete(confirmDeleteId); setConfirmDeleteId(null); }}
-                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer font-bold"
-                >
-                  Delete
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ConfirmDeleteDialog
+        open={!!confirmDeleteId}
+        title="Delete Entry?"
+        description="This measurement entry will be permanently removed. This cannot be undone."
+        onConfirm={() => { if (confirmDeleteId) { handleDelete(confirmDeleteId); setConfirmDeleteId(null); } }}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
 
       {/* Guide modal */}
       <AnimatePresence>

@@ -263,3 +263,19 @@
 - [x] Keep macro progress bar colors unchanged when over target (no red bar)
 - [x] Add translucent highlight behind macro label name to indicate over-target
 - [x] Replace tiny inline food entry edit with large popup modal with big text field
+
+## Swipe-to-Delete with Confirmation
+- [x] Create reusable SwipeToDelete wrapper component (touch + mouse drag)
+- [x] Create reusable ConfirmDeleteDialog popup component
+- [x] Add swipe-to-delete to NutritionTracker food entries
+- [x] Add swipe-to-delete to all other components with trash icons
+- [x] Ensure confirmation popup appears before any delete action
+
+## Weekly Chart Bar Scaling
+- [x] Scale weekly chart bars relative to max recorded value (not target) so highest day = 100% width
+- [x] Makes it easy to visually compare which day was highest
+
+## Arcade-Style Double-Fill Macro Bars
+- [x] When over target, bar fills 100% in normal color, then overflow starts filling from left in lighter/darker shade
+- [x] Like old arcade fighting game health bars with multiple layers
+- [x] Apply to all macro progress bars (calories, protein, carbs, fat)

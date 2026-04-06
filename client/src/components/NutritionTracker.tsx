@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
+import SwipeToDelete from "@/components/SwipeToDelete";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import {
   DAILY_VITAMINS, getDailyVitaminTotals, loadMacroTargets, saveMacroTargets,
   ALL_MICRONUTRIENTS, formatMicroAmount, getMicroDVPercent,
@@ -246,9 +248,14 @@ function getMacroOverColor(current: number, target: number): { textClass: string
 function MacroBar({ label, current, target, color, unit = "g" }: {
   label: string; current: number; target: number; color: string; unit?: string;
 }) {
-  const pct = Math.min((current / target) * 100, 100);
   const over = current > target;
   const { textClass, bgClass } = getMacroOverColor(current, target);
+
+  // Arcade-style double-fill: base layer fills to 100% at target,
+  // overflow starts a second lighter layer from the left
+  const basePct = Math.min((current / target) * 100, 100);
+  // Overflow: how far past target, capped at another full bar (2x target)
+  const overflowPct = over ? Math.min(((current - target) / target) * 100, 100) : 0;
 
   return (
     <div className="mb-3">
@@ -263,14 +270,25 @@ function MacroBar({ label, current, target, color, unit = "g" }: {
           <span className="text-[var(--muted-foreground)]"> / {target}{unit}</span>
         </span>
       </div>
-      <div className="h-2.5 bg-[var(--secondary)] border border-border overflow-hidden">
+      <div className="h-2.5 bg-[var(--secondary)] border border-border overflow-hidden relative">
+        {/* Base layer: fills to 100% at target */}
         <motion.div
-          className="h-full"
+          className="h-full absolute inset-0"
           style={{ backgroundColor: color }}
           initial={{ width: 0 }}
-          animate={{ width: `${pct}%` }}
+          animate={{ width: `${basePct}%` }}
           transition={{ duration: 0.5, ease: "easeOut" }}
         />
+        {/* Overflow layer: lighter shade fills from left on top */}
+        {over && (
+          <motion.div
+            className="h-full absolute inset-0"
+            style={{ backgroundColor: color, opacity: 0.45 }}
+            initial={{ width: 0 }}
+            animate={{ width: `${overflowPct}%` }}
+            transition={{ duration: 0.6, ease: "easeOut", delay: 0.3 }}
+          />
+        )}
       </div>
     </div>
   );
@@ -545,42 +563,15 @@ function FoodEntryCard({ entry, onDelete, onEdit, onTap }: {
   onEdit: (id: string) => void;
   onTap: (entry: FoodEntry) => void;
 }) {
-  const [swipeX, setSwipeX] = useState(0);
-  const [startX, setStartX] = useState(0);
-  const [swiping, setSwiping] = useState(false);
-  const DELETE_THRESHOLD = -80;
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    setStartX(e.touches[0].clientX);
-    setSwiping(true);
-  };
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!swiping) return;
-    const diff = e.touches[0].clientX - startX;
-    setSwipeX(Math.min(0, diff)); // only left swipe
-  };
-  const handleTouchEnd = () => {
-    setSwiping(false);
-    if (swipeX < DELETE_THRESHOLD) {
-      onDelete(entry.id);
-    }
-    setSwipeX(0);
-  };
+  const handleSwipeDelete = useCallback(() => {
+    onDelete(entry.id);
+  }, [entry.id, onDelete]);
 
   return (
-    <div className="relative mb-2 overflow-hidden">
-      {/* Delete background revealed on swipe */}
-      <div className="absolute inset-0 flex items-center justify-end bg-red-500/20 pr-4">
-        <Trash2 className="w-4 h-4 text-red-400" />
-      </div>
-      {/* Swipeable card */}
+    <SwipeToDelete onSwipeDelete={handleSwipeDelete} className="mb-2">
       <div
-        className="border border-border bg-card p-3 cursor-pointer hover:border-[var(--primary)]/30 transition-colors relative"
-        style={{ transform: `translateX(${swipeX}px)`, transition: swiping ? "none" : "transform 0.2s ease-out" }}
-        onClick={() => { if (Math.abs(swipeX) < 5) onTap(entry); }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        className="border border-border bg-card p-3 cursor-pointer hover:border-[var(--primary)]/30 transition-colors"
+        onClick={() => onTap(entry)}
       >
         <div className="flex items-start gap-2">
           {/* Main content — tappable */}
@@ -619,7 +610,7 @@ function FoodEntryCard({ entry, onDelete, onEdit, onTap }: {
           </div>
         </div>
       </div>
-    </div>
+    </SwipeToDelete>
   );
 }
 
@@ -724,6 +715,8 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
   const [showSavedPlans, setShowSavedPlans] = useState(false);
   const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null);
   const [confirmDeletePlan, setConfirmDeletePlan] = useState<string | null>(null);
+  const [confirmDeletePreset, setConfirmDeletePreset] = useState<{ tab: string; id: string } | null>(null);
+  const [confirmDeleteCommon, setConfirmDeleteCommon] = useState<string | null>(null);
 
   // Text entry
   const [showTextEntry, setShowTextEntry] = useState(false);
@@ -1555,26 +1548,23 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
                 <p className="text-[10px] font-mono text-[var(--muted-foreground)] text-center py-3">No items yet. Snap a photo to add one.</p>
               )}
               {presets[activePresetTab].map((item) => (
-                <div key={item.id} className="flex items-center justify-between py-1.5 border-b border-border/50 last:border-0">
-                  <div className="cursor-pointer" onClick={() => setDetailEntry({
-                    id: item.id, foodName: item.foodName, timestamp: Date.now(),
-                    calories: item.calories, protein: item.protein, carbs: item.carbs,
-                    fat: item.fat, fiber: item.fiber, sugar: item.sugar, sodium: item.sodium,
-                    micronutrients: item.micronutrients, confidence: "preset", servingEstimate: "", confirmed: true,
-                  })}>
-                    <span className="text-[11px] font-mono text-foreground">{item.foodName}</span>
-                    <span className="text-[10px] font-mono text-[var(--muted-foreground)] ml-2">{item.calories} cal</span>
+                <SwipeToDelete key={item.id} onSwipeDelete={() => setConfirmDeletePreset({ tab: activePresetTab, id: item.id })} className="border-b border-border/50 last:border-0">
+                  <div className="flex items-center justify-between py-1.5 bg-card">
+                    <div className="cursor-pointer" onClick={() => setDetailEntry({
+                      id: item.id, foodName: item.foodName, timestamp: Date.now(),
+                      calories: item.calories, protein: item.protein, carbs: item.carbs,
+                      fat: item.fat, fiber: item.fiber, sugar: item.sugar, sodium: item.sodium,
+                      micronutrients: item.micronutrients, confidence: "preset", servingEstimate: "", confirmed: true,
+                    })}>
+                      <span className="text-[11px] font-mono text-foreground">{item.foodName}</span>
+                      <span className="text-[10px] font-mono text-[var(--muted-foreground)] ml-2">{item.calories} cal</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button onClick={(e) => { e.stopPropagation(); setEditingPresetItem({ tab: activePresetTab, item }); }} className="text-[var(--muted-foreground)] hover:text-[var(--primary)] p-0.5"><Edit3 className="w-3 h-3" /></button>
+                      <button onClick={() => setConfirmDeletePreset({ tab: activePresetTab, id: item.id })} className="text-[var(--muted-foreground)] hover:text-red-400 p-0.5"><Trash2 className="w-3 h-3" /></button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <button onClick={(e) => { e.stopPropagation(); setEditingPresetItem({ tab: activePresetTab, item }); }} className="text-[var(--muted-foreground)] hover:text-[var(--primary)] p-0.5"><Edit3 className="w-3 h-3" /></button>
-                    <button onClick={() => {
-                      setPresets((prev) => ({
-                        ...prev,
-                        [activePresetTab]: prev[activePresetTab].filter((i) => i.id !== item.id),
-                      }));
-                    }} className="text-[var(--muted-foreground)] hover:text-red-400 p-0.5"><Trash2 className="w-3 h-3" /></button>
-                  </div>
-                </div>
+                </SwipeToDelete>
               ))}
 
               {/* Actions */}
@@ -1610,33 +1600,35 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
               )}
 
               {commonItems.map((item) => (
-                <div key={item.id} className="flex items-center gap-2 py-1.5 border-b border-border/50 last:border-0">
-                  <button onClick={() => {
-                    setCommonSelected((prev) => {
-                      const next = new Set(prev);
-                      next.has(item.id) ? next.delete(item.id) : next.add(item.id);
-                      return next;
-                    });
-                  }} className="flex-shrink-0">
-                    {commonSelected.has(item.id) ? <CheckSquare className="w-4 h-4 text-[var(--primary)]" /> : <Square className="w-4 h-4 text-[var(--muted-foreground)]" />}
-                  </button>
-                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setDetailEntry({
-                    id: item.id, foodName: item.foodName, timestamp: Date.now(),
-                    calories: item.calories, protein: item.protein, carbs: item.carbs,
-                    fat: item.fat, fiber: item.fiber, sugar: item.sugar, sodium: item.sodium,
-                    micronutrients: item.micronutrients, confidence: "common", servingEstimate: "", confirmed: true,
-                  })}>
-                    <span className="text-[11px] font-mono text-foreground truncate block">{item.foodName}</span>
-                    <span className="text-[10px] font-mono text-[var(--muted-foreground)]">
-                      {item.calories} cal · P:{item.protein}g · C:{item.carbs}g · F:{item.fat}g
-                    </span>
+                <SwipeToDelete key={item.id} onSwipeDelete={() => setConfirmDeleteCommon(item.id)} className="border-b border-border/50 last:border-0">
+                  <div className="flex items-center gap-2 py-1.5 bg-card">
+                    <button onClick={() => {
+                      setCommonSelected((prev) => {
+                        const next = new Set(prev);
+                        next.has(item.id) ? next.delete(item.id) : next.add(item.id);
+                        return next;
+                      });
+                    }} className="flex-shrink-0">
+                      {commonSelected.has(item.id) ? <CheckSquare className="w-4 h-4 text-[var(--primary)]" /> : <Square className="w-4 h-4 text-[var(--muted-foreground)]" />}
+                    </button>
+                    <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setDetailEntry({
+                      id: item.id, foodName: item.foodName, timestamp: Date.now(),
+                      calories: item.calories, protein: item.protein, carbs: item.carbs,
+                      fat: item.fat, fiber: item.fiber, sugar: item.sugar, sodium: item.sodium,
+                      micronutrients: item.micronutrients, confidence: "common", servingEstimate: "", confirmed: true,
+                    })}>
+                      <span className="text-[11px] font-mono text-foreground truncate block">{item.foodName}</span>
+                      <span className="text-[10px] font-mono text-[var(--muted-foreground)]">
+                        {item.calories} cal · P:{item.protein}g · C:{item.carbs}g · F:{item.fat}g
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button onClick={(e) => { e.stopPropagation(); setEditingCommonItem(item); }} className="text-[var(--muted-foreground)] hover:text-[var(--primary)] p-0.5"><Edit3 className="w-3 h-3" /></button>
+                      <button onClick={() => setConfirmDeleteCommon(item.id)}
+                        className="text-[var(--muted-foreground)] hover:text-red-400 p-0.5"><Trash2 className="w-3 h-3" /></button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    <button onClick={(e) => { e.stopPropagation(); setEditingCommonItem(item); }} className="text-[var(--muted-foreground)] hover:text-[var(--primary)] p-0.5"><Edit3 className="w-3 h-3" /></button>
-                    <button onClick={() => setCommonItems((prev) => prev.filter((i) => i.id !== item.id))}
-                      className="text-[var(--muted-foreground)] hover:text-red-400 p-0.5"><Trash2 className="w-3 h-3" /></button>
-                  </div>
-                </div>
+                </SwipeToDelete>
               ))}
 
               <div className="flex gap-2 mt-3">
@@ -2235,53 +2227,67 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
                 <button onClick={() => setShowWeeklyChart(false)} className="text-[var(--muted-foreground)] hover:text-foreground p-0.5"><X className="w-4 h-4" /></button>
               </div>
 
-              {/* Calorie bars */}
-              <div className="mb-4">
-                <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-[var(--muted-foreground)] mb-2 block">Calories</span>
-                <div className="space-y-1.5">
-                  {weeklyChartData.map((d) => {
-                    const pct = macroTargets.calories > 0 ? Math.min((d.calories / macroTargets.calories) * 100, 100) : 0;
-                    const isToday = d.date === todayKey;
-                    return (
-                      <div key={d.date} className="flex items-center gap-2">
-                        <span className={`text-[10px] font-mono w-8 ${isToday ? "text-[var(--primary)] font-bold" : "text-[var(--muted-foreground)]"}`}>{d.label}</span>
-                        <div className="flex-1 h-5 bg-[var(--secondary)] relative">
-                          <div className="h-full bg-[var(--primary)] transition-all" style={{ width: `${pct}%` }} />
-                          {/* Target line */}
-                          <div className="absolute top-0 bottom-0 w-px bg-foreground/30" style={{ left: '100%' }} />
-                        </div>
-                        <span className={`text-[10px] font-mono w-12 text-right ${d.calories === 0 ? "text-[var(--muted-foreground)]/50" : d.calories > macroTargets.calories ? getMacroOverColor(d.calories, macroTargets.calories).textClass : "text-foreground"}`}>{d.calories || "—"}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex justify-end mt-1">
-                  <span className="text-[9px] font-mono text-[var(--muted-foreground)]">Target: {macroTargets.calories} cal</span>
-                </div>
-              </div>
+              {/* Calorie bars — scaled to max recorded value */}
+              {(() => {
+                const maxCal = Math.max(...weeklyChartData.map((d) => d.calories), 1);
+                const targetPct = macroTargets.calories > 0 ? Math.min((macroTargets.calories / maxCal) * 100, 100) : 100;
+                return (
+                  <div className="mb-4">
+                    <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-[var(--muted-foreground)] mb-2 block">Calories</span>
+                    <div className="space-y-1.5">
+                      {weeklyChartData.map((d) => {
+                        const pct = d.calories > 0 ? (d.calories / maxCal) * 100 : 0;
+                        const isToday = d.date === todayKey;
+                        return (
+                          <div key={d.date} className="flex items-center gap-2">
+                            <span className={`text-[10px] font-mono w-8 ${isToday ? "text-[var(--primary)] font-bold" : "text-[var(--muted-foreground)]"}`}>{d.label}</span>
+                            <div className="flex-1 h-5 bg-[var(--secondary)] relative">
+                              <div className="h-full bg-[var(--primary)] transition-all" style={{ width: `${pct}%` }} />
+                              {/* Target line */}
+                              <div className="absolute top-0 bottom-0 w-px bg-foreground/30" style={{ left: `${targetPct}%` }} title={`Target: ${macroTargets.calories} cal`} />
+                            </div>
+                            <span className={`text-[10px] font-mono w-12 text-right ${d.calories === 0 ? "text-[var(--muted-foreground)]/50" : d.calories > macroTargets.calories ? getMacroOverColor(d.calories, macroTargets.calories).textClass : "text-foreground"}`}>{d.calories || "—"}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-end mt-1">
+                      <span className="text-[9px] font-mono text-[var(--muted-foreground)]">Target: {macroTargets.calories} cal</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
-              {/* Protein bars */}
-              <div>
-                <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-[var(--muted-foreground)] mb-2 block">Protein</span>
-                <div className="space-y-1.5">
-                  {weeklyChartData.map((d) => {
-                    const pct = macroTargets.protein > 0 ? Math.min((d.protein / macroTargets.protein) * 100, 100) : 0;
-                    const isToday = d.date === todayKey;
-                    return (
-                      <div key={d.date} className="flex items-center gap-2">
-                        <span className={`text-[10px] font-mono w-8 ${isToday ? "text-[var(--primary)] font-bold" : "text-[var(--muted-foreground)]"}`}>{d.label}</span>
-                        <div className="flex-1 h-5 bg-[var(--secondary)] relative">
-                          <div className="h-full bg-red-500 transition-all" style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className={`text-[10px] font-mono w-12 text-right ${d.protein === 0 ? "text-[var(--muted-foreground)]/50" : d.protein >= macroTargets.protein ? "text-green-400" : "text-foreground"}`}>{d.protein ? `${d.protein}g` : "—"}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="flex justify-end mt-1">
-                  <span className="text-[9px] font-mono text-[var(--muted-foreground)]">Target: {macroTargets.protein}g</span>
-                </div>
-              </div>
+              {/* Protein bars — scaled to max recorded value */}
+              {(() => {
+                const maxProt = Math.max(...weeklyChartData.map((d) => d.protein), 1);
+                const targetProtPct = macroTargets.protein > 0 ? Math.min((macroTargets.protein / maxProt) * 100, 100) : 100;
+                return (
+                  <div>
+                    <span className="text-[10px] font-mono uppercase tracking-[0.15em] text-[var(--muted-foreground)] mb-2 block">Protein</span>
+                    <div className="space-y-1.5">
+                      {weeklyChartData.map((d) => {
+                        const pct = d.protein > 0 ? (d.protein / maxProt) * 100 : 0;
+                        const isToday = d.date === todayKey;
+                        return (
+                          <div key={d.date} className="flex items-center gap-2">
+                            <span className={`text-[10px] font-mono w-8 ${isToday ? "text-[var(--primary)] font-bold" : "text-[var(--muted-foreground)]"}`}>{d.label}</span>
+                            <div className="flex-1 h-5 bg-[var(--secondary)] relative">
+                              <div className="h-full bg-red-500 transition-all" style={{ width: `${pct}%` }} />
+                              {/* Target line */}
+                              <div className="absolute top-0 bottom-0 w-px bg-foreground/30" style={{ left: `${targetProtPct}%` }} title={`Target: ${macroTargets.protein}g`} />
+                            </div>
+                            <span className={`text-[10px] font-mono w-12 text-right ${d.protein === 0 ? "text-[var(--muted-foreground)]/50" : d.protein >= macroTargets.protein ? "text-green-400" : "text-foreground"}`}>{d.protein ? `${d.protein}g` : "—"}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-end mt-1">
+                      <span className="text-[9px] font-mono text-[var(--muted-foreground)]">Target: {macroTargets.protein}g</span>
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Weekly averages */}
               {(() => {
@@ -2637,31 +2643,19 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
       </AnimatePresence>
 
       {/* ── Delete Plan Confirmation ─────────────── */}
-      <AnimatePresence>
-        {confirmDeletePlan && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-            onClick={() => setConfirmDeletePlan(null)}>
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-card border border-border p-6 max-w-xs w-full" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-sm font-mono uppercase tracking-[0.15em] text-foreground font-semibold mb-2">Delete Plan?</h3>
-              <p className="text-xs font-mono text-[var(--muted-foreground)] mb-4">This saved meal plan will be permanently removed.</p>
-              <div className="flex gap-2">
-                <button onClick={() => setConfirmDeletePlan(null)}
-                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] border border-border text-[var(--muted-foreground)] hover:text-foreground hover:border-foreground/30 transition-colors cursor-pointer">Cancel</button>
-                <button onClick={() => {
-                  const updated = savedPlans.filter((p) => p.id !== confirmDeletePlan);
-                  setSavedPlans(updated);
-                  saveSavedPlans(updated);
-                  setConfirmDeletePlan(null);
-                  if (expandedPlanId === confirmDeletePlan) setExpandedPlanId(null);
-                }}
-                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer font-bold">Delete</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <ConfirmDeleteDialog
+        open={!!confirmDeletePlan}
+        title="Delete Plan?"
+        description="This saved meal plan will be permanently removed."
+        onConfirm={() => {
+          const updated = savedPlans.filter((p) => p.id !== confirmDeletePlan);
+          setSavedPlans(updated);
+          saveSavedPlans(updated);
+          setConfirmDeletePlan(null);
+          if (expandedPlanId === confirmDeletePlan) setExpandedPlanId(null);
+        }}
+        onCancel={() => setConfirmDeletePlan(null)}
+      />
 
       {/* ── Snap Pantry Modal ──────────────────── */}
       <AnimatePresence>
@@ -2940,26 +2934,44 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
         )}
       </AnimatePresence>
 
-      {/* ── Delete Confirmation Modal ────────────── */}
-      <AnimatePresence>
-        {confirmDelete && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
-            onClick={() => setConfirmDelete(null)}>
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-card border border-border p-6 max-w-xs w-full" onClick={(e) => e.stopPropagation()}>
-              <h3 className="text-sm font-mono uppercase tracking-[0.15em] text-foreground font-semibold mb-2">Delete Entry?</h3>
-              <p className="text-xs font-mono text-[var(--muted-foreground)] mb-4">This food entry will be permanently removed.</p>
-              <div className="flex gap-2">
-                <button onClick={() => setConfirmDelete(null)}
-                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] border border-border text-[var(--muted-foreground)] hover:text-foreground hover:border-foreground/30 transition-colors cursor-pointer">Cancel</button>
-                <button onClick={confirmDeleteEntry}
-                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] bg-red-500 text-white hover:bg-red-600 transition-colors cursor-pointer font-bold">Delete</button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+       {/* ── Delete Confirmation Modal ──────────── */}
+      <ConfirmDeleteDialog
+        open={!!confirmDelete}
+        title="Delete Entry?"
+        description="This food entry will be permanently removed."
+        onConfirm={confirmDeleteEntry}
+        onCancel={() => setConfirmDelete(null)}
+      />
+
+      {/* ── Delete Preset Item Confirmation ────── */}
+      <ConfirmDeleteDialog
+        open={!!confirmDeletePreset}
+        title="Delete Preset Item?"
+        description="This item will be removed from your preset."
+        onConfirm={() => {
+          if (!confirmDeletePreset) return;
+          const tab = confirmDeletePreset.tab as keyof PresetLists;
+          setPresets((prev) => ({
+            ...prev,
+            [tab]: prev[tab].filter((i: PresetItem) => i.id !== confirmDeletePreset.id),
+          }));
+          setConfirmDeletePreset(null);
+        }}
+        onCancel={() => setConfirmDeletePreset(null)}
+      />
+
+      {/* ── Delete Common Item Confirmation ────── */}
+      <ConfirmDeleteDialog
+        open={!!confirmDeleteCommon}
+        title="Delete Common Item?"
+        description="This item will be removed from your common items."
+        onConfirm={() => {
+          if (!confirmDeleteCommon) return;
+          setCommonItems((prev) => prev.filter((i) => i.id !== confirmDeleteCommon));
+          setConfirmDeleteCommon(null);
+        }}
+        onCancel={() => setConfirmDeleteCommon(null)}
+      />
     </div>
   );
 }

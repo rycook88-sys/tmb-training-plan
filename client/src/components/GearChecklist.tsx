@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check, Package, AlertTriangle, Minus, Plus, RotateCcw, Trash2, PlusCircle, X, ExternalLink } from "lucide-react";
 import { useUnits } from "@/contexts/UnitContext";
+import SwipeToDelete from "@/components/SwipeToDelete";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 /* ── Types ─────────────────────────────────────────── */
 interface GearItem {
@@ -207,6 +209,10 @@ export default function GearChecklist({ embedded = false }: { embedded?: boolean
     setConfirmDelete(null);
   };
 
+  const confirmDeleteItem = () => {
+    if (confirmDelete) deleteItem(confirmDelete);
+  };
+
   const resetAll = () => {
     setGear(INITIAL_GEAR);
     setConfirmDelete(null);
@@ -351,89 +357,73 @@ export default function GearChecklist({ embedded = false }: { embedded?: boolean
                     </div>
                     <div className="divide-y divide-border">
                       {items.map((item) => (
-                        <div
-                          key={item.id}
-                          className={`flex items-center gap-3 px-4 py-2.5 transition-colors group/item ${
-                            !item.packed ? "opacity-40" : ""
-                          } ${item.maybe ? "border-l-2 border-l-yellow-500/50" : ""}`}
-                        >
-                          {/* Checkbox */}
-                          <button
-                            onClick={() => togglePacked(item.id)}
-                            className={`w-5 h-5 flex-shrink-0 border flex items-center justify-center transition-colors ${
-                              item.packed
-                                ? "bg-[var(--primary)] border-[var(--primary)]"
-                                : "border-border hover:border-[var(--primary)]/50"
-                            }`}
+                        <SwipeToDelete key={item.id} onSwipeDelete={() => setConfirmDelete(item.id)}>
+                          <div
+                            className={`flex items-center gap-3 px-4 py-2.5 transition-colors group/item bg-card ${
+                              !item.packed ? "opacity-40" : ""
+                            } ${item.maybe ? "border-l-2 border-l-yellow-500/50" : ""}`}
                           >
-                            {item.packed && <Check className="w-3 h-3 text-[var(--primary-foreground)]" />}
-                          </button>
-
-                          {/* Name */}
-                          <div className="flex-1 min-w-0">
-                            <span className={`text-xs font-mono ${item.packed ? "text-foreground" : "text-[var(--muted-foreground)] line-through"}`}>
-                              {item.name}
-                            </span>
-                            {item.buyLink && (
-                              <a
-                                href={item.buyLink}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 ml-2 text-[9px] font-mono text-[var(--primary)] hover:text-[var(--primary)]/80 transition-colors"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <ExternalLink className="w-3 h-3" /> Buy
-                              </a>
-                            )}
-                            {item.maybe && (
-                              <span className="ml-2 text-[9px] font-mono text-yellow-500 uppercase">maybe</span>
-                            )}
-                          </div>
-
-                          {/* Weight adjuster */}
-                          <div className="flex items-center gap-1">
+                            {/* Checkbox */}
                             <button
-                              onClick={() => updateWeight(item.id, item.weightOz - 0.5)}
-                              className="w-5 h-5 flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors"
+                              onClick={() => togglePacked(item.id)}
+                              className={`w-5 h-5 flex-shrink-0 border flex items-center justify-center transition-colors ${
+                                item.packed
+                                  ? "bg-[var(--primary)] border-[var(--primary)]"
+                                  : "border-border hover:border-[var(--primary)]/50"
+                              }`}
                             >
-                              <Minus className="w-3 h-3" />
+                              {item.packed && <Check className="w-3 h-3 text-[var(--primary-foreground)]" />}
                             </button>
-                            <span className="text-[11px] font-mono text-[var(--muted-foreground)] w-12 text-center tabular-nums">
-                              {u.oz(item.weightOz, 1)} {u.ozUnit}
-                            </span>
-                            <button
-                              onClick={() => updateWeight(item.id, item.weightOz + 0.5)}
-                              className="w-5 h-5 flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          </div>
 
-                          {/* Delete button */}
-                          {confirmDelete === item.id ? (
+                            {/* Name */}
+                            <div className="flex-1 min-w-0">
+                              <span className={`text-xs font-mono ${item.packed ? "text-foreground" : "text-[var(--muted-foreground)] line-through"}`}>
+                                {item.name}
+                              </span>
+                              {item.buyLink && (
+                                <a
+                                  href={item.buyLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 ml-2 text-[9px] font-mono text-[var(--primary)] hover:text-[var(--primary)]/80 transition-colors"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <ExternalLink className="w-3 h-3" /> Buy
+                                </a>
+                              )}
+                              {item.maybe && (
+                                <span className="ml-2 text-[9px] font-mono text-yellow-500 uppercase">maybe</span>
+                              )}
+                            </div>
+
+                            {/* Weight adjuster */}
                             <div className="flex items-center gap-1">
                               <button
-                                onClick={() => deleteItem(item.id)}
-                                className="text-[9px] font-mono font-bold text-red-400 hover:text-red-300 px-1.5 py-0.5 border border-red-400/30 transition-colors"
+                                onClick={() => updateWeight(item.id, item.weightOz - 0.5)}
+                                className="w-5 h-5 flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors"
                               >
-                                YES
+                                <Minus className="w-3 h-3" />
                               </button>
+                              <span className="text-[11px] font-mono text-[var(--muted-foreground)] w-12 text-center tabular-nums">
+                                {u.oz(item.weightOz, 1)} {u.ozUnit}
+                              </span>
                               <button
-                                onClick={() => setConfirmDelete(null)}
-                                className="text-[9px] font-mono text-[var(--muted-foreground)] hover:text-foreground px-1.5 py-0.5 border border-border transition-colors"
+                                onClick={() => updateWeight(item.id, item.weightOz + 0.5)}
+                                className="w-5 h-5 flex items-center justify-center text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors"
                               >
-                                NO
+                                <Plus className="w-3 h-3" />
                               </button>
                             </div>
-                          ) : (
+
+                            {/* Delete button */}
                             <button
                               onClick={() => setConfirmDelete(item.id)}
                               className="w-5 h-5 flex items-center justify-center text-transparent group-hover/item:text-[var(--muted-foreground)] hover:!text-red-400 transition-colors"
                             >
                               <Trash2 className="w-3 h-3" />
                             </button>
-                          )}
-                        </div>
+                          </div>
+                        </SwipeToDelete>
                       ))}
                     </div>
                   </div>
@@ -461,6 +451,14 @@ export default function GearChecklist({ embedded = false }: { embedded?: boolean
           </motion.div>
         )}
       </AnimatePresence>
+
+      <ConfirmDeleteDialog
+        open={!!confirmDelete}
+        title="Delete Gear Item?"
+        description="This item will be permanently removed from your gear list."
+        onConfirm={confirmDeleteItem}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </section>
   );
 }
