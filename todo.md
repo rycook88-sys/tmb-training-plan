@@ -258,3 +258,8 @@
 - [x] Replace binary green/red with tiered colors: green (under), yellow/amber (slightly over ~10%), red (significantly over >10%)
 - [x] Apply to big calorie number, header badge, and all macro progress bars (protein, carbs, fat)
 - [x] Make slightly-over feel informational not alarming
+
+## Macro Bar Color & Food Edit Popup
+- [x] Keep macro progress bar colors unchanged when over target (no red bar)
+- [x] Add translucent highlight behind macro label name to indicate over-target
+- [x] Replace tiny inline food entry edit with large popup modal with big text field

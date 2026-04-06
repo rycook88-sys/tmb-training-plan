@@ -235,11 +235,11 @@ function formatTime(ts: number): string {
 }
 
 /* ── Tiered color helper: green (under) → yellow (slightly over ≤10%) → red (way over >10%) */
-function getMacroOverColor(current: number, target: number): { textClass: string; barColor: string } {
-  if (target <= 0 || current <= target) return { textClass: "text-foreground", barColor: "" };
+function getMacroOverColor(current: number, target: number): { textClass: string; bgClass: string } {
+  if (target <= 0 || current <= target) return { textClass: "text-foreground", bgClass: "" };
   const overPct = ((current - target) / target) * 100;
-  if (overPct <= 10) return { textClass: "text-amber-400", barColor: "#f59e0b" }; // amber — slightly over
-  return { textClass: "text-red-400", barColor: "#ef4444" }; // red — significantly over
+  if (overPct <= 10) return { textClass: "text-amber-400", bgClass: "bg-amber-400/15" }; // amber — slightly over
+  return { textClass: "text-red-400", bgClass: "bg-red-400/15" }; // red — significantly over
 }
 
 /* ── Macro Progress Bar ────────────────────────────── */
@@ -248,12 +248,16 @@ function MacroBar({ label, current, target, color, unit = "g" }: {
 }) {
   const pct = Math.min((current / target) * 100, 100);
   const over = current > target;
-  const { textClass, barColor } = getMacroOverColor(current, target);
+  const { textClass, bgClass } = getMacroOverColor(current, target);
 
   return (
     <div className="mb-3">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--muted-foreground)]">{label}</span>
+        {over ? (
+          <span className={`text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded ${bgClass} ${textClass}`}>{label}</span>
+        ) : (
+          <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--muted-foreground)]">{label}</span>
+        )}
         <span className="text-[10px] font-mono text-[var(--muted-foreground)]">
           <span className={over ? textClass : "text-foreground"}>{Math.round(current)}</span>
           <span className="text-[var(--muted-foreground)]"> / {target}{unit}</span>
@@ -262,7 +266,7 @@ function MacroBar({ label, current, target, color, unit = "g" }: {
       <div className="h-2.5 bg-[var(--secondary)] border border-border overflow-hidden">
         <motion.div
           className="h-full"
-          style={{ backgroundColor: over ? barColor : color }}
+          style={{ backgroundColor: color }}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.5, ease: "easeOut" }}
@@ -480,45 +484,52 @@ function EditEntryModal({ entry, onConfirm, onCancel, isLoading }: {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm"
       onClick={onCancel}
     >
       <motion.div
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-card border border-border p-4 max-w-sm w-full max-h-[80vh] overflow-y-auto"
+        initial={{ y: 40, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 40, opacity: 0 }}
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+        className="bg-card border border-border rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 w-full sm:max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between mb-3">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <Edit3 className="w-3.5 h-3.5 text-[var(--primary)]" />
-            <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Edit Food</span>
+            <Edit3 className="w-4 h-4 text-[var(--primary)]" />
+            <span className="text-xs font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Edit Food</span>
           </div>
-          {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--primary)]" />}
+          <div className="flex items-center gap-2">
+            {isLoading && <Loader2 className="w-4 h-4 animate-spin text-[var(--primary)]" />}
+            <button onClick={onCancel} className="p-1 text-[var(--muted-foreground)] hover:text-foreground transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
-        {/* Single large textarea for editing */}
+        {/* Large textarea */}
         <textarea
           value={editText}
           onChange={(e) => setEditText(e.target.value)}
           autoFocus
-          rows={6}
-          className="w-full bg-[var(--secondary)] border border-[var(--primary)] px-3 py-3 text-[13px] font-mono text-foreground focus:outline-none focus:border-[var(--primary)] resize-y leading-relaxed mb-3"
+          rows={10}
+          className="w-full bg-[var(--secondary)] border border-border focus:border-[var(--primary)] rounded-lg px-4 py-4 text-sm font-mono text-foreground focus:outline-none resize-y leading-relaxed mb-3 min-h-[200px]"
           placeholder="Describe the food..."
         />
 
-        <p className="text-[10px] font-mono text-[var(--muted-foreground)] italic mb-3">
+        <p className="text-[10px] font-mono text-[var(--muted-foreground)] italic mb-4">
           Edit the full description — AI will re-estimate all nutrients.
         </p>
 
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <button onClick={onCancel}
-            className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] border border-border text-[var(--muted-foreground)] hover:text-foreground hover:border-foreground/30 transition-colors cursor-pointer">
+            className="flex-1 py-3 text-xs font-mono uppercase tracking-[0.15em] border border-border rounded-lg text-[var(--muted-foreground)] hover:text-foreground hover:border-foreground/30 transition-colors cursor-pointer">
             Cancel
           </button>
           <button onClick={handleConfirm} disabled={isLoading}
-            className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] bg-[var(--primary)] text-[var(--primary-foreground)] font-bold hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer">
+            className="flex-1 py-3 text-xs font-mono uppercase tracking-[0.15em] bg-[var(--primary)] text-[var(--primary-foreground)] font-bold rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer">
             {isLoading ? "Analyzing..." : "Confirm"}
           </button>
         </div>
