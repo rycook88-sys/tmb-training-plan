@@ -401,7 +401,7 @@ function WorkoutCalendar({ sessions, onDelete, onUpdate }: {
 }) {
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ date: string; dayId: string; sessionIndex: number } | null>(null);
-  const [editing, setEditing] = useState<{ date: string; dayId: string; sessionIndex: number; exercises: ExerciseLog[] } | null>(null);
+  const [editing, setEditing] = useState<{ date: string; dayId: string; sessionIndex: number; exercises: ExerciseLog[]; newDate: string } | null>(null);
   if (sessions.length === 0) return null;
 
   const grouped: Record<string, WorkoutSession[]> = {};
@@ -417,6 +417,7 @@ function WorkoutCalendar({ sessions, onDelete, onUpdate }: {
       dayId: s.dayId,
       sessionIndex: si,
       exercises: s.exercises.map(ex => ({ ...ex })),
+      newDate: s.date,
     });
   };
 
@@ -432,12 +433,28 @@ function WorkoutCalendar({ sessions, onDelete, onUpdate }: {
 
   const saveEdit = () => {
     if (!editing) return;
-    const original = sessions.find(s => s.date === editing.date && s.dayId === editing.dayId);
+    // Find the exact original session by walking the grouped list
+    let matchCount = 0;
+    let original: WorkoutSession | undefined;
+    for (const s of sessions) {
+      if (s.date === editing.date && s.dayId === editing.dayId) {
+        if (matchCount === editing.sessionIndex) {
+          original = s;
+          break;
+        }
+        matchCount++;
+      }
+    }
     if (!original) return;
     onUpdate(editing.date, editing.dayId, editing.sessionIndex, {
       ...original,
+      date: editing.newDate,
       exercises: editing.exercises,
     });
+    // If date changed, expand the new date
+    if (editing.newDate !== editing.date) {
+      setExpandedDate(editing.newDate);
+    }
     setEditing(null);
   };
 
@@ -520,6 +537,17 @@ function WorkoutCalendar({ sessions, onDelete, onUpdate }: {
                           {isEditing && editing ? (
                             /* ── Edit Mode ── */
                             <div className="space-y-2">
+                              {/* Date picker */}
+                              <div className="flex items-center gap-2 pb-1 border-b border-border mb-1">
+                                <Calendar className="w-3 h-3 text-[var(--muted-foreground)]" />
+                                <label className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase">Date</label>
+                                <input
+                                  type="date"
+                                  value={editing.newDate}
+                                  onChange={(e) => setEditing(prev => prev ? { ...prev, newDate: e.target.value } : prev)}
+                                  className="bg-background border border-border text-xs font-mono text-foreground px-2 py-1 focus:outline-none focus:border-[var(--primary)] flex-1"
+                                />
+                              </div>
                               {editing.exercises.map((ex, exIdx) => (
                                 <div key={exIdx} className={`border border-border p-2 transition-colors ${
                                   ex.done ? "bg-[var(--primary)]/5" : "bg-transparent opacity-60"

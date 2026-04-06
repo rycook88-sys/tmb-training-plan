@@ -296,3 +296,7 @@
 - [x] Add edit button/icon to each logged session
 - [x] Create edit modal/popup with pre-filled session data
 - [x] Save edited session back to localStorage
+
+## Workout Edit Fixes
+- [x] Fix workout session edit not saving (save button not persisting changes)
+- [x] Add ability to change the date of a logged workout session
