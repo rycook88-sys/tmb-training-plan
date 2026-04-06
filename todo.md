@@ -287,3 +287,6 @@
 - [x] Each theme changes CSS variables app-wide (background, foreground, primary, accent, borders, etc.)
 - [x] Persist selected theme in localStorage
 - [x] Themes: Alpine Dawn, Glacier Ice, Midnight Summit, Forest Floor, Volcanic, Bluebird Day, Wildflower, Storm Warning, Golden Hour, Snowblind
+
+## Body Fat Estimator Banner
+- [x] Replace composite banner image with dynamic current BF% display

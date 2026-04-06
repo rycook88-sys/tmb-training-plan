@@ -551,64 +551,91 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                 </motion.div>
               )}
 
-              {/* ── Visual BF% Reference Strip — ALWAYS VISIBLE ── */}
-              <div className="border border-border bg-background">
-                <div className="px-4 py-2 border-b border-border">
-                  <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
-                    Visual Reference — Similar Build at Different BF%
-                  </span>
-                </div>
-                <div className="p-3">
-                  <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
-                    {[
-                      { pct: 12, label: "12%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-12pct-v2-oZ7gNPdoBbdGFN9ETdmSpM.webp" },
-                      { pct: 15, label: "15%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-15pct-v2-jXdPPQgp357BVcdMWWBuQL.webp" },
-                      { pct: 18, label: "18%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-18pct-v3-SHkY3qWQneC8NK9UrKWzGi.webp" },
-                      { pct: 22, label: "22%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-22pct-v2-TVFGkneCg3g7uh24oRx7Ms.webp" },
-                      { pct: 25, label: "25%", img: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/bf-ref-25pct-v2-AhFBKktUxNKtu6SJ4P4GnK.webp" },
-                    ].map(ref => {
-                      // Use composite if available, otherwise default visual estimate of 22%
-                      const activeBf = composite ?? 22;
-                      const isClosest = Math.abs(activeBf - ref.pct) <= 3;
-
-                      return (
-                        <div
-                          key={ref.pct}
-                          className={`shrink-0 w-28 border transition-all ${
-                            isClosest
-                              ? "border-[var(--primary)] ring-1 ring-[var(--primary)]/30"
-                              : "border-border"
-                          }`}
-                        >
-                          <div className="aspect-[3/4] overflow-hidden bg-zinc-900">
-                            <img
-                              src={ref.img}
-                              alt={`${ref.label} body fat reference`}
-                              className="w-full h-full object-cover object-top"
-                            />
-                          </div>
-                          <div className={`px-2 py-1.5 text-center ${
-                            isClosest ? "bg-[var(--primary)]/10" : "bg-background"
-                          }`}>
-                            <span className={`text-sm font-mono font-bold block ${
-                              isClosest ? "text-[var(--primary)]" : "text-foreground"
-                            }`}>
-                              {ref.label}
+              {/* ── Current BF% Display — ALWAYS VISIBLE ── */}
+              {(() => {
+                const displayBf = latest?.composite ?? (composite !== null ? Math.round(composite * 10) / 10 : null);
+                const displayCat = displayBf !== null ? getCategory(displayBf) : null;
+                const prevEntry = entries[1];
+                const delta = latest && prevEntry ? Math.round((latest.composite - prevEntry.composite) * 10) / 10 : null;
+                return (
+                  <div className="border border-border bg-background">
+                    <div className="px-4 py-2 border-b border-border">
+                      <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
+                        Current Body Fat %
+                      </span>
+                    </div>
+                    <div className="p-4">
+                      {displayBf !== null && displayCat !== null ? (
+                        <div>
+                          {/* Big BF% number + category */}
+                          <div className="flex items-baseline gap-3 mb-4">
+                            <span className={`text-5xl font-mono font-bold ${displayCat.color} leading-none`}>
+                              {displayBf.toFixed(1)}
+                              <span className="text-2xl">%</span>
                             </span>
+                            <div className="flex flex-col">
+                              <span className={`text-sm font-mono font-semibold ${displayCat.color}`}>
+                                {displayCat.label}
+                              </span>
+                              {delta !== null && (
+                                <span className={`text-xs font-mono ${
+                                  delta < 0 ? "text-green-400" : delta > 0 ? "text-red-400" : "text-muted-foreground"
+                                }`}>
+                                  {delta > 0 ? "+" : ""}{delta}% from last
+                                </span>
+                              )}
+                              {latest && (
+                                <span className="text-[9px] font-mono text-muted-foreground/60">
+                                  measured {latest.date}
+                                </span>
+                              )}
+                            </div>
+                          </div>
 
+                          {/* Category spectrum bar */}
+                          <div className="space-y-1.5">
+                            <div className="flex gap-0.5 h-3 rounded-sm overflow-hidden">
+                              {CATEGORIES.map(cat => (
+                                <div
+                                  key={cat.label}
+                                  className={`flex-1 relative ${cat.barColor} ${
+                                    displayCat.label === cat.label ? "opacity-100" : "opacity-30"
+                                  } transition-opacity`}
+                                >
+                                  {displayCat.label === cat.label && (
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                      <div className="w-1.5 h-1.5 rounded-full bg-white shadow-sm" />
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex justify-between">
+                              {CATEGORIES.map(cat => (
+                                <span
+                                  key={cat.label}
+                                  className={`text-[8px] font-mono flex-1 text-center ${
+                                    displayCat.label === cat.label ? cat.color + " font-bold" : "text-muted-foreground/50"
+                                  }`}
+                                >
+                                  {cat.label}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                      );
-                    })}
+                      ) : (
+                        <div className="text-center py-4">
+                          <span className="text-3xl font-mono text-muted-foreground/30 block mb-2">—%</span>
+                          <span className="text-xs font-mono text-muted-foreground">
+                            Enter measurements above and save to see your BF%
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-[9px] font-mono text-muted-foreground/60 mt-2">
-                    {composite !== null
-                      ? `Your current estimate (${composite.toFixed(1)}%) is highlighted. Illustrations show a similar muscular build at each level.`
-                      : "Based on visual estimate (~22%). Enter measurements above for a more precise highlight."
-                    }
-                  </p>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* ── Weight → BF% Projection Table — ALWAYS VISIBLE ── */}
               {(() => {

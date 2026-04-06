@@ -694,6 +694,44 @@ function NutritionCard() {
   );
 }
 
+// ── Body Fat Card (wraps UtilityCard with dynamic BF% badge) ──
+function BodyFatCard() {
+  const [bfData, setBfData] = useState<{ bf: number; label: string } | null>(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("tmb-bodyfat-entries");
+      if (!raw) return;
+      const entries = JSON.parse(raw);
+      if (entries.length > 0) {
+        const latest = entries[0];
+        const bf = latest.composite;
+        const cats = [
+          { label: "Essential", min: 0, max: 5.99 },
+          { label: "Athletic", min: 6, max: 13.99 },
+          { label: "Fitness", min: 14, max: 17.99 },
+          { label: "Average", min: 18, max: 24.99 },
+          { label: "Above Avg", min: 25, max: 100 },
+        ];
+        const cat = cats.find(c => bf >= c.min && bf <= c.max) || cats[cats.length - 1];
+        setBfData({ bf, label: cat.label });
+      }
+    } catch { /* ignore */ }
+  }, []);
+  return (
+    <UtilityCard
+      accent="border-l-[var(--primary)]"
+      accentBg="bg-[var(--primary)]/5"
+      icon={<span className="text-lg">📏</span>}
+      title="Body Fat Estimator"
+      subtitle="Multi-formula composite"
+      tag={bfData ? <>{bfData.bf}% · {bfData.label}</> : "No measurements yet"}
+      tagColor={bfData ? "text-[var(--primary)] bg-[var(--primary)]/10" : "text-muted-foreground bg-muted/10"}
+    >
+      <BodyFatEstimator embedded />
+    </UtilityCard>
+  );
+}
+
 // ── Utility Card (for card grid) ───────────────────────────
 function UtilityCard({ accent, accentBg, icon, title, subtitle, tag, tagColor, children }: {
   accent: string; accentBg: string; icon: React.ReactNode; title: string;
@@ -936,17 +974,7 @@ export default function Home() {
               </UtilityCard>
 
               {/* Body Fat Card */}
-              <UtilityCard
-                accent="border-l-[var(--primary)]"
-                accentBg="bg-[var(--primary)]/5"
-                icon={<span className="text-lg">📏</span>}
-                title="Body Fat Estimator"
-                subtitle="Multi-formula composite"
-                tag="Multi-formula composite"
-                tagColor="text-[var(--primary)] bg-[var(--primary)]/10"
-              >
-                <BodyFatEstimator embedded />
-              </UtilityCard>
+              <BodyFatCard />
 
               {/* Gear Card */}
               <UtilityCard
