@@ -709,7 +709,12 @@ function NutritionCard() {
       title="Nutrition Tracker"
       subtitle="Photo-based calorie tracking"
       tag={<>{calData.current.toLocaleString()} / {calData.target.toLocaleString()} CAL</>}
-      tagColor="text-green-400 bg-green-400/10"
+      tagColor={calData.current <= calData.target
+        ? "text-green-400 bg-green-400/10"
+        : ((calData.current - calData.target) / calData.target) <= 0.10
+          ? "text-amber-400 bg-amber-400/10"
+          : "text-red-400 bg-red-400/10"
+      }
     >
       <NutritionTracker embedded onCalorieUpdate={handleCalorieUpdate} />
     </UtilityCard>

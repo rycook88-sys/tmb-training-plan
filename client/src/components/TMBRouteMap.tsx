@@ -318,8 +318,8 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
         const isSpecial = isStart;
         const markerSize = isSpecial ? 36 : 30;
         const markerLabel = acc.day === 0 ? "ARR" : `D${acc.day}`;
-        const markerBg = isStart ? "#F97316" : "#0F172A";
-        const markerBorder = isStart ? "#FED7AA" : "#F97316";
+        const markerBg = isStart ? "#06B6D4" : "#0F172A";
+        const markerBorder = isStart ? "#A5F3FC" : "#06B6D4";
         const icon = L.divIcon({
           className: "tmb-marker",
           html: `<div style="
@@ -799,7 +799,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
           </div>
 
           {/* Legend + Layer toggle + Food stops toggle */}
-          <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+          <div className="flex flex-col gap-3 px-1">
             <div className="flex flex-wrap gap-3 text-[10px] font-mono text-slate-500">
               <span className="flex items-center gap-1.5">
                 <span className="w-6 h-0.5 bg-violet-500 rounded-full inline-block" />
@@ -824,81 +824,67 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              {/* 1. Layer toggle — leftmost */}
+            <div className="grid grid-cols-5 gap-1.5 w-full">
+              {/* 1. Layer toggle */}
               <button
                 onClick={() => setMapLayer(mapLayer === "topo" ? "satellite" : "topo")}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800 border border-slate-700 text-[10px] font-mono text-slate-400 hover:text-slate-200 transition-colors"
+                className="flex flex-col items-center justify-center gap-1 py-2 rounded-md bg-slate-800 border border-slate-700 text-[9px] font-mono text-slate-400 hover:text-slate-200 transition-colors"
               >
-                {mapLayer === "topo" ? (
-                  <><Layers className="w-3 h-3" /> SATELLITE</>
-                ) : (
-                  <><Mountain className="w-3 h-3" /> TOPO MAP</>
-                )}
+                {mapLayer === "topo" ? <Layers className="w-3.5 h-3.5" /> : <Mountain className="w-3.5 h-3.5" />}
+                <span>{mapLayer === "topo" ? "SAT" : "TOPO"}</span>
               </button>
               {/* 2. Food stops toggle */}
               <button
                 onClick={() => setShowFoodStops(!showFoodStops)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono transition-colors ${
+                className={`flex flex-col items-center justify-center gap-1 py-2 rounded-md border text-[9px] font-mono transition-colors ${
                   showFoodStops
                     ? "bg-amber-500/15 border-amber-500/40 text-amber-400 hover:bg-amber-500/25"
                     : "bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300"
                 }`}
                 title={showFoodStops ? "Hide food stops" : "Show food stops"}
               >
-                <UtensilsCrossed className="w-3 h-3" />
-                {showFoodStops ? "FOOD STOPS" : "FOOD STOPS"}
+                <UtensilsCrossed className="w-3.5 h-3.5" />
+                <span>FOOD</span>
               </button>
-              {/* 3. GPS locate me — main row */}
+              {/* 3. GPS locate me */}
               <button
-                onClick={toggleGps}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono transition-colors ${
+                onClick={gpsActive && gpsPosition ? centerOnGps : toggleGps}
+                className={`flex flex-col items-center justify-center gap-1 py-2 rounded-md border text-[9px] font-mono transition-colors ${
                   gpsActive
                     ? "bg-blue-500/15 border-blue-500/40 text-blue-400 hover:bg-blue-500/25"
                     : "bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300"
                 }`}
-                title={gpsActive ? "Stop GPS tracking" : "Show my location"}
+                title={gpsActive ? "Center on my location" : "Show my location"}
+                onDoubleClick={gpsActive ? toggleGps : undefined}
               >
-                <LocateFixed className="w-3 h-3" />
-                {gpsActive ? "GPS ON" : "LOCATE ME"}
+                {gpsActive ? <Navigation className="w-3.5 h-3.5" /> : <LocateFixed className="w-3.5 h-3.5" />}
+                <span>{gpsActive ? "GPS" : "LOCATE"}</span>
               </button>
-              {/* GPS center button (only when GPS active) */}
-              {gpsActive && gpsPosition && (
-                <button
-                  onClick={centerOnGps}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-blue-500/40 bg-blue-500/10 text-[10px] font-mono text-blue-400 hover:bg-blue-500/20"
-                  title="Center map on my location"
-                >
-                  <Navigation className="w-3 h-3" /> CENTER
-                </button>
-              )}
               {/* 4. View toggle — Map / Elevation */}
               <button
                 onClick={() => setViewMode(viewMode === "map" ? "elevation" : "map")}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[10px] font-mono transition-colors ${
+                className={`flex flex-col items-center justify-center gap-1 py-2 rounded-md border text-[9px] font-mono transition-colors ${
                   viewMode === "elevation"
                     ? "bg-rose-500/15 border-rose-500/40 text-rose-400 hover:bg-rose-500/25"
                     : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"
                 }`}
               >
-                {viewMode === "map" ? (
-                  <><BarChart3 className="w-3 h-3" /> ELEVATION</>
-                ) : (
-                  <><Map className="w-3 h-3" /> ROUTE MAP</>
-                )}
+                {viewMode === "map" ? <BarChart3 className="w-3.5 h-3.5" /> : <Map className="w-3.5 h-3.5" />}
+                <span>{viewMode === "map" ? "ELEV" : "MAP"}</span>
               </button>
-              {/* 5. More menu — contains Locate Me, Simulate, Download Maps, Avatar */}
+              {/* 5. More menu */}
               <div className="relative" ref={moreMenuRef}>
                 <button
                   onClick={() => setMoreMenuOpen(!moreMenuOpen)}
-                  className={`flex items-center justify-center w-8 h-8 rounded-md border text-[10px] font-mono transition-colors ${
+                  className={`flex flex-col items-center justify-center gap-1 py-2 rounded-md border text-[9px] font-mono transition-colors w-full h-full ${
                     moreMenuOpen
                       ? "bg-slate-700 border-slate-500 text-slate-200"
                       : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"
                   }`}
                   title="More options"
                 >
-                  {moreMenuOpen ? <X className="w-4 h-4" /> : <MoreHorizontal className="w-4 h-4" />}
+                  {moreMenuOpen ? <X className="w-3.5 h-3.5" /> : <MoreHorizontal className="w-3.5 h-3.5" />}
+                  <span>MORE</span>
                 </button>
                 {moreMenuOpen && (
                   <>
@@ -1074,7 +1060,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
         }
         .leaflet-control-zoom a {
           background: #1E293B !important;
-          color: #F97316 !important;
+          color: #06B6D4 !important;
           border-color: #334155 !important;
         }
         .leaflet-control-zoom a:hover {

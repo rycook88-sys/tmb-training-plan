@@ -249,3 +249,12 @@
 - [x] Rebuild Fill My Gaps UI panel with multi-day analysis display
 - [x] Prioritize micronutrients, show macro notes when significantly off
 - [x] Write tests for the new endpoint
+
+## TMB Route Map UI Improvements
+- [x] Change day markers from orange to a high-contrast color (cyan/teal) that pops against topo map background
+- [x] Fix map control buttons: equal widths, centered text, consistent height, no text cutoff
+
+## Tiered Macro/Calorie Color System
+- [x] Replace binary green/red with tiered colors: green (under), yellow/amber (slightly over ~10%), red (significantly over >10%)
+- [x] Apply to big calorie number, header badge, and all macro progress bars (protein, carbs, fat)
+- [x] Make slightly-over feel informational not alarming

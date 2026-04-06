@@ -234,28 +234,35 @@ function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
+/* ── Tiered color helper: green (under) → yellow (slightly over ≤10%) → red (way over >10%) */
+function getMacroOverColor(current: number, target: number): { textClass: string; barColor: string } {
+  if (target <= 0 || current <= target) return { textClass: "text-foreground", barColor: "" };
+  const overPct = ((current - target) / target) * 100;
+  if (overPct <= 10) return { textClass: "text-amber-400", barColor: "#f59e0b" }; // amber — slightly over
+  return { textClass: "text-red-400", barColor: "#ef4444" }; // red — significantly over
+}
+
 /* ── Macro Progress Bar ────────────────────────────── */
 function MacroBar({ label, current, target, color, unit = "g" }: {
   label: string; current: number; target: number; color: string; unit?: string;
 }) {
   const pct = Math.min((current / target) * 100, 100);
-  const remaining = Math.max(target - current, 0);
   const over = current > target;
+  const { textClass, barColor } = getMacroOverColor(current, target);
 
   return (
     <div className="mb-3">
       <div className="flex items-center justify-between mb-1">
         <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--muted-foreground)]">{label}</span>
         <span className="text-[10px] font-mono text-[var(--muted-foreground)]">
-          <span className={over ? "text-red-400" : "text-foreground"}>{Math.round(current)}</span>
+          <span className={over ? textClass : "text-foreground"}>{Math.round(current)}</span>
           <span className="text-[var(--muted-foreground)]"> / {target}{unit}</span>
-
         </span>
       </div>
       <div className="h-2.5 bg-[var(--secondary)] border border-border overflow-hidden">
         <motion.div
           className="h-full"
-          style={{ backgroundColor: over ? "#ef4444" : color }}
+          style={{ backgroundColor: over ? barColor : color }}
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.5, ease: "easeOut" }}
@@ -1414,7 +1421,7 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
           </div>
           {/* Big calorie display — right-aligned, loud */}
           <div className="text-right">
-            <div className={`font-mono text-3xl font-black leading-none tracking-tight ${dailyTotals.calories > macroTargets.calories ? "text-red-400" : "text-[var(--primary)]"}`}>
+            <div className={`font-mono text-3xl font-black leading-none tracking-tight ${dailyTotals.calories > macroTargets.calories ? getMacroOverColor(dailyTotals.calories, macroTargets.calories).textClass : "text-[var(--primary)]"}`}>
               {Math.round(dailyTotals.calories)}
             </div>
             <div className="font-mono text-[10px] uppercase tracking-wider text-[var(--muted-foreground)] mt-0.5">
@@ -2232,7 +2239,7 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
                           {/* Target line */}
                           <div className="absolute top-0 bottom-0 w-px bg-foreground/30" style={{ left: '100%' }} />
                         </div>
-                        <span className={`text-[10px] font-mono w-12 text-right ${d.calories === 0 ? "text-[var(--muted-foreground)]/50" : d.calories > macroTargets.calories ? "text-red-400" : "text-foreground"}`}>{d.calories || "—"}</span>
+                        <span className={`text-[10px] font-mono w-12 text-right ${d.calories === 0 ? "text-[var(--muted-foreground)]/50" : d.calories > macroTargets.calories ? getMacroOverColor(d.calories, macroTargets.calories).textClass : "text-foreground"}`}>{d.calories || "—"}</span>
                       </div>
                     );
                   })}
@@ -2275,7 +2282,7 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
                   <div className="mt-4 pt-3 border-t border-border flex justify-between">
                     <div>
                       <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--muted-foreground)]">Avg Calories</span>
-                      <p className={`text-sm font-mono font-bold ${avgCal > macroTargets.calories ? "text-red-400" : "text-[var(--primary)]"}`}>{avgCal}</p>
+                      <p className={`text-sm font-mono font-bold ${avgCal > macroTargets.calories ? getMacroOverColor(avgCal, macroTargets.calories).textClass : "text-[var(--primary)]"}`}>{avgCal}</p>
                     </div>
                     <div className="text-right">
                       <span className="text-[9px] font-mono uppercase tracking-wider text-[var(--muted-foreground)]">Avg Protein</span>
