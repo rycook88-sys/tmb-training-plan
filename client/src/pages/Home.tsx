@@ -18,6 +18,7 @@ import { useUnits } from "@/contexts/UnitContext";
 import { TMBRouteMap } from "@/components/TMBRouteMap";
 import type { GpsPosition } from "@/lib/gps-tracker";
 import GearChecklist from "@/components/GearChecklist";
+import ThemeSwitcher, { initTheme } from "@/components/ThemeSwitcher";
 import DailyBudget from "@/components/DailyBudget";
 import WeatherForecast from "@/components/WeatherForecast";
 import TechniqueVideos from "@/components/TechniqueVideos";
@@ -843,10 +844,13 @@ export default function Home() {
             <div>
               <div className="flex items-center justify-between">
                 <Countdown />
-                <button onClick={u.toggle}
-                  className="text-[7px] font-mono uppercase tracking-wider border border-border/60 px-1.5 py-0.5 rounded bg-background/40 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors leading-none">
-                  {u.isMetric ? 'KM/M' : 'MI/FT'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <ThemeSwitcher />
+                  <button onClick={u.toggle}
+                    className="text-[7px] font-mono uppercase tracking-wider border border-border/60 px-1.5 py-0.5 rounded bg-background/40 text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors leading-none">
+                    {u.isMetric ? 'KM/M' : 'MI/FT'}
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
                 <StatCard label="Total Distance" value={u.dist(totalMi)} unit={u.distUnit} />

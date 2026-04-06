@@ -279,3 +279,11 @@
 - [x] When over target, bar fills 100% in normal color, then overflow starts filling from left in lighter/darker shade
 - [x] Like old arcade fighting game health bars with multiple layers
 - [x] Apply to all macro progress bars (calories, protein, carbs, fat)
+
+## Theme Switcher (10 Fun Themes)
+- [x] Create small theme button in home screen header area
+- [x] Dropdown/popup with 10 theme options, each styled as a mini preview card
+- [x] Define 10 themes with fun names and distinct color palettes
+- [x] Each theme changes CSS variables app-wide (background, foreground, primary, accent, borders, etc.)
+- [x] Persist selected theme in localStorage
+- [x] Themes: Alpine Dawn, Glacier Ice, Midnight Summit, Forest Floor, Volcanic, Bluebird Day, Wildflower, Storm Warning, Golden Hour, Snowblind
