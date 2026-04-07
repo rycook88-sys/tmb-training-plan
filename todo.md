@@ -300,3 +300,12 @@
 ## Workout Edit Fixes
 - [x] Fix workout session edit not saving (save button not persisting changes)
 - [x] Add ability to change the date of a logged workout session
+
+## Coach Sierra AI Chat
+- [x] Create server-side tRPC procedure for AI chat with full context (workouts, weight, body fat, nutrition, TMB trip details)
+- [x] Build near-full-screen slide-up chat panel UI
+- [x] Add TACTICAL-to-PERSONAL slider to control response style
+- [x] Coach Sierra persona: direct, no-fluff, bullet points by default, occasional motivation
+- [x] Small sparkle button in Training Protocol section to open chat
+- [x] No consistency scoring or guilt trips about workout frequency
+- [x] Include TMB trip context (10 days, 109.5mi, 34k ft gain, daily stages)

@@ -9,7 +9,7 @@ import { useWeightTracker, useWorkoutLog, generateSummary } from "@/lib/hooks";
 import type { ExerciseLog, WorkoutSession } from "@/lib/hooks";
 import {
   Mountain, ChevronDown, ChevronUp, ExternalLink, Footprints,
-  Target, ArrowDown, ArrowUp, Play, Calendar, Trophy, Save, X, Trash2, Dumbbell, Pencil, Check,
+  Target, ArrowDown, ArrowUp, Play, Calendar, Trophy, Save, X, Trash2, Dumbbell, Pencil, Check, Sparkles,
 } from "lucide-react";
 import TrainingAnalytics from "@/components/TrainingAnalytics";
 import SwipeToDelete from "@/components/SwipeToDelete";
@@ -24,6 +24,7 @@ import WeatherForecast from "@/components/WeatherForecast";
 import TechniqueVideos from "@/components/TechniqueVideos";
 import TravelToolkit from "@/components/TravelToolkit";
 import BodyFatEstimator from "@/components/BodyFatEstimator";
+import CoachSierra from "@/components/CoachSierra";
 import NutritionTracker from "@/components/NutritionTracker";
 import elevationData from "@/lib/tmb_elevation_profile.json";
 
@@ -998,6 +999,50 @@ export default function Home() {
 
   // Workout history collapsed state
   const [workoutOpen, setWorkoutOpen] = useState(false);
+  const [coachOpen, setCoachOpen] = useState(false);
+
+  // Serialize data for Coach Sierra
+  const coachWorkoutData = useMemo(() => {
+    if (!wl.sessions.length) return undefined;
+    return wl.sessions.map(s => {
+      const dayLabel = WORKOUT_PLAN.find(d => d.id === s.dayId)?.title || s.dayId;
+      const exStr = s.exercises.map(e =>
+        `  ${e.done ? '✓' : '✗'} ${e.name}: ${e.weight} × ${e.reps} reps`
+      ).join('\n');
+      return `${s.date} — ${dayLabel}\n${exStr}`;
+    }).join('\n\n');
+  }, [wl.sessions]);
+
+  const coachWeightData = useMemo(() => {
+    if (!wt.entries.length) return undefined;
+    return `Start: ${ATHLETE.startWeight} lbs | Goal: ${ATHLETE.goalWeight} lbs\nEntries:\n` +
+      wt.entries.map(e => `  ${e.date}: ${e.weight} lbs`).join('\n');
+  }, [wt.entries]);
+
+  const coachBodyFatData = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('tmb-bodyfat-entries');
+      if (!raw) return undefined;
+      const entries = JSON.parse(raw);
+      if (!entries.length) return undefined;
+      return entries.map((e: any) => `  ${e.date}: ${e.bf}% (${e.method})`).join('\n');
+    } catch { return undefined; }
+  }, [coachOpen]);
+
+  const coachNutritionData = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('tmb-nutrition-entries');
+      if (!raw) return undefined;
+      const entries = JSON.parse(raw);
+      if (!entries.length) return undefined;
+      const today = entries.filter((e: any) => e.date === new Date().toISOString().slice(0, 10));
+      const totalCal = today.reduce((s: number, e: any) => s + (e.calories || 0), 0);
+      const totalP = today.reduce((s: number, e: any) => s + (e.protein || 0), 0);
+      const totalC = today.reduce((s: number, e: any) => s + (e.carbs || 0), 0);
+      const totalF = today.reduce((s: number, e: any) => s + (e.fat || 0), 0);
+      return `Today: ${totalCal} cal, ${totalP}g protein, ${totalC}g carbs, ${totalF}g fat\nTarget: 2300 cal, 180g protein, 222g carbs, 77g fat`;
+    } catch { return undefined; }
+  }, [coachOpen]);
 
   const handleSave = () => {
     const session = wl.saveSession();
@@ -1059,6 +1104,15 @@ export default function Home() {
             <span className="text-xl">🏋️</span> Training Protocol
           </h2>
           <div className="flex items-center gap-3">
+            <button
+              onClick={(e) => { e.stopPropagation(); setCoachOpen(true); }}
+              className="flex items-center gap-1 px-2 py-1 text-[9px] font-mono uppercase tracking-wider
+                border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/60
+                transition-all"
+            >
+              <Sparkles className="w-3 h-3" />
+              Coach
+            </button>
             <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{wl.sessions.length} sessions logged</span>
             <motion.div animate={{ rotate: workoutOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>
               <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-colors" />
@@ -1086,6 +1140,16 @@ export default function Home() {
           )}
         </AnimatePresence>
       </section>
+
+      {/* Coach Sierra AI Chat */}
+      <CoachSierra
+        open={coachOpen}
+        onClose={() => setCoachOpen(false)}
+        workoutData={coachWorkoutData}
+        weightData={coachWeightData}
+        bodyFatData={coachBodyFatData}
+        nutritionData={coachNutritionData}
+      />
 
       {/* MODE TOGGLE */}
       <div className="border-t border-border">
