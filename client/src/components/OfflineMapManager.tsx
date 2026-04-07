@@ -1,6 +1,7 @@
 // Offline Map Manager — download TMB area tiles for offline use
 import { useState, useEffect, useRef } from "react";
 import { Download, Check, Trash2, Loader2, WifiOff, Wifi } from "lucide-react";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import {
   getTileCount,
   isCached,
@@ -15,6 +16,7 @@ export function OfflineMapManager() {
   const [progress, setProgress] = useState({ downloaded: 0, total: 0 });
   const [cachedCount, setCachedCount] = useState(0);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [confirmClear, setConfirmClear] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   const totalTiles = getTileCount();
@@ -130,7 +132,7 @@ export function OfflineMapManager() {
             MAPS SAVED ({cachedCount} tiles)
           </span>
           <button
-            onClick={handleClear}
+            onClick={() => setConfirmClear(true)}
             className="flex items-center gap-1 px-2 py-1 rounded-md border border-slate-700 text-slate-500 text-[10px] font-mono hover:text-red-400 hover:border-red-500/40"
             title="Clear cached map tiles"
           >
@@ -152,6 +154,13 @@ export function OfflineMapManager() {
           </button>
         </div>
       )}
+      <ConfirmDeleteDialog
+        open={confirmClear}
+        title="Clear Cached Tiles?"
+        description="All downloaded map tiles will be removed. You'll need to re-download them for offline use."
+        onCancel={() => setConfirmClear(false)}
+        onConfirm={() => { handleClear(); setConfirmClear(false); }}
+      />
     </div>
   );
 }

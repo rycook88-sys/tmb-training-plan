@@ -3,6 +3,7 @@ import { X, Send, Loader2, Sparkles, Mountain } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Streamdown } from "streamdown";
 import { trpc } from "@/lib/trpc";
+import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -143,9 +144,12 @@ export default function CoachSierra({
     }
   };
 
+  const [confirmClear, setConfirmClear] = useState(false);
+
   const clearChat = () => {
     setMessages([]);
     localStorage.removeItem(STORAGE_KEY);
+    setConfirmClear(false);
   };
 
   const styleLabel =
@@ -158,6 +162,7 @@ export default function CoachSierra({
       : "PERSONAL";
 
   return (
+    <>
     <AnimatePresence>
       {open && (
         <motion.div
@@ -186,10 +191,10 @@ export default function CoachSierra({
             <div className="flex items-center gap-2">
               {messages.length > 0 && (
                 <button
-                  onClick={clearChat}
-                  className="text-[9px] font-mono text-[var(--muted-foreground)] hover:text-red-400 transition-colors uppercase tracking-wider px-2 py-1 border border-border hover:border-red-400/50"
-                >
-                  Clear
+                   onClick={() => setConfirmClear(true)}
+                   className="text-[9px] font-mono text-[var(--muted-foreground)] hover:text-red-400 transition-colors uppercase tracking-wider px-2 py-1 border border-border hover:border-red-400/50"
+                 >
+                   Clear
                 </button>
               )}
               <button
@@ -377,5 +382,13 @@ export default function CoachSierra({
         </motion.div>
       )}
     </AnimatePresence>
+    <ConfirmDeleteDialog
+      open={confirmClear}
+      title="Clear Chat History?"
+      description="All conversation with Coach Sierra will be permanently deleted."
+      onCancel={() => setConfirmClear(false)}
+      onConfirm={clearChat}
+    />
+    </>
   );
 }

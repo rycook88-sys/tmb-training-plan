@@ -309,3 +309,11 @@
 - [x] Small sparkle button in Training Protocol section to open chat
 - [x] No consistency scoring or guilt trips about workout frequency
 - [x] Include TMB trip context (10 days, 109.5mi, 34k ft gain, daily stages)
+
+## Hike/Cardio Session Edit Fields
+- [x] Fix workout edit mode: hike/cardio sessions should NOT show "weight" and "reps" labels
+- [x] Make edit fields context-aware based on exercise type (gym vs cardio/hike)
+
+## Delete Confirmation Audit (PERMANENT RULE)
+- [x] Full audit: every delete action in the entire app MUST have a ConfirmDeleteDialog
+- [x] This is a permanent rule: any future deletable item must also have confirmation

@@ -549,7 +549,13 @@ function WorkoutCalendar({ sessions, onDelete, onUpdate }: {
                                   className="bg-background border border-border text-xs font-mono text-foreground px-2 py-1 focus:outline-none focus:border-[var(--primary)] flex-1"
                                 />
                               </div>
-                              {editing.exercises.map((ex, exIdx) => (
+                              {editing.exercises.map((ex, exIdx) => {
+                                // Look up the original exercise definition to get context-aware labels
+                                const dayDef = WORKOUT_PLAN.find(d => d.id === s.dayId);
+                                const exDef = dayDef?.exercises.find(e => e.name === ex.name);
+                                const label1 = exDef?.placeholder1 || "weight";
+                                const label2 = exDef?.placeholder2 || "reps";
+                                return (
                                 <div key={exIdx} className={`border border-border p-2 transition-colors ${
                                   ex.done ? "bg-[var(--primary)]/5" : "bg-transparent opacity-60"
                                 }`}>
@@ -567,17 +573,17 @@ function WorkoutCalendar({ sessions, onDelete, onUpdate }: {
                                   {ex.done && (
                                     <div className="flex gap-2 ml-6">
                                       <div className="flex-1">
-                                        <label className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase block mb-0.5">Weight</label>
+                                        <label className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase block mb-0.5">{label1}</label>
                                         <input
                                           type="text"
                                           value={ex.weight}
                                           onChange={(e) => updateEditExercise(exIdx, "weight", e.target.value)}
                                           className="w-full bg-background border border-border text-xs font-mono text-foreground px-2 py-1 focus:outline-none focus:border-[var(--primary)]"
-                                          placeholder="BW"
+                                          placeholder="—"
                                         />
                                       </div>
                                       <div className="flex-1">
-                                        <label className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase block mb-0.5">Reps</label>
+                                        <label className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase block mb-0.5">{label2}</label>
                                         <input
                                           type="text"
                                           value={ex.reps}
@@ -589,17 +595,38 @@ function WorkoutCalendar({ sessions, onDelete, onUpdate }: {
                                     </div>
                                   )}
                                 </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           ) : (
                             /* ── View Mode ── */
                             <>
-                              {s.exercises.filter((e) => e.done).map((ex) => (
+                              {s.exercises.filter((e) => e.done).map((ex) => {
+                                const dayDef = WORKOUT_PLAN.find(d => d.id === s.dayId);
+                                const exDef = dayDef?.exercises.find(e => e.name === ex.name);
+                                const p1 = exDef?.placeholder1 || "weight";
+                                const p2 = exDef?.placeholder2 || "reps";
+                                // Format display based on exercise type
+                                const isGym = p1 === "weight";
+                                const val1 = ex.weight || (isGym ? "BW" : "—");
+                                const val2 = ex.reps || "";
+                                let display = "";
+                                if (isGym) {
+                                  display = `${val1}${val2 ? ` × ${val2}` : ""}`;
+                                } else {
+                                  // Cardio/mobility: show value + unit label
+                                  const parts: string[] = [];
+                                  if (ex.weight) parts.push(`${ex.weight} ${p1}`);
+                                  if (ex.reps) parts.push(`${ex.reps} ${p2}`);
+                                  display = parts.join(" · ") || "—";
+                                }
+                                return (
                                 <div key={ex.name} className="flex justify-between text-xs font-mono text-[var(--muted-foreground)] py-0.5">
                                   <span className="text-foreground">{ex.name}</span>
-                                  <span>{ex.weight || "BW"} {ex.reps ? `× ${ex.reps}` : ""}</span>
+                                  <span>{display}</span>
                                 </div>
-                              ))}
+                                );
+                              })}
                               {s.exercises.filter((e) => !e.done).length > 0 && (() => {
                                 const dayDef = WORKOUT_PLAN.find((d) => d.id === s.dayId);
                                 if (dayDef?.pickOne) return null;
