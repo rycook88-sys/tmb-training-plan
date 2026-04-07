@@ -317,3 +317,7 @@
 ## Delete Confirmation Audit (PERMANENT RULE)
 - [x] Full audit: every delete action in the entire app MUST have a ConfirmDeleteDialog
 - [x] This is a permanent rule: any future deletable item must also have confirmation
+
+## Training Protocol UI Fix
+- [x] Remove "pick one" text from Day C subtitle
+- [x] Align all START buttons vertically (consistent right-alignment)

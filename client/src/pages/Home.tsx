@@ -300,12 +300,12 @@ function WorkoutCard({ day, onStart, hasHitGoal, getBestPerformance }: {
           <span className="text-xl">{day.icon}</span>
           <div>
             <div className="font-mono text-sm font-bold text-foreground tracking-wider">{day.title}</div>
-            <div className="text-xs text-[var(--muted-foreground)] tracking-wide">{day.subtitle}{day.pickOne && <span className="ml-2 text-[10px] text-amber-400/80 font-mono">(pick one)</span>}</div>
+            <div className="text-xs text-[var(--muted-foreground)] tracking-wide">{day.subtitle}</div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-shrink-0">
           <button onClick={(e) => { e.stopPropagation(); onStart(day); }}
-            className="text-[10px] font-mono uppercase tracking-wider bg-[var(--primary)] text-[var(--primary-foreground)] px-3 py-1.5 hover:opacity-90 transition-opacity">
+            className="text-[10px] font-mono uppercase tracking-wider bg-[var(--primary)] text-[var(--primary-foreground)] px-3 py-1.5 hover:opacity-90 transition-opacity w-[60px] text-center">
             START
           </button>
           {expanded ? <ChevronUp className="w-4 h-4 text-[var(--muted-foreground)]" /> : <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)]" />}
