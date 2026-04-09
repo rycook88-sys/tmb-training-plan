@@ -105,6 +105,7 @@ export const WORKOUT_PLAN: WorkoutDay[] = [
       { name: "StairMill (Level 4)", sets: "1", reps: "60 min", current: "60 min @ HR<150", goal: "90 min @ HR<145", goalValue: 90, unit: "min", notes: "Zone 2. If HR drifts, drop to Level 3.", placeholder1: "minutes", placeholder2: "level" },
       { name: "Outdoor Hike", sets: "1", reps: "2\u20134 hrs", current: "Hitchcock / local trails", goal: "3+ hrs w/ 15 lb pack", goalValue: 3, unit: "hrs", notes: "Best TMB-specific cardio. Hills > flat. Log hours and pack weight.", placeholder1: "hours", placeholder2: "pack lbs" },
       { name: "Incline Treadmill Walk", sets: "1", reps: "20 min", current: "15% grade", goal: "15% @ 3.5 mph", goalValue: 3.5, unit: "mph", notes: "Alternate with stairmill. Hip hinge practice.", placeholder1: "minutes", placeholder2: "grade %" },
+      { name: "Threshold Training", sets: "1", reps: "60 min", current: "30 min Z2 + 3×Z4/Z2", goal: "40 min Z2 + 4×Z4/Z2", goalValue: 4, unit: "intervals", notes: "Stairmill or bike. Build Z2 base then cycle into Z4 and back. Mimics steep TMB climbs.", placeholder1: "minutes", placeholder2: "intervals" },
     ],
     pickOne: true,
   },

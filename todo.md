@@ -325,7 +325,4 @@
 ## Coach Sierra Button Visibility Fix
 - [ ] Investigate why the AI/Coach Sierra button is not visible or findable
 - [ ] Fix button visibility so user can easily access Coach Sierra
-
-## Body Fat Estimator Fixes
-- [x] Fix vertical alignment in BF% history rows (date, %, category, delete icon)
-- [x] Make logged BF% entries editable (like other logged data)
+- [x] Add Threshold Training exercise to Day C cardio options

@@ -81,7 +81,7 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
   return (
     <div className="border border-border p-5 bg-card">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)]">Weight Tracker</h3>
+        <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)]">Altitude Gauge</h3>
         <span className="font-mono text-xs text-[var(--muted-foreground)]">{u.wt(ATHLETE.startWeight, 0)} → {u.wt(ATHLETE.goalWeight, 0)} {u.wtUnit}</span>
       </div>
       <div className="flex gap-6 items-center">
@@ -1133,10 +1133,11 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <button
               onClick={(e) => { e.stopPropagation(); setCoachOpen(true); }}
-              className="inline-flex justify-center items-center px-3 py-1 text-[9px] font-mono uppercase tracking-wider
+              className="flex items-center gap-1 px-2 py-1 text-[9px] font-mono uppercase tracking-wider
                 border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/60
                 transition-all"
             >
+              <Sparkles className="w-3 h-3" />
               Coach
             </button>
             <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{wl.sessions.length} sessions logged</span>

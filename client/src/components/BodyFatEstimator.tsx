@@ -4,7 +4,7 @@
 // ============================================================
 import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Info, X, Camera, Trash2, RotateCcw, Pencil, Check } from "lucide-react";
+import { ChevronDown, Info, X, Camera, Trash2, RotateCcw } from "lucide-react";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { useUnits } from "@/contexts/UnitContext";
 
@@ -207,8 +207,6 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
     neck: "", chest: "", bicep: "", forearm: "", waist: "", hip: "", thigh: "", wrist: "",
   });
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editComposite, setEditComposite] = useState("");
   const [unit, setUnit] = useState<"in" | "cm">("in");
   const [weightInput, setWeightInput] = useState("");
   const [prefilled, setPrefilled] = useState(false);
@@ -337,21 +335,6 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
     setEntries(next);
     saveEntries(next);
   }, [entries]);
-
-  const handleEditStart = useCallback((entry: BFEntry) => {
-    setEditingId(entry.id);
-    setEditComposite(String(entry.composite));
-  }, []);
-
-  const handleEditSave = useCallback(() => {
-    if (!editingId) return;
-    const val = parseFloat(editComposite);
-    if (isNaN(val) || val <= 0 || val > 60) { setEditingId(null); return; }
-    const next = entries.map(e => e.id === editingId ? { ...e, composite: Math.round(val * 10) / 10 } : e);
-    setEntries(next);
-    saveEntries(next);
-    setEditingId(null);
-  }, [editingId, editComposite, entries]);
 
   const handleReset = useCallback(() => {
     setMeasurements({ neck: "", chest: "", bicep: "", forearm: "", waist: "", hip: "", thigh: "", wrist: "" });
@@ -826,48 +809,25 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                   <div className="space-y-1">
                     {entries.map(entry => {
                       const ec = getCategory(entry.composite);
-                      const isEditing = editingId === entry.id;
+                      const methods = [
+                        entry.navy !== null ? `Navy:${entry.navy}%` : null,
+                        entry.ymca !== null ? `YMCA:${entry.ymca}%` : null,
+                        entry.covertBailey !== null ? `CB:${entry.covertBailey}%` : null,
+                      ].filter(Boolean);
                       return (
-                        <div key={entry.id} className="flex items-center py-1.5 px-2 border border-border bg-background group/entry">
-                          <span className="text-xs font-mono text-muted-foreground w-[5.5rem] shrink-0">{entry.date}</span>
-                          {isEditing ? (
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={editComposite}
-                              onChange={(e) => setEditComposite(e.target.value)}
-                              onKeyDown={(e) => { if (e.key === 'Enter') handleEditSave(); if (e.key === 'Escape') setEditingId(null); }}
-                              className="w-[4rem] text-sm font-mono font-bold bg-transparent border-b border-[var(--primary)] text-[var(--primary)] outline-none text-center"
-                              autoFocus
-                            />
-                          ) : (
-                            <span className={`text-sm font-mono font-bold w-[4rem] text-center shrink-0 ${ec.color}`}>{entry.composite}%</span>
-                          )}
-                          <span className="text-[10px] font-mono text-muted-foreground w-[4.5rem] text-center shrink-0 ml-1">{ec.label}</span>
-                          <span className="flex-1" />
+                        <div key={entry.id} className="flex items-center gap-3 py-1.5 px-2 border border-border bg-background group/entry">
+                          <span className="text-xs font-mono text-muted-foreground w-20 shrink-0">{entry.date}</span>
+                          <span className={`text-sm font-mono font-bold ${ec.color}`}>{entry.composite}%</span>
+                          <span className="text-[10px] font-mono text-muted-foreground">{ec.label}</span>
+                          <span className="text-[9px] font-mono text-muted-foreground/70 ml-auto hidden sm:inline">
+                            {methods.join(" · ")}
+                          </span>
                           {entry.photos && entry.photos.length > 0 && (
-                            <Camera className="w-3 h-3 text-muted-foreground shrink-0 mr-1" />
-                          )}
-                          {isEditing ? (
-                            <button
-                              onClick={handleEditSave}
-                              className="text-green-400 hover:text-green-300 transition-all cursor-pointer mr-1"
-                              title="Save edit"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleEditStart(entry)}
-                              className="text-muted-foreground/50 hover:text-[var(--primary)] transition-all cursor-pointer mr-1"
-                              title="Edit entry"
-                            >
-                              <Pencil className="w-3.5 h-3.5" />
-                            </button>
+                            <Camera className="w-3 h-3 text-muted-foreground" />
                           )}
                           <button
                             onClick={() => setConfirmDeleteId(entry.id)}
-                            className="text-muted-foreground/50 hover:text-red-400 transition-all cursor-pointer"
+                            className="text-muted-foreground/50 hover:text-red-400 transition-all cursor-pointer ml-1"
                             title="Delete entry"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
