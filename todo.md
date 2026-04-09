@@ -321,3 +321,11 @@
 ## Training Protocol UI Fix
 - [x] Remove "pick one" text from Day C subtitle
 - [x] Align all START buttons vertically (consistent right-alignment)
+
+## Coach Sierra Button Visibility Fix
+- [ ] Investigate why the AI/Coach Sierra button is not visible or findable
+- [ ] Fix button visibility so user can easily access Coach Sierra
+
+## Body Fat Estimator Fixes
+- [x] Fix vertical alignment in BF% history rows (date, %, category, delete icon)
+- [x] Make logged BF% entries editable (like other logged data)
