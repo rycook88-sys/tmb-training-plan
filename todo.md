@@ -371,3 +371,10 @@
 - [x] Display Sierra photo large enough to see clearly (not tiny avatar bubble)
 - [x] Update Sierra's personality to warm companion/training partner (not just coach)
 - [x] Different outfits across photos (black tank, white crop top, burgundy jacket, olive flannel, blue sundress, navy henley)
+
+## Coach Sierra Garmin Data Integration
+- [x] Pass Garmin session data (HR zones, cardio drift, calories, distance, elevation) to Coach Sierra
+- [x] Pass weekly volume trends to Coach Sierra
+- [x] Update server coach procedure to accept and include garminData in context
+- [x] Update Sierra's system prompt to reference Garmin data intelligently
+- [x] Make far-right slider position (Personal mode) much more intimate and personal

@@ -27,6 +27,7 @@ import BodyFatEstimator from "@/components/BodyFatEstimator";
 import CoachSierra from "@/components/CoachSierra";
 import NutritionTracker from "@/components/NutritionTracker";
 import elevationData from "@/lib/tmb_elevation_profile.json";
+import { GARMIN_SESSIONS, WEEKLY_VOLUME } from "@/lib/garmin-data";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/hero-tmb-ridge-TA9BE2JzZxaxi68um9vvG9.webp";
 const TOPO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/topo-texture-3ai3ccpyxv32r72SNbY3MU.webp";
@@ -1085,6 +1086,39 @@ export default function Home() {
     } catch { return undefined; }
   }, [coachOpen]);
 
+  const coachGarminData = useMemo(() => {
+    if (!GARMIN_SESSIONS.length) return undefined;
+    // Summary stats
+    const totalSessions = GARMIN_SESSIONS.length;
+    const totalMin = GARMIN_SESSIONS.reduce((s, g) => s + g.duration_min, 0);
+    const totalCal = GARMIN_SESSIONS.reduce((s, g) => s + g.calories, 0);
+    const hikeSessions = GARMIN_SESSIONS.filter(g => g.type === 'HIKE');
+    const totalHikeMi = hikeSessions.reduce((s, g) => s + g.distance_mi, 0);
+    const totalElevGain = hikeSessions.reduce((s, g) => s + g.elevation_gain, 0);
+    const avgZ2 = GARMIN_SESSIONS.reduce((s, g) => s + g.z2_pct, 0) / totalSessions;
+    const avgZ3 = GARMIN_SESSIONS.reduce((s, g) => s + g.z3_pct, 0) / totalSessions;
+
+    let summary = `GARMIN SUMMARY (${GARMIN_SESSIONS[0].date} to ${GARMIN_SESSIONS[totalSessions - 1].date}):\n`;
+    summary += `  Total sessions: ${totalSessions} | Total time: ${Math.round(totalMin / 60)}h ${totalMin % 60}m | Total calories: ${totalCal.toLocaleString()}\n`;
+    summary += `  Hikes: ${hikeSessions.length} sessions, ${totalHikeMi.toFixed(1)} mi, ${totalElevGain.toLocaleString()} ft gain\n`;
+    summary += `  Avg HR zone distribution: Z2 ${avgZ2.toFixed(1)}%, Z3 ${avgZ3.toFixed(1)}%\n`;
+    summary += `  HR zones: Max 196, Rest 56 | Z1: 126-140, Z2: 140-154, Z3: 154-168, Z4: 168-182, Z5: 182-196\n\n`;
+
+    summary += `WEEKLY VOLUME (minutes):\n`;
+    Object.entries(WEEKLY_VOLUME).forEach(([week, v]) => {
+      summary += `  ${week}: Cardio ${v.cardio} | Strength ${v.strength} | Yoga ${v.yoga} | Hike ${v.hike} | Total ${v.total}\n`;
+    });
+
+    summary += `\nRECENT SESSIONS (last 10):\n`;
+    GARMIN_SESSIONS.slice(-10).forEach(g => {
+      summary += `  ${g.date} ${g.type} ${g.duration_min}min | Avg HR ${g.avg_hr} | Cal ${g.calories}`;
+      if (g.distance_mi > 0) summary += ` | ${g.distance_mi}mi +${g.elevation_gain}ft`;
+      summary += ` | Z2:${g.z2_pct}% Z3:${g.z3_pct}% drift:${g.drift > 0 ? '+' : ''}${g.drift}%\n`;
+    });
+
+    return summary;
+  }, []);
+
   const coachNutritionData = useMemo(() => {
     try {
       const raw = localStorage.getItem('tmb-nutrition-entries');
@@ -1204,6 +1238,7 @@ export default function Home() {
         weightData={coachWeightData}
         bodyFatData={coachBodyFatData}
         nutritionData={coachNutritionData}
+        garminData={coachGarminData}
       />
 
       {/* MODE TOGGLE */}

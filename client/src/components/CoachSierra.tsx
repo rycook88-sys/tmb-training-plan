@@ -24,6 +24,8 @@ interface CoachSierraProps {
   bodyFatData?: string;
   /** Serialized nutrition data JSON */
   nutritionData?: string;
+  /** Serialized Garmin analytics data */
+  garminData?: string;
 }
 
 const SUGGESTED_PROMPTS = [
@@ -56,6 +58,7 @@ export default function CoachSierra({
   weightData,
   bodyFatData,
   nutritionData,
+  garminData,
 }: CoachSierraProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
@@ -152,6 +155,7 @@ export default function CoachSierra({
       weightData: weightData || undefined,
       bodyFatData: bodyFatData || undefined,
       nutritionData: nutritionData || undefined,
+      garminData: garminData || undefined,
     });
   };
 
