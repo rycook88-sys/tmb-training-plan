@@ -364,3 +364,10 @@
 - [x] Structure popup fields for future data entry (confirmation codes, etc.)
 - [x] Fix food stop diamond hitbox on elevation profile — make diamonds clickable with larger tap target
 - [x] Add food stop popup on elevation profile diamonds (matching map popup style with enriched info)
+
+## Coach Sierra Photo Library & Chat UI (April 2026)
+- [x] Generate 20 Sierra photos with varied expressions and outfits
+- [x] Wire photos into CoachSierra chat as large rotating images per message
+- [x] Display Sierra photo large enough to see clearly (not tiny avatar bubble)
+- [x] Update Sierra's personality to warm companion/training partner (not just coach)
+- [x] Different outfits across photos (black tank, white crop top, burgundy jacket, olive flannel, blue sundress, navy henley)

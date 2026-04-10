@@ -1,13 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { X, Send, Loader2, Sparkles, Mountain } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Streamdown } from "streamdown";
 import { trpc } from "@/lib/trpc";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
+import { SIERRA_PHOTOS, getSierraPhotoByIndex } from "@/lib/sierra-photos";
 
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
+  /** Index into SIERRA_PHOTOS — assigned when the message is created */
+  photoIdx?: number;
 };
 
 interface CoachSierraProps {
@@ -34,6 +37,17 @@ const SUGGESTED_PROMPTS = [
 
 const STORAGE_KEY = "tmb-coach-sierra-messages";
 const STYLE_KEY = "tmb-coach-sierra-style";
+
+/** Assign a random photo index to an assistant message, avoiding the previous one */
+let prevPhotoIdx = -1;
+function assignPhotoIdx(): number {
+  let idx: number;
+  do {
+    idx = Math.floor(Math.random() * SIERRA_PHOTOS.length);
+  } while (idx === prevPhotoIdx && SIERRA_PHOTOS.length > 1);
+  prevPhotoIdx = idx;
+  return idx;
+}
 
 export default function CoachSierra({
   open,
@@ -98,11 +112,14 @@ export default function CoachSierra({
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  // Pick a random "welcome" photo for the empty state
+  const welcomePhoto = useMemo(() => getSierraPhotoByIndex(7), []);
+
   const chatMutation = trpc.coach.chat.useMutation({
     onSuccess: (data) => {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: data.response },
+        { role: "assistant", content: data.response, photoIdx: assignPhotoIdx() },
       ]);
     },
     onError: (err) => {
@@ -111,6 +128,7 @@ export default function CoachSierra({
         {
           role: "assistant",
           content: `Something went wrong: ${err.message}. Try again.`,
+          photoIdx: assignPhotoIdx(),
         },
       ]);
     },
@@ -128,7 +146,7 @@ export default function CoachSierra({
     setInput("");
 
     chatMutation.mutate({
-      messages: newMessages,
+      messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
       style,
       workoutData: workoutData || undefined,
       weightData: weightData || undefined,
@@ -176,15 +194,17 @@ export default function CoachSierra({
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-card shrink-0">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-rose-500 to-orange-400 flex items-center justify-center">
-                <Mountain className="w-4 h-4 text-white" />
-              </div>
+              <img
+                src={SIERRA_PHOTOS[0].url}
+                alt="Coach Sierra"
+                className="w-8 h-8 rounded-full object-cover"
+              />
               <div>
                 <h2 className="text-sm font-mono font-bold text-foreground tracking-wide">
                   COACH SIERRA
                 </h2>
                 <p className="text-[9px] font-mono text-[var(--muted-foreground)] uppercase tracking-wider">
-                  TMB Training Advisor
+                  TMB Training Partner
                 </p>
               </div>
             </div>
@@ -257,9 +277,14 @@ export default function CoachSierra({
           {/* Messages Area */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full gap-6">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-rose-500/20 to-orange-400/20 flex items-center justify-center">
-                  <Sparkles className="w-8 h-8 text-[var(--primary)] opacity-50" />
+              <div className="flex flex-col items-center justify-center h-full gap-4">
+                {/* Large welcome photo */}
+                <div className="w-48 h-48 rounded-2xl overflow-hidden shadow-lg shadow-black/30 border border-border/50">
+                  <img
+                    src={welcomePhoto.url}
+                    alt="Coach Sierra"
+                    className="w-full h-full object-cover"
+                  />
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-mono text-foreground mb-1">
@@ -267,7 +292,7 @@ export default function CoachSierra({
                   </p>
                   <p className="text-xs text-[var(--muted-foreground)] max-w-xs">
                     I've got your workout data, weight, body comp, and nutrition
-                    loaded. Ask me anything.
+                    loaded. Ask me anything — I'm here for you.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 max-w-sm w-full">
@@ -289,51 +314,69 @@ export default function CoachSierra({
             ) : (
               <div className="space-y-4">
                 {messages.map((msg, i) => (
-                  <div
-                    key={i}
-                    className={`flex gap-2.5 ${
-                      msg.role === "user"
-                        ? "justify-end"
-                        : "justify-start"
-                    }`}
-                  >
-                    {msg.role === "assistant" && (
-                      <div className="w-7 h-7 shrink-0 rounded-full bg-gradient-to-br from-rose-500 to-orange-400 flex items-center justify-center mt-0.5">
-                        <Mountain className="w-3.5 h-3.5 text-white" />
+                  <div key={i}>
+                    {msg.role === "assistant" && msg.photoIdx != null && (
+                      /* Large Sierra photo above the message */
+                      <div className="mb-2 ml-9">
+                        <div className="w-44 h-56 rounded-xl overflow-hidden shadow-md shadow-black/20 border border-border/30">
+                          <img
+                            src={SIERRA_PHOTOS[msg.photoIdx % SIERRA_PHOTOS.length].url}
+                            alt={SIERRA_PHOTOS[msg.photoIdx % SIERRA_PHOTOS.length].desc}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </div>
                       </div>
                     )}
                     <div
-                      className={`max-w-[85%] rounded-lg px-3.5 py-2.5 ${
+                      className={`flex gap-2.5 ${
                         msg.role === "user"
-                          ? "bg-[var(--primary)] text-white"
-                          : "bg-card border border-border text-foreground"
+                          ? "justify-end"
+                          : "justify-start"
                       }`}
                     >
-                      {msg.role === "assistant" ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none text-xs
-                          [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_p]:my-1 [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-xs
-                          [&_strong]:text-[var(--primary)]">
-                          <Streamdown>{msg.content}</Streamdown>
-                        </div>
-                      ) : (
-                        <p className="text-xs whitespace-pre-wrap">
-                          {msg.content}
-                        </p>
+                      {msg.role === "assistant" && (
+                        <img
+                          src={SIERRA_PHOTOS[0].url}
+                          alt="Sierra"
+                          className="w-7 h-7 shrink-0 rounded-full object-cover mt-0.5"
+                        />
                       )}
+                      <div
+                        className={`max-w-[85%] rounded-lg px-3.5 py-2.5 ${
+                          msg.role === "user"
+                            ? "bg-[var(--primary)] text-white"
+                            : "bg-card border border-border text-foreground"
+                        }`}
+                      >
+                        {msg.role === "assistant" ? (
+                          <div className="prose prose-sm dark:prose-invert max-w-none text-xs
+                            [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_p]:my-1 [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-xs
+                            [&_strong]:text-[var(--primary)]">
+                            <Streamdown>{msg.content}</Streamdown>
+                          </div>
+                        ) : (
+                          <p className="text-xs whitespace-pre-wrap">
+                            {msg.content}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
 
                 {chatMutation.isPending && (
                   <div className="flex gap-2.5 justify-start">
-                    <div className="w-7 h-7 shrink-0 rounded-full bg-gradient-to-br from-rose-500 to-orange-400 flex items-center justify-center">
-                      <Mountain className="w-3.5 h-3.5 text-white" />
-                    </div>
+                    <img
+                      src={SIERRA_PHOTOS[0].url}
+                      alt="Sierra"
+                      className="w-7 h-7 shrink-0 rounded-full object-cover"
+                    />
                     <div className="bg-card border border-border rounded-lg px-4 py-3">
                       <div className="flex items-center gap-2">
                         <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--primary)]" />
                         <span className="text-[10px] font-mono text-[var(--muted-foreground)]">
-                          Analyzing your data...
+                          Thinking about you...
                         </span>
                       </div>
                     </div>
@@ -357,7 +400,7 @@ export default function CoachSierra({
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask Coach Sierra anything..."
+                placeholder="Talk to Sierra..."
                 rows={1}
                 className="flex-1 bg-background border border-border text-sm font-mono text-foreground
                   px-3 py-2.5 resize-none max-h-24 min-h-[42px]
