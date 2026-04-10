@@ -682,6 +682,7 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
   const [showFillMacros, setShowFillMacros] = useState(false);
   const [fillMacrosSuggestions, setFillMacrosSuggestions] = useState<any>(null);
   const [fillGapsStatus, setFillGapsStatus] = useState<string>("");
+  const [fillGapsError, setFillGapsError] = useState(false);
 
   // Food detail popup
   const [detailEntry, setDetailEntry] = useState<FoodEntry | null>(null);
@@ -1190,6 +1191,7 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
   const handleFillMacros = useCallback(async () => {
     setShowFillMacros(true);
     setFillMacrosSuggestions(null);
+    setFillGapsError(false);
     setFillGapsStatus("Scanning food logs...");
 
     // Gather all days with food entries
@@ -1259,14 +1261,9 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
       setFillMacrosSuggestions(result);
     } catch (err: any) {
       console.error("Fill gaps failed:", err);
-      setFillGapsStatus(`Error: ${err?.message || "Unknown error"}`);
-      setFillMacrosSuggestions({
-        microDeficiencies: [],
-        macroNotes: [],
-        suggestions: [],
-        overallSummary: `Analysis failed: ${err?.message || "Unknown error"}. Please try again.`,
-        confidenceNote: "",
-      });
+      setFillGapsError(true);
+      setFillGapsStatus(`Analysis failed: ${err?.message || "Unknown error"}. Please try again.`);
+      setFillMacrosSuggestions(null);
     }
   }, [logs, fillMacrosMutation, macroTargets]);
 
@@ -1417,6 +1414,7 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
   const isReAnalyzing = reAnalyzeMutation.isPending;
   const isTrendLoading = trendsMutation.isPending;
   const isFillMacrosLoading = fillMacrosMutation.isPending;
+  const hasFillGapsResults = !isFillMacrosLoading && fillMacrosSuggestions && !fillGapsError;
 
   return (
     <div className={embedded ? "" : "container py-6"}>
@@ -1889,13 +1887,16 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
                   <span className="text-xs font-mono text-[var(--muted-foreground)]">{fillGapsStatus || "Analyzing your multi-day nutrition patterns..."}</span>
                 </div>
               )}
-              {!isFillMacrosLoading && !fillMacrosSuggestions && (
+              {!isFillMacrosLoading && !hasFillGapsResults && (
                 <div className="py-4 text-center">
-                  <p className="text-xs font-mono text-[var(--muted-foreground)]">{fillGapsStatus || "Log some food first, then tap Fill My Gaps to analyze your nutrition patterns."}</p>
-                  <button onClick={() => setShowFillMacros(false)} className="mt-2 text-[10px] font-mono text-[var(--primary)] hover:underline cursor-pointer">Close</button>
+                  <p className={`text-xs font-mono ${fillGapsError ? "text-rose-400" : "text-[var(--muted-foreground)]"}`}>{fillGapsStatus || "Log some food first, then tap Fill My Gaps to analyze your nutrition patterns."}</p>
+                  {fillGapsError && (
+                    <button onClick={handleFillMacros} className="mt-2 text-[10px] font-mono text-[var(--primary)] hover:underline cursor-pointer">Retry</button>
+                  )}
+                  <button onClick={() => setShowFillMacros(false)} className="mt-2 ml-3 text-[10px] font-mono text-[var(--muted-foreground)] hover:underline cursor-pointer">Close</button>
                 </div>
               )}
-              {!isFillMacrosLoading && fillMacrosSuggestions && (
+              {hasFillGapsResults && (
                 <>
                   {/* Confidence note */}
                   {fillMacrosSuggestions.confidenceNote && (
