@@ -3,7 +3,7 @@
 // Trail segments colored by country (France/Italy/Switzerland)
 // Food stop markers appear when a specific day is selected
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ChevronDown, Map, Bus, Layers, Mountain, UtensilsCrossed, LocateFixed, Navigation, Play, Square, MoreHorizontal, X, BarChart3 } from "lucide-react";
+import { ChevronDown, ChevronUp, Map, Bus, Layers, Mountain, UtensilsCrossed, LocateFixed, Navigation, Play, Square, MoreHorizontal, X, BarChart3, Phone, Mail, Globe, MapPin, Clock, CreditCard, Utensils, Bed, ChevronRight, Building } from "lucide-react";
 import ElevationProfile from "@/components/ElevationProfile";
 import { TMB_ITINERARY } from "@/lib/data";
 import { FOOD_STOPS, DAY_MILES, getStopsForDay, type FoodStopGeo } from "@/lib/tmb-food-stops";
@@ -34,6 +34,19 @@ interface Accommodation {
   image: string;
   country: string;
   note?: string;
+  // Hostel detail fields
+  date: string;        // e.g. "Fri, Jul 24"
+  nightLabel: string;  // e.g. "Night before Day 1"
+  phone?: string;
+  email?: string;
+  website?: string;
+  confirmationCode?: string;
+  summary: string;     // Quick 1-2 sentence summary
+  hikerTips: string[]; // Detailed tips from research
+  amenities: string[]; // Key amenities list
+  meals?: string;      // Meal info
+  payment?: string;    // Payment methods
+  checkIn?: string;    // Check-in time/info
 }
 
 // D# = where you WAKE UP and START that day's hike
@@ -48,6 +61,21 @@ const ACCOMMODATIONS: Accommodation[] = [
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rockypop_e77608f8.jpg",
     country: "France",
     note: "Arrive & rest — walk to Les Houches trailhead tomorrow",
+    date: "Thu, Jul 24",
+    nightLabel: "Night before Day 1",
+    phone: "+33 4 50 53 65 20",
+    website: "rockypop.com",
+    summary: "Modern hotel near Chamonix. Arrive, rest, and prep gear for the trailhead walk tomorrow.",
+    hikerTips: [
+      "Check in early if possible — use the afternoon to organize gear and do a final pack shakedown",
+      "Restaurant on-site serves dinner and breakfast — carb-load tonight",
+      "The trailhead at Les Houches is a short walk or taxi ride from here",
+      "Stock up on any last-minute supplies at nearby shops in Chamonix",
+    ],
+    amenities: ["Private rooms", "Restaurant & bar", "WiFi", "Luggage storage", "Parking"],
+    meals: "Dinner and breakfast available on-site",
+    payment: "Card accepted",
+    checkIn: "From 3:00 PM",
   },
   {
     day: 1,
@@ -59,6 +87,17 @@ const ACCOMMODATIONS: Accommodation[] = [
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rockypop_e77608f8.jpg",
     country: "France",
     note: "Day 1 start — hike to Gîte Le Pontet",
+    date: "Fri, Jul 25",
+    nightLabel: "Depart — hiking to Gîte Le Pontet",
+    summary: "Day 1 trailhead. Start the TMB from Les Houches and hike to Les Contamines.",
+    hikerTips: [
+      "Start early (7-8 AM) to beat afternoon heat",
+      "Fill water bottles at the trailhead — next reliable source is a few hours in",
+      "The first climb is steep but rewards with great views of the Chamonix valley",
+    ],
+    amenities: ["Trailhead parking", "Public restrooms", "Trail markers"],
+    meals: "Eat breakfast at RockyPop before departing",
+    payment: "N/A",
   },
   {
     day: 2,
@@ -70,6 +109,19 @@ const ACCOMMODATIONS: Accommodation[] = [
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/gite-le-pontet_3f84378c.jpg",
     country: "France",
     note: "Day 2 start — hike to Les Chapieux, bus to BSM",
+    date: "Fri, Jul 25",
+    nightLabel: "Night of Day 1",
+    summary: "Friendly gîte in Les Contamines. Clean, good food, popular with TMB through-hikers.",
+    hikerTips: [
+      "Can be noisy at night due to campsite — bring earplugs",
+      "Food is consistently rated good by TMB hikers",
+      "Shared dorms with bunk beds — claim your spot early",
+      "Good spot to meet fellow TMB hikers on their first night",
+    ],
+    amenities: ["Shared dorms", "Meals included", "Hot showers", "Camping area"],
+    meals: "Dinner and breakfast included with stay",
+    payment: "Card accepted",
+    checkIn: "From 4:00 PM",
   },
   {
     day: 3,
@@ -81,6 +133,22 @@ const ACCOMMODATIONS: Accommodation[] = [
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/base-camp-lodge_73fd4672.jpg",
     country: "France",
     note: "Day 3 start — bus back, hike to Rifugio Elisabetta",
+    date: "Sat, Jul 26",
+    nightLabel: "Night of Day 2",
+    phone: "+33 4 79 07 01 26",
+    website: "hotel-basecamplodge.com",
+    summary: "Modern hotel in Bourg-Saint-Maurice. Clean rooms, adventure-spirit decor, early breakfast at 6 AM.",
+    hikerTips: [
+      "Breakfast starts at 6:00 AM — perfect for catching the early bus back to Les Chapieux",
+      "Modern hotel with comfortable beds — enjoy the upgrade from dorm life",
+      "106 rooms and 5 dormitories — various room types available",
+      "Restaurant serves dinner with friendly service",
+      "Good place to recharge devices and do laundry",
+    ],
+    amenities: ["Private rooms", "Restaurant & bar", "WiFi", "Laundry", "Early breakfast (6 AM)"],
+    meals: "Dinner and breakfast available (breakfast from 6:00 AM)",
+    payment: "Card accepted",
+    checkIn: "From 3:00 PM",
   },
   {
     day: 4,
@@ -92,6 +160,20 @@ const ACCOMMODATIONS: Accommodation[] = [
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rifugio-elisabetta_66a22f61.jpg",
     country: "Italy",
     note: "Day 4 start — hike to Rifugio Maison Vieille",
+    date: "Sun, Jul 27",
+    nightLabel: "Night of Day 3",
+    summary: "Large rifugio at 2,146m below Col de la Seigne. Can be crowded but views are spectacular.",
+    hikerTips: [
+      "Arrive early for best bed selection — this place gets crowded",
+      "Can be chaotic during peak season — patience is key",
+      "Hard to reach by email for bookings — try calling or use booking platforms",
+      "Spectacular views of the glacier from the terrace",
+      "You're crossing into Italy tomorrow — the landscape changes dramatically",
+    ],
+    amenities: ["Shared dorms", "Meals included", "Terrace with views", "Basic facilities"],
+    meals: "Dinner and breakfast included — Italian mountain cuisine",
+    payment: "Cash preferred, card may work",
+    checkIn: "From 2:00 PM",
   },
   {
     day: 5,
@@ -103,6 +185,20 @@ const ACCOMMODATIONS: Accommodation[] = [
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/maison-vieille_fa54cb04.jpg",
     country: "Italy",
     note: "Day 5 start — hike to Rifugio Chapy",
+    date: "Mon, Jul 28",
+    nightLabel: "Night of Day 4",
+    summary: "Friendly rifugio above Courmayeur with excellent food and great house wine. Staff are wonderful.",
+    hikerTips: [
+      "Try the house wine — it's highly rated by hikers and surprisingly good quality",
+      "Staff are very friendly and helpful — one of the best-reviewed rifugios on the TMB",
+      "Lovely food — the Italian mountain cuisine here is a highlight",
+      "Great views of the Mont Blanc massif from the terrace",
+      "Cozy atmosphere — a real treat after the high-altitude Elisabetta",
+    ],
+    amenities: ["Shared dorms", "Meals included", "Bar with house wine", "Terrace", "Hot showers"],
+    meals: "Dinner and breakfast included — excellent Italian cooking",
+    payment: "Cash and card accepted",
+    checkIn: "From 2:00 PM",
   },
   {
     day: 6,
@@ -114,6 +210,19 @@ const ACCOMMODATIONS: Accommodation[] = [
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/rifugio-chapy_59cb8b94.jpg",
     country: "Italy",
     note: "Day 6 start — hike to Gîte La Peule",
+    date: "Tue, Jul 29",
+    nightLabel: "Night of Day 5",
+    summary: "Lower-elevation rifugio in Val Ferret. Good base before the big climb to Grand Col Ferret.",
+    hikerTips: [
+      "Lower elevation (1,429m) means a warmer, more comfortable night",
+      "Good base camp before tomorrow's big climb to Grand Col Ferret (2,537m)",
+      "Rest well tonight — Day 6 is one of the most demanding days",
+      "Val Ferret is beautiful — take a short evening walk if energy permits",
+    ],
+    amenities: ["Shared dorms", "Meals included", "Hot showers", "Garden area"],
+    meals: "Dinner and breakfast included",
+    payment: "Cash and card accepted",
+    checkIn: "From 3:00 PM",
   },
   {
     day: 7,
@@ -125,6 +234,27 @@ const ACCOMMODATIONS: Accommodation[] = [
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/alpage-la-peule_f059aaa4.jpg",
     country: "Switzerland",
     note: "Day 7 start — hike to Relais D'Arpette",
+    date: "Wed, Jul 30",
+    nightLabel: "Night of Day 6",
+    phone: "+41 (0)27 783 10 41",
+    email: "nicolas.lapeule@gmail.com",
+    summary: "Working dairy farm at the base of Grand Col Ferret. The fondue is legendary. Cash only.",
+    hikerTips: [
+      "CASH ONLY — Euro widely accepted alongside Swiss Franc",
+      "The fondue is legendary — hikers call it the best meal on the TMB",
+      "Order your packed lunch on arrival (11 EUR: ham & cheese sandwich, fruit, snacks)",
+      "Only 2 showers and 2 toilets (accessed via outside door) — time your visits before the breakfast rush",
+      "4 AM cow milking may disturb light sleepers — bring earplugs",
+      "USB charging area in the dining hall — limited electrical outlets elsewhere",
+      "Woodstove in dining room is a welcome sight on cold evenings",
+      "33 beds, all dormitories — bunk beds with some partitioning walls for privacy",
+      "Dinner is simple and delicious: fresh salad, ham & cheese croquet on homemade bread, amazing fruit salad",
+      "Breakfast is buffet: homemade yogurt, cereal, bread, butter, jams",
+    ],
+    amenities: ["33 beds (dorms only)", "Meals included", "Hot showers (2)", "USB charging", "Woodstove", "Working farm"],
+    meals: "Dinner & breakfast included. Packed lunch available (11 EUR)",
+    payment: "CASH ONLY (Euro accepted)",
+    checkIn: "From 3:00 PM",
   },
   {
     day: 8,
@@ -136,6 +266,21 @@ const ACCOMMODATIONS: Accommodation[] = [
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/relais-arpette_f7e434cb.jpg",
     country: "Switzerland",
     note: "Day 8 start — hike to Auberge Mont Blanc",
+    date: "Thu, Jul 31",
+    nightLabel: "Night of Day 7",
+    summary: "Well-maintained gîte near Champex with renovated bathrooms, fireplace, and community tables.",
+    hikerTips: [
+      "Bathrooms were recently renovated — super clean with ample soap",
+      "Large community tables upstairs in the main hall — great for meeting other hikers",
+      "Fireplace area is cozy — grab a drink and warm up after the day's hike",
+      "Some private rooms available (double, triple, quad) — book early",
+      "Can be chaotic with campers outside — the indoor areas are calmer",
+      "Bar serves drinks — treat yourself after the Fenêtre d'Arpette if you took that variant",
+    ],
+    amenities: ["Dorms & private rooms", "Meals included", "Renovated showers", "Fireplace", "Bar", "Camping"],
+    meals: "Dinner and breakfast included",
+    payment: "Card and cash accepted",
+    checkIn: "From 3:00 PM",
   },
   {
     day: 9,
@@ -147,6 +292,23 @@ const ACCOMMODATIONS: Accommodation[] = [
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/auberge-mont-blanc_4ef2c0b7.jpg",
     country: "Switzerland",
     note: "Day 9 start — hike to Grassonnet",
+    date: "Fri, Aug 1",
+    nightLabel: "Night of Day 8",
+    phone: "+41 27 722 46 23",
+    website: "auberge-montblanc.ch",
+    summary: "Charming auberge in Trient with garden sauna and hot tub — perfect for sore legs.",
+    hikerTips: [
+      "Has a GARDEN SAUNA and HOT TUB — absolute game-changer for sore legs after 8 days of hiking",
+      "Clean dorms with spacious layout and nice bathrooms",
+      "Staff are very friendly and helpful",
+      "Dinner is decent, breakfast is basic but filling",
+      "Incredible views of Mont Blanc from the property",
+      "This is Switzerland — slightly pricier but worth it for the sauna/tub recovery",
+    ],
+    amenities: ["Dorms & private rooms", "Meals included", "Garden sauna", "Hot tub", "WiFi", "Clean bathrooms"],
+    meals: "Dinner and breakfast included",
+    payment: "Card and cash accepted",
+    checkIn: "From 3:00 PM",
   },
   {
     day: 10,
@@ -158,6 +320,21 @@ const ACCOMMODATIONS: Accommodation[] = [
     image: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/nouveau-grassonnet_51afd809.jpg",
     country: "France",
     note: "Day 10 start — final push to Planpraz, cable car to Chamonix!",
+    date: "Sat, Aug 2",
+    nightLabel: "Night of Day 9",
+    summary: "Friendly gîte near Argentière. Last night before the final push to Chamonix.",
+    hikerTips: [
+      "Nice, friendly hostel — great for solo travelers or groups",
+      "Good dinner and breakfast included",
+      "700m from ski lifts — close to Chamonix area amenities",
+      "Free WiFi — catch up on messages before the final day",
+      "Last night on the trail — celebrate with fellow hikers!",
+      "Tomorrow is the final push to Planpraz and the cable car down to Chamonix",
+    ],
+    amenities: ["Shared dorms", "Meals included", "Free WiFi", "Near Chamonix"],
+    meals: "Dinner and breakfast included",
+    payment: "Card accepted",
+    checkIn: "From 4:00 PM",
   },
 ];
 
@@ -227,6 +404,8 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
   const simIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const simIndexRef = useRef(0);
   const [avatarCropperOpen, setAvatarCropperOpen] = useState(false);
+  const [accomSectionOpen, setAccomSectionOpen] = useState(false);
+  const [hostelDetailDay, setHostelDetailDay] = useState<number | null>(null);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const [avatarUrl, setAvatarUrl] = useState(getAvatarUrl);
@@ -1058,37 +1237,203 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
             </div>
           )}
 
-          {/* Accommodation thumbnails */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mt-3">
-            {ACCOMMODATIONS.map((acc) => (
-              <button
-                key={acc.day}
-                onClick={() => flyToDay(acc.day)}
-                onMouseEnter={() => onDayHover?.(acc.day)}
-                onMouseLeave={() => onDayHover?.(null)}
-                className={`relative rounded-lg overflow-hidden border transition-all group cursor-pointer ${
-                  selectedDay === acc.day || highlightDay === acc.day
-                    ? "border-violet-500 ring-1 ring-violet-500/30"
-                    : "border-slate-700/50 hover:border-slate-600"
-                }`}
-              >
-                <img
-                  src={acc.image}
-                  alt={acc.name}
-                  className="w-full h-16 object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-1.5">
-                  <span className={`text-[10px] font-mono font-bold text-violet-400 bg-black/70 px-1.5 py-0.5 rounded`}>
-                    {acc.day === 0 ? "ARRIVE" : `DAY ${acc.day}`}
-                  </span>
-                  <p className="text-[10px] text-white font-medium leading-tight truncate">
-                    {acc.name}
-                  </p>
-                </div>
-              </button>
-            ))}
+          {/* Accommodation Section — Collapsible */}
+          <div className="mt-3 border border-slate-700/50 rounded-xl overflow-hidden">
+            <button
+              onClick={() => setAccomSectionOpen(!accomSectionOpen)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-slate-800/50 hover:bg-slate-700/50 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Building className="w-4 h-4 text-violet-400" />
+                <span className="text-xs font-mono uppercase tracking-wider text-slate-300">Accommodations</span>
+                <span className="text-[10px] font-mono text-slate-500">{ACCOMMODATIONS.length} stops</span>
+              </div>
+              {accomSectionOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+            </button>
+            {accomSectionOpen && (
+              <div className="p-3 space-y-2">
+                {ACCOMMODATIONS.map((acc) => (
+                  <button
+                    key={acc.day}
+                    onClick={() => setHostelDetailDay(hostelDetailDay === acc.day ? null : acc.day)}
+                    className={`w-full flex items-center gap-3 p-2.5 rounded-lg border transition-all cursor-pointer text-left ${
+                      hostelDetailDay === acc.day
+                        ? "border-violet-500 bg-violet-500/10"
+                        : "border-slate-700/50 hover:border-slate-600 bg-slate-800/30 hover:bg-slate-800/50"
+                    }`}
+                  >
+                    <img
+                      src={acc.image}
+                      alt={acc.name}
+                      className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono font-bold text-violet-400">
+                          {acc.day === 0 ? "ARRIVE" : acc.day === 1 ? "START" : `DAY ${acc.day}`}
+                        </span>
+                        <span className="text-[10px] text-slate-500">{acc.date}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                          acc.country === "France" ? "bg-orange-500/20 text-orange-400" :
+                          acc.country === "Italy" ? "bg-green-500/20 text-green-400" :
+                          "bg-red-500/20 text-red-400"
+                        }`}>{acc.country}</span>
+                      </div>
+                      <p className="text-sm text-white font-medium truncate">{acc.name}</p>
+                      <p className="text-[10px] text-slate-400 truncate">{acc.summary}</p>
+                    </div>
+                    <ChevronRight className={`w-4 h-4 text-slate-500 flex-shrink-0 transition-transform ${
+                      hostelDetailDay === acc.day ? "rotate-90" : ""
+                    }`} />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+
+          {/* Hostel Detail Popup */}
+          {hostelDetailDay !== null && (() => {
+            const acc = ACCOMMODATIONS.find(a => a.day === hostelDetailDay);
+            if (!acc) return null;
+            return (
+              <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setHostelDetailDay(null)}>
+                <div
+                  className="w-full max-w-lg max-h-[85vh] bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Header with image */}
+                  <div className="relative h-36 flex-shrink-0">
+                    <img src={acc.image} alt={acc.name} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
+                    <button onClick={() => setHostelDetailDay(null)} className="absolute top-3 right-3 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center hover:bg-black/70 transition cursor-pointer">
+                      <X className="w-4 h-4 text-white" />
+                    </button>
+                    <div className="absolute bottom-3 left-4 right-4">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-mono font-bold text-violet-400 bg-black/60 px-2 py-0.5 rounded">
+                          {acc.day === 0 ? "ARRIVE" : acc.day === 1 ? "START" : `DAY ${acc.day}`}
+                        </span>
+                        <span className="text-xs text-slate-300 bg-black/60 px-2 py-0.5 rounded">{acc.date}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded font-mono bg-black/60 ${
+                          acc.country === "France" ? "text-orange-400" :
+                          acc.country === "Italy" ? "text-green-400" : "text-red-400"
+                        }`}>{acc.country}</span>
+                      </div>
+                      <h3 className="text-lg font-bold text-white">{acc.name}</h3>
+                      <p className="text-xs text-slate-400">{getTypeLabel(acc.type)} &middot; {u.elev(acc.elevation)} {u.elevUnit} &middot; {acc.nightLabel}</p>
+                    </div>
+                  </div>
+
+                  {/* Scrollable content */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {/* Summary */}
+                    <p className="text-sm text-slate-300 leading-relaxed">{acc.summary}</p>
+
+                    {/* Quick info grid */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {acc.checkIn && (
+                        <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg p-2.5">
+                          <Clock className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase">Check-in</p>
+                            <p className="text-xs text-white">{acc.checkIn}</p>
+                          </div>
+                        </div>
+                      )}
+                      {acc.payment && (
+                        <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg p-2.5">
+                          <CreditCard className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase">Payment</p>
+                            <p className="text-xs text-white">{acc.payment}</p>
+                          </div>
+                        </div>
+                      )}
+                      {acc.meals && (
+                        <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg p-2.5 col-span-2">
+                          <Utensils className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                          <div>
+                            <p className="text-[10px] text-slate-500 uppercase">Meals</p>
+                            <p className="text-xs text-white">{acc.meals}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Confirmation Code */}
+                    <div className="bg-violet-500/10 border border-violet-500/30 rounded-lg p-3">
+                      <p className="text-[10px] text-violet-400 uppercase font-mono mb-1">Confirmation Code</p>
+                      <p className="text-sm font-mono text-white">
+                        {acc.confirmationCode || "Not yet added — coming soon"}
+                      </p>
+                    </div>
+
+                    {/* Contact info */}
+                    {(acc.phone || acc.email || acc.website) && (
+                      <div className="space-y-2">
+                        <p className="text-[10px] text-slate-500 uppercase font-mono">Contact</p>
+                        {acc.phone && (
+                          <a href={`tel:${acc.phone}`} className="flex items-center gap-2 text-sm text-sky-400 hover:text-sky-300">
+                            <Phone className="w-3.5 h-3.5" /> {acc.phone}
+                          </a>
+                        )}
+                        {acc.email && (
+                          <a href={`mailto:${acc.email}`} className="flex items-center gap-2 text-sm text-sky-400 hover:text-sky-300">
+                            <Mail className="w-3.5 h-3.5" /> {acc.email}
+                          </a>
+                        )}
+                        {acc.website && (
+                          <a href={`https://${acc.website}`} target="_blank" rel="noopener" className="flex items-center gap-2 text-sm text-sky-400 hover:text-sky-300">
+                            <Globe className="w-3.5 h-3.5" /> {acc.website}
+                          </a>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Amenities */}
+                    {acc.amenities.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase font-mono mb-2">Amenities</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {acc.amenities.map((a, i) => (
+                            <span key={i} className="text-[11px] bg-slate-800 text-slate-300 px-2 py-1 rounded-full border border-slate-700/50">
+                              {a}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Hiker Tips */}
+                    {acc.hikerTips.length > 0 && (
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase font-mono mb-2">Hiker Intel</p>
+                        <div className="space-y-1.5">
+                          {acc.hikerTips.map((tip, i) => (
+                            <div key={i} className="flex gap-2 text-xs text-slate-300">
+                              <span className="text-violet-400 flex-shrink-0 mt-0.5">&bull;</span>
+                              <span>{tip}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Map button */}
+                    <button
+                      onClick={() => {
+                        setHostelDetailDay(null);
+                        flyToDay(acc.day);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium py-2.5 rounded-lg transition cursor-pointer"
+                    >
+                      <MapPin className="w-4 h-4" /> Show on Map
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
       </div>
 
       {/* Leaflet popup styling */}

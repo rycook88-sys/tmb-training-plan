@@ -14,7 +14,7 @@ import {
   ReferenceDot,
   ResponsiveContainer,
 } from "recharts";
-import { ChevronDown, Mountain, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, MapPin, TrendingUp, UtensilsCrossed } from "lucide-react";
+import { ChevronDown, Mountain, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, MapPin, TrendingUp, UtensilsCrossed, X, Clock, CreditCard } from "lucide-react";
 import profileRaw from "@/lib/tmb_elevation_profile.json";
 import { FOOD_STOPS, type FoodStopGeo } from "@/lib/tmb-food-stops";
 import { haversineMeters } from "@/lib/gps-tracker";
@@ -335,24 +335,30 @@ const gpsProfilePoints = trailGpsProfile as TrailGpsPoint[];
 
 // ── main component ─────────────────────────────────────────────────
 // ── Food stop dot on chart ─────────────────────────────────────────
-function FoodStopDot({ cx, cy, stop }: { cx?: number; cy?: number; stop: FoodStopGeo }) {
+function FoodStopDot({ cx, cy, stop, onTap }: { cx?: number; cy?: number; stop: FoodStopGeo; onTap?: (stop: FoodStopGeo) => void }) {
   if (!cx || !cy) return null;
   const isHighlight = stop.highlight;
   const fillColor = isHighlight ? "#F59E0B" : "#94A3B8";
   const strokeColor = isHighlight ? "#FDE68A" : "#CBD5E1";
   return (
-    <g>
+    <g
+      style={{ cursor: "pointer" }}
+      onClick={(e) => { e.stopPropagation(); onTap?.(stop); }}
+      onTouchEnd={(e) => { e.stopPropagation(); onTap?.(stop); }}
+    >
+      {/* Invisible larger hitbox for easier tapping */}
+      <circle cx={cx} cy={cy} r={16} fill="transparent" />
       {/* Vertical line from dot to chart */}
       <line x1={cx} y1={cy} x2={cx} y2={cy + 15} stroke={fillColor} strokeWidth={1} strokeDasharray="2,2" opacity={0.6} />
       {/* Diamond shape for food stop */}
       <polygon
-        points={`${cx},${cy - 6} ${cx + 5},${cy} ${cx},${cy + 6} ${cx - 5},${cy}`}
+        points={`${cx},${cy - 8} ${cx + 7},${cy} ${cx},${cy + 8} ${cx - 7},${cy}`}
         fill={fillColor}
         stroke={strokeColor}
-        strokeWidth={1}
+        strokeWidth={1.5}
       />
       {/* Name label below */}
-      <text x={cx} y={cy + 26} textAnchor="middle" fill={fillColor} fontSize={6} fontFamily="'JetBrains Mono', monospace" opacity={0.9}>
+      <text x={cx} y={cy + 28} textAnchor="middle" fill={fillColor} fontSize={6} fontFamily="'JetBrains Mono', monospace" opacity={0.9}>
         {stop.name.length > 16 ? stop.name.slice(0, 14) + "\u2026" : stop.name}
       </text>
     </g>
@@ -376,6 +382,7 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
     }
   };
   const [zoomedDay, setZoomedDay] = useState<number | null>(null);
+  const [selectedFoodStop, setSelectedFoodStop] = useState<FoodStopGeo | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
   // Sync parent selectedDay into zoomedDay when embedded
@@ -884,7 +891,7 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
                     key={`food-${s.day}-${i}`}
                     x={s.mileAbs}
                     y={s.ele}
-                    shape={<FoodStopDot stop={s} />}
+                    shape={<FoodStopDot stop={s} onTap={(stop) => setSelectedFoodStop(stop)} />}
                   />
                 ))}
 
@@ -899,6 +906,86 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
               </AreaChart>
             </ResponsiveContainer>
           </div>
+
+          {/* Food stop popup */}
+          {selectedFoodStop && (
+            <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setSelectedFoodStop(null)}>
+              <div
+                className="w-full max-w-md max-h-[75vh] bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="flex items-start justify-between p-4 pb-2 border-b border-slate-700/50">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">{selectedFoodStop.highlight ? "\u2B50" : selectedFoodStop.type === "restaurant" ? "\uD83C\uDF55" : selectedFoodStop.type === "cafe" ? "\u2615" : selectedFoodStop.type === "supermarket" ? "\uD83D\uDED2" : "\uD83C\uDF7D\uFE0F"}</span>
+                      <h3 className="text-base font-bold text-white">{selectedFoodStop.name}</h3>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <span className="capitalize">{selectedFoodStop.type.replace("-", " ")}</span>
+                      <span>&middot;</span>
+                      <span>Day {selectedFoodStop.day}</span>
+                      <span>&middot;</span>
+                      <span>{selectedFoodStop.dayOfWeek}, {selectedFoodStop.date}</span>
+                    </div>
+                  </div>
+                  <button onClick={() => setSelectedFoodStop(null)} className="w-8 h-8 bg-slate-800 rounded-full flex items-center justify-center hover:bg-slate-700 transition cursor-pointer flex-shrink-0">
+                    <X className="w-4 h-4 text-white" />
+                  </button>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                  {/* Description */}
+                  <p className="text-sm text-slate-300 leading-relaxed">{selectedFoodStop.description}</p>
+
+                  {/* Must try */}
+                  {selectedFoodStop.mustTry && (
+                    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
+                      <p className="text-[10px] text-amber-400 uppercase font-mono mb-1">Must Try</p>
+                      <p className="text-sm text-white">{selectedFoodStop.mustTry}</p>
+                    </div>
+                  )}
+
+                  {/* Info grid */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {selectedFoodStop.hours && (
+                      <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg p-2.5">
+                        <Clock className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase">Hours ({selectedFoodStop.dayOfWeek})</p>
+                          <p className="text-xs text-white">{selectedFoodStop.hours}</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg p-2.5">
+                      <CreditCard className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase">Payment</p>
+                        <p className="text-xs text-white capitalize">{selectedFoodStop.payment}</p>
+                      </div>
+                    </div>
+                    {selectedFoodStop.priceRange && (
+                      <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg p-2.5">
+                        <span className="text-violet-400 text-sm">\u20AC</span>
+                        <div>
+                          <p className="text-[10px] text-slate-500 uppercase">Price Range</p>
+                          <p className="text-xs text-white">{selectedFoodStop.priceRange}</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg p-2.5">
+                      <MapPin className="w-4 h-4 text-violet-400 flex-shrink-0" />
+                      <div>
+                        <p className="text-[10px] text-slate-500 uppercase">Location</p>
+                        <p className="text-xs text-white">Mile {u.dist(selectedFoodStop.mileAbs)} &middot; {u.elev(selectedFoodStop.ele)} {u.elevUnit}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Touch hint */}
           <p className="text-center text-[0.55rem] text-zinc-600 mt-1 tracking-wider">

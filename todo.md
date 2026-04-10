@@ -357,3 +357,10 @@
 - [x] Enrich food stop popups with descriptions, must-try items, operating hours for the specific hiking day
 - [x] Add food stop popup to elevation profile (currently only on map)
 - [x] Fix ghost D10 purple circles still appearing on elevation profile (need deeper fix)
+
+## Accommodation Section Redesign + Elevation Food Hitbox (April 2026 batch 4)
+- [x] Move accommodation photo cards from main view into a collapsible dropdown section
+- [x] Add hostel detail popup when tapping an accommodation card (confirmation code, phone, check-in tips, hiker intel)
+- [x] Structure popup fields for future data entry (confirmation codes, etc.)
+- [x] Fix food stop diamond hitbox on elevation profile — make diamonds clickable with larger tap target
+- [x] Add food stop popup on elevation profile diamonds (matching map popup style with enriched info)
