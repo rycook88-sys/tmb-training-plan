@@ -681,6 +681,7 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [showFillMacros, setShowFillMacros] = useState(false);
   const [fillMacrosSuggestions, setFillMacrosSuggestions] = useState<any>(null);
+  const [fillGapsStatus, setFillGapsStatus] = useState<string>("");
 
   // Food detail popup
   const [detailEntry, setDetailEntry] = useState<FoodEntry | null>(null);
@@ -1188,11 +1189,13 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
   /* ── Fill My Macros ────────────────────────────── */
   const handleFillMacros = useCallback(async () => {
     setShowFillMacros(true);
+    setFillMacrosSuggestions(null);
+    setFillGapsStatus("Scanning food logs...");
 
     // Gather all days with food entries
     const daysWithEntries = logs.filter((l) => l.entries.length > 0);
     const numDays = daysWithEntries.length;
-    if (numDays === 0) { setFillMacrosSuggestions(null); return; }
+    if (numDays === 0) { setFillGapsStatus(`No days with food found (${logs.length} total log days)`); return; }
 
     // Compute per-day macro totals, then average
     let totalCal = 0, totalProt = 0, totalCarbs = 0, totalFat = 0;
@@ -1243,6 +1246,8 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
       multiDayMicros.push({ name: micro.name, avgPercent: pct });
     }
 
+    setFillGapsStatus(`Found ${numDays} day(s) with food. Avg: ${Math.round(totalCal / numDays)} cal, ${Math.round(totalProt / numDays)}g P. Calling AI...`);
+
     try {
       const result = await fillMacrosMutation.mutateAsync({
         daysTracked: numDays,
@@ -1250,14 +1255,16 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
         avgMacros,
         macroTargets,
       });
+      setFillGapsStatus("Analysis complete!");
       setFillMacrosSuggestions(result);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Fill gaps failed:", err);
+      setFillGapsStatus(`Error: ${err?.message || "Unknown error"}`);
       setFillMacrosSuggestions({
         microDeficiencies: [],
         macroNotes: [],
         suggestions: [],
-        overallSummary: "Analysis failed — please try again. Make sure you have food entries logged.",
+        overallSummary: `Analysis failed: ${err?.message || "Unknown error"}. Please try again.`,
         confidenceNote: "",
       });
     }
@@ -1879,12 +1886,12 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
               {isFillMacrosLoading && (
                 <div className="flex items-center gap-2 py-4">
                   <Loader2 className="w-4 h-4 animate-spin text-[var(--primary)]" />
-                  <span className="text-xs font-mono text-[var(--muted-foreground)]">Analyzing your multi-day nutrition patterns...</span>
+                  <span className="text-xs font-mono text-[var(--muted-foreground)]">{fillGapsStatus || "Analyzing your multi-day nutrition patterns..."}</span>
                 </div>
               )}
               {!isFillMacrosLoading && !fillMacrosSuggestions && (
                 <div className="py-4 text-center">
-                  <p className="text-xs font-mono text-[var(--muted-foreground)]">Log some food first, then tap Fill My Gaps to analyze your nutrition patterns.</p>
+                  <p className="text-xs font-mono text-[var(--muted-foreground)]">{fillGapsStatus || "Log some food first, then tap Fill My Gaps to analyze your nutrition patterns."}</p>
                   <button onClick={() => setShowFillMacros(false)} className="mt-2 text-[10px] font-mono text-[var(--primary)] hover:underline cursor-pointer">Close</button>
                 </div>
               )}
