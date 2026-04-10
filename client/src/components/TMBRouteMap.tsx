@@ -825,34 +825,34 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
               )}
             </div>
             <div className="grid grid-cols-5 gap-1.5 w-full">
-              {/* 1. Layer toggle */}
+              {/* 1. Layer toggle — teal accent */}
               <button
                 onClick={() => setMapLayer(mapLayer === "topo" ? "satellite" : "topo")}
-                className="flex flex-col items-center justify-center gap-1 py-2 rounded-md bg-slate-800 border border-slate-700 text-[9px] font-mono text-slate-400 hover:text-slate-200 transition-colors"
+                className="flex flex-col items-center justify-center gap-1 py-2 rounded-md bg-slate-800 border border-teal-700/40 text-[9px] font-mono text-teal-400/70 hover:text-teal-300 hover:border-teal-600/60 transition-colors"
               >
                 {mapLayer === "topo" ? <Layers className="w-3.5 h-3.5" /> : <Mountain className="w-3.5 h-3.5" />}
                 <span>{mapLayer === "topo" ? "SAT" : "TOPO"}</span>
               </button>
-              {/* 2. Food stops toggle */}
+              {/* 2. Food stops toggle — amber accent */}
               <button
                 onClick={() => setShowFoodStops(!showFoodStops)}
                 className={`flex flex-col items-center justify-center gap-1 py-2 rounded-md border text-[9px] font-mono transition-colors ${
                   showFoodStops
                     ? "bg-amber-500/15 border-amber-500/40 text-amber-400 hover:bg-amber-500/25"
-                    : "bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300"
+                    : "bg-slate-800 border-amber-700/30 text-amber-400/50 hover:text-amber-300 hover:border-amber-600/50"
                 }`}
                 title={showFoodStops ? "Hide food stops" : "Show food stops"}
               >
                 <UtensilsCrossed className="w-3.5 h-3.5" />
                 <span>FOOD</span>
               </button>
-              {/* 3. GPS locate me */}
+              {/* 3. GPS locate me — blue accent */}
               <button
                 onClick={gpsActive && gpsPosition ? centerOnGps : toggleGps}
                 className={`flex flex-col items-center justify-center gap-1 py-2 rounded-md border text-[9px] font-mono transition-colors ${
                   gpsActive
                     ? "bg-blue-500/15 border-blue-500/40 text-blue-400 hover:bg-blue-500/25"
-                    : "bg-slate-800 border-slate-700 text-slate-500 hover:text-slate-300"
+                    : "bg-slate-800 border-blue-700/30 text-blue-400/50 hover:text-blue-300 hover:border-blue-600/50"
                 }`}
                 title={gpsActive ? "Center on my location" : "Show my location"}
                 onDoubleClick={gpsActive ? toggleGps : undefined}
@@ -860,13 +860,13 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                 {gpsActive ? <Navigation className="w-3.5 h-3.5" /> : <LocateFixed className="w-3.5 h-3.5" />}
                 <span>{gpsActive ? "GPS" : "LOCATE"}</span>
               </button>
-              {/* 4. View toggle — Map / Elevation */}
+              {/* 4. View toggle — Map / Elevation — rose accent */}
               <button
                 onClick={() => setViewMode(viewMode === "map" ? "elevation" : "map")}
                 className={`flex flex-col items-center justify-center gap-1 py-2 rounded-md border text-[9px] font-mono transition-colors ${
                   viewMode === "elevation"
                     ? "bg-rose-500/15 border-rose-500/40 text-rose-400 hover:bg-rose-500/25"
-                    : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"
+                    : "bg-slate-800 border-rose-700/30 text-rose-400/50 hover:text-rose-300 hover:border-rose-600/50"
                 }`}
               >
                 {viewMode === "map" ? <BarChart3 className="w-3.5 h-3.5" /> : <Map className="w-3.5 h-3.5" />}
@@ -879,7 +879,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                   className={`flex flex-col items-center justify-center gap-1 py-2 rounded-md border text-[9px] font-mono transition-colors w-full h-full ${
                     moreMenuOpen
                       ? "bg-slate-700 border-slate-500 text-slate-200"
-                      : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"
+                      : "bg-slate-800 border-violet-700/30 text-violet-400/50 hover:text-violet-300 hover:border-violet-600/50"
                   }`}
                   title="More options"
                 >
@@ -993,12 +993,48 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                 style={{ background: "#1a1a2e" }}
               />
             </div>
+            {/* Day circle selector strip below map */}
+            <div className="mt-3 overflow-x-auto">
+              <div className="flex gap-2 px-2 min-w-max justify-center">
+                {ACCOMMODATIONS.map((acc) => (
+                  <button
+                    key={acc.day}
+                    onClick={() => flyToDay(acc.day)}
+                    onMouseEnter={() => onDayHover?.(acc.day)}
+                    onMouseLeave={() => onDayHover?.(null)}
+                    className={`flex flex-col items-center text-center group cursor-pointer hover:bg-slate-800/60 rounded-lg px-2 py-1.5 transition-colors ${
+                      selectedDay === acc.day || highlightDay === acc.day ? "bg-slate-800/60 ring-1 ring-violet-500/40" : ""
+                    }`}
+                  >
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center font-bold mb-1 border-2 transition-colors group-hover:border-violet-400 group-hover:text-violet-300"
+                      style={{
+                        borderColor: selectedDay === acc.day || highlightDay === acc.day ? "#C4B5FD" : "#8B5CF6",
+                        color: selectedDay === acc.day || highlightDay === acc.day ? "#C4B5FD" : "#8B5CF6",
+                        background: selectedDay === acc.day || highlightDay === acc.day ? "#8B5CF6" : "#1c1917",
+                        fontSize: "0.55rem",
+                      }}
+                    >
+                      <span style={{ color: selectedDay === acc.day || highlightDay === acc.day ? "#fff" : undefined }}>
+                        {acc.day === 0 ? "ARR" : `D${acc.day}`}
+                      </span>
+                    </div>
+                    <span
+                      className="text-slate-500 group-hover:text-slate-300 transition-colors leading-tight whitespace-nowrap"
+                      style={{ fontSize: "0.5rem", fontFamily: "'JetBrains Mono', monospace" }}
+                    >
+                      {acc.name.length > 14 ? acc.name.slice(0, 12) + "\u2026" : acc.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Elevation Profile — only visible in elevation mode */}
           {viewMode === "elevation" && (
             <div className="border border-slate-700/50 rounded-xl overflow-hidden">
-              <ElevationProfile highlightDay={highlightDay} onDayHover={onDayHover} gpsPosition={gpsPosition ? { lat: gpsPosition.lat, lng: gpsPosition.lng } : null} embedded />
+              <ElevationProfile highlightDay={highlightDay} onDayHover={onDayHover} gpsPosition={gpsPosition ? { lat: gpsPosition.lat, lng: gpsPosition.lng } : null} embedded selectedDay={selectedDay} parentShowFoodStops={showFoodStops} onFoodToggle={() => setShowFoodStops(!showFoodStops)} />
             </div>
           )}
 

@@ -359,13 +359,22 @@ function FoodStopDot({ cx, cy, stop }: { cx?: number; cy?: number; stop: FoodSto
   );
 }
 
-export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition, embedded }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void; gpsPosition?: { lat: number; lng: number } | null; embedded?: boolean }) {
+export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition, embedded, selectedDay, parentShowFoodStops, onFoodToggle }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void; gpsPosition?: { lat: number; lng: number } | null; embedded?: boolean; selectedDay?: number | null; parentShowFoodStops?: boolean; onFoodToggle?: () => void }) {
   const u = useUnits();
   const [open, setOpen] = useState(embedded ? true : false);
   const [customScale, setCustomScale] = useState(1); // continuous zoom scale
   const [windowStart, setWindowStart] = useState(0);
   const [mode, setMode] = useState<ViewMode>("country");
-  const [showFoodStops, setShowFoodStops] = useState(true);
+  const [localShowFoodStops, setLocalShowFoodStops] = useState(true);
+  // When embedded, use parent's food toggle state; otherwise use local state
+  const showFoodStops = embedded && parentShowFoodStops !== undefined ? parentShowFoodStops : localShowFoodStops;
+  const toggleFoodStops = () => {
+    if (embedded && onFoodToggle) {
+      onFoodToggle();
+    } else {
+      setLocalShowFoodStops(!localShowFoodStops);
+    }
+  };
   const [zoomedDay, setZoomedDay] = useState<number | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
@@ -635,7 +644,7 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
                   Steepness
                 </button>
                 <button
-                  onClick={() => setShowFoodStops(!showFoodStops)}
+                  onClick={toggleFoodStops}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[0.65rem] font-mono uppercase tracking-wider transition-all ${
                     showFoodStops
                       ? "bg-amber-700/60 text-amber-300 shadow-sm"

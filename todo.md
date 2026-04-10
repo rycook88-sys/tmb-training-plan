@@ -342,3 +342,9 @@
 - [x] Fix CoachSierra.tsx JSX fragment error (adjacent elements not wrapped)
 - [x] Fix calorie banner showing 0 cal on app load (useEffect to read localStorage on mount)
 - [x] Fix France legend color in TMBRouteMap — legend shows purple but trails are orange
+
+## TMBRouteMap Fixes (April 2026 batch 2)
+- [x] Fix ghost day markers (purple D10 circles) persisting on elevation profile when switching days
+- [x] Differentiate toolbar buttons (SAT/FOOD/LOCATE/MAP/MORE) visually — subtle color coding while keeping same size
+- [x] Add purple day-circle selector buttons to the map view (currently only on elevation profile)
+- [x] Make food stops on elevation profile toggleable via FOOD button (currently always visible)
