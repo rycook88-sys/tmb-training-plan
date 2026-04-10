@@ -6,7 +6,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { ChevronDown, Map, Bus, Layers, Mountain, UtensilsCrossed, LocateFixed, Navigation, Play, Square, MoreHorizontal, X, BarChart3 } from "lucide-react";
 import ElevationProfile from "@/components/ElevationProfile";
 import { TMB_ITINERARY } from "@/lib/data";
-import { FOOD_STOPS, DAY_MILES, getStopsForDay } from "@/lib/tmb-food-stops";
+import { FOOD_STOPS, DAY_MILES, getStopsForDay, type FoodStopGeo } from "@/lib/tmb-food-stops";
 import { OfflineMapManager } from "@/components/OfflineMapManager";
 import AvatarCropper, { getAvatarUrl, onAvatarChange } from "@/components/AvatarCropper";
 import { watchPosition, clearWatch, haversineMeters, metersToMiles, type GpsPosition } from "@/lib/gps-tracker";
@@ -446,11 +446,11 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
     foodStopMarkersRef.current.forEach(m => m.remove());
     foodStopMarkersRef.current = [];
 
-    // Only show food stops if a day is selected and toggle is on
-    if (!selectedDay || !showFoodStops) return;
+    // Show food stops based on toggle — if no day selected, show all visible in map bounds
+    if (!showFoodStops) return;
 
-    const dayStops = getStopsForDay(selectedDay);
-    const dayMiles = DAY_MILES[selectedDay] || 0;
+    const dayStops = selectedDay !== null ? getStopsForDay(selectedDay) : FOOD_STOPS;
+    const dayMiles = selectedDay !== null ? (DAY_MILES[selectedDay] || 0) : 0;
 
     dayStops.forEach((stop) => {
       const emoji = STOP_TYPE_EMOJI[stop.type] || "🍽️";
@@ -477,22 +477,31 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
 
       const marker = L.marker([stop.lat, stop.lng], { icon, zIndexOffset: 1000 }).addTo(map);
 
+      const paymentLabel = stop.payment === 'card' ? '💳 Card' : stop.payment === 'cash' ? '💵 Cash only' : '💳💵 Card/Cash';
       const popupHtml = `
-        <div style="font-family:system-ui,-apple-system,sans-serif;width:220px;padding:8px 10px;margin:-14px -20px -14px -20px;">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
-            <span style="font-size:16px;">${emoji}</span>
-            <span style="font-size:13px;font-weight:700;color:#1E293B;">${stop.name}</span>
+        <div style="font-family:system-ui,-apple-system,sans-serif;width:260px;padding:10px 12px;margin:-14px -20px -14px -20px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <span style="font-size:18px;">${emoji}</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#1E293B;line-height:1.2;">${stop.name}</div>
+              <div style="font-size:9px;color:#94A3B8;margin-top:1px;">Day ${stop.day} · ${stop.dayOfWeek}, ${stop.date}</div>
+            </div>
           </div>
-          <div style="display:flex;gap:8px;font-size:10px;color:#64748B;margin-bottom:4px;">
-            <span style="background:#F0FDF4;color:#16A34A;padding:1px 5px;border-radius:3px;font-weight:600;">${u.distUnit} ${u.isMetric ? (stop.mileIn * 1.60934).toFixed(1) : stop.mileIn.toFixed(1)} of ${u.dist(dayMiles)}</span>
-            <span>${stop.type}</span>
+          <p style="font-size:11px;color:#475569;margin:0 0 6px;line-height:1.4;">${stop.description}</p>
+          ${stop.mustTry ? `<div style="font-size:11px;color:#D97706;margin-bottom:6px;line-height:1.3;"><b>⭐ Must try:</b> ${stop.mustTry}</div>` : ''}
+          <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:10px;margin-bottom:4px;">
+            ${stop.hours ? `<span style="background:#EFF6FF;color:#2563EB;padding:2px 6px;border-radius:3px;">🕐 ${stop.hours}</span>` : ''}
           </div>
-          ${isHighlight ? '<div style="font-size:10px;color:#D97706;font-weight:600;margin-bottom:2px;">⭐ Don\'t miss!</div>' : ""}
+          <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:10px;">
+            <span style="background:#F0FDF4;color:#16A34A;padding:2px 6px;border-radius:3px;font-weight:600;">${u.distUnit} ${u.isMetric ? (stop.mileIn * 1.60934).toFixed(1) : stop.mileIn.toFixed(1)}${dayMiles ? ` of ${u.dist(dayMiles)}` : ''}</span>
+            <span style="background:#FFF7ED;color:#C2410C;padding:2px 6px;border-radius:3px;">${paymentLabel}</span>
+            ${stop.priceRange ? `<span style="background:#F5F3FF;color:#7C3AED;padding:2px 6px;border-radius:3px;">${stop.priceRange}</span>` : ''}
+          </div>
         </div>
       `;
 
       marker.bindPopup(popupHtml, {
-        maxWidth: 240,
+        maxWidth: 280,
         className: "tmb-popup",
       });
 
@@ -505,7 +514,23 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
     const map = mapInstanceRef.current;
     const L = LRef.current;
 
+    // Double-tap same day = zoom out to full trail
+    if (selectedDay === day) {
+      showAll();
+      return;
+    }
+
     setSelectedDay(day);
+
+    // Day 0 (ARR) has no trail data — center on the RockyPop Hotel
+    if (day === 0) {
+      const arr = ACCOMMODATIONS.find(a => a.day === 0);
+      if (arr) {
+        map.setView([arr.lat, arr.lng], 14, { animate: true });
+      }
+      map.closePopup();
+      return;
+    }
 
     const typedTrailData = trailData as Record<string, [number, number][]>;
     const stagePoints = typedTrailData[day.toString()];
@@ -517,9 +542,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
     }
 
     // Don't open popup from strip buttons — only from tapping map bubbles
-    if (mapInstanceRef.current) {
-      mapInstanceRef.current.closePopup();
-    }
+    map.closePopup();
   };
 
   const showAll = () => {
@@ -768,35 +791,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
 
       {/* Map Content — always in DOM, hidden via CSS so Leaflet stays alive */}
       <div className="space-y-3 pb-6" style={{ display: isOpen ? 'block' : 'none' }}>
-          {/* Day selector pills */}
-          <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide">
-            <button
-              onClick={showAll}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-mono font-semibold transition-all ${
-                selectedDay === null
-                  ? "bg-violet-500 text-white"
-                  : "bg-slate-800 text-slate-400 hover:bg-slate-700"
-              }`}
-            >
-              ALL
-            </button>
-            {ACCOMMODATIONS.map((acc) => (
-              <button
-                key={acc.day}
-                onClick={() => flyToDay(acc.day)}
-                onMouseEnter={() => onDayHover?.(acc.day)}
-                onMouseLeave={() => onDayHover?.(null)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-mono font-semibold transition-all flex items-center gap-1.5 ${
-                  selectedDay === acc.day || highlightDay === acc.day
-                    ? "bg-violet-500 text-white"
-                    : "bg-slate-800 text-slate-400 hover:bg-slate-700"
-                }`}
-              >
-                {acc.day === 0 ? "ARR" : `D${acc.day}`}
-                {acc.day === 2 && <Bus className="w-3 h-3" />}
-              </button>
-            ))}
-          </div>
+
 
           {/* Legend + Layer toggle + Food stops toggle */}
           <div className="flex flex-col gap-3 px-1">
@@ -817,7 +812,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                 <span className="w-6 h-0.5 border-t-2 border-dashed border-slate-400 inline-block" />
                 BUS
               </span>
-              {selectedDay && (
+              {showFoodStops && (
                 <span className="flex items-center gap-1.5">
                   <span className="inline-block w-4 h-4 rounded bg-amber-900/80 border border-amber-500 text-center leading-4 text-[8px]">🍽️</span>
                   FOOD STOPS
@@ -996,6 +991,31 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
             {/* Day circle selector strip below map */}
             <div className="mt-3 overflow-x-auto">
               <div className="flex gap-2 px-2 min-w-max justify-center">
+                {/* ALL button */}
+                <button
+                  onClick={showAll}
+                  className={`flex flex-col items-center text-center group cursor-pointer hover:bg-slate-800/60 rounded-lg px-2 py-1.5 transition-colors ${
+                    selectedDay === null ? "bg-slate-800/60 ring-1 ring-violet-500/40" : ""
+                  }`}
+                >
+                  <div
+                    className="w-7 h-7 rounded-full flex items-center justify-center font-bold mb-1 border-2 transition-colors group-hover:border-violet-400 group-hover:text-violet-300"
+                    style={{
+                      borderColor: selectedDay === null ? "#C4B5FD" : "#8B5CF6",
+                      color: selectedDay === null ? "#C4B5FD" : "#8B5CF6",
+                      background: selectedDay === null ? "#8B5CF6" : "#1c1917",
+                      fontSize: "0.55rem",
+                    }}
+                  >
+                    <span style={{ color: selectedDay === null ? "#fff" : undefined }}>ALL</span>
+                  </div>
+                  <span
+                    className="text-slate-500 group-hover:text-slate-300 transition-colors leading-tight whitespace-nowrap"
+                    style={{ fontSize: "0.5rem", fontFamily: "'JetBrains Mono', monospace" }}
+                  >
+                    Full Trail
+                  </span>
+                </button>
                 {ACCOMMODATIONS.map((acc) => (
                   <button
                     key={acc.day}

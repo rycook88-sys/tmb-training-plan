@@ -378,6 +378,35 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
   const [zoomedDay, setZoomedDay] = useState<number | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
+  // Sync parent selectedDay into zoomedDay when embedded
+  useEffect(() => {
+    if (embedded && selectedDay !== undefined) {
+      if (selectedDay !== null && selectedDay >= 1 && selectedDay <= 10) {
+        // Zoom to the selected day
+        const dayPts = data.points.filter(p => p.day === selectedDay);
+        if (dayPts.length > 0) {
+          const dayStart = dayPts[0].dist;
+          const dayEnd = dayPts[dayPts.length - 1].dist;
+          const daySpan = dayEnd - dayStart;
+          const padding = daySpan * (2 / 96);
+          const newWindowSize = daySpan + padding * 2;
+          const exactScale = totalDist / newWindowSize;
+          setCustomScale(exactScale);
+          const actualWindowSize = totalDist / exactScale;
+          const dayCenter = (dayStart + dayEnd) / 2;
+          const newStart = Math.max(0, Math.min(dayCenter - actualWindowSize / 2, totalDist - actualWindowSize));
+          setWindowStart(newStart);
+          setZoomedDay(selectedDay);
+        }
+      } else {
+        // Reset to full view
+        setCustomScale(1);
+        setWindowStart(0);
+        setZoomedDay(null);
+      }
+    }
+  }, [embedded, selectedDay]);
+
   // GPS position projected onto the elevation profile
   const gpsOnChart = useMemo(() => {
     if (!gpsPosition) return null;
@@ -448,8 +477,14 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
   // Visible accommodations
   const visibleAccoms = useMemo(() => {
     const end = clampedStart + windowSize;
-    return data.accommodations.filter((a) => a.dist >= clampedStart - 1 && a.dist <= end + 1);
-  }, [clampedStart, windowSize]);
+    const inWindow = data.accommodations.filter((a) => a.dist >= clampedStart - 1 && a.dist <= end + 1);
+    // When zoomed into a specific day, only show that day's start marker
+    // and the next day's start marker (as the endpoint), to prevent ghost markers
+    if (zoomedDay !== null) {
+      return inWindow.filter((a) => a.day === zoomedDay || a.day === zoomedDay + 1 || a.day === zoomedDay - 1);
+    }
+    return inWindow;
+  }, [clampedStart, windowSize, zoomedDay]);
 
   // Visible food stops (always show all stops in window when toggled on)
   const visibleFoodStops = useMemo(() => {
@@ -836,7 +871,7 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
                 {/* Hotel markers */}
                 {visibleAccoms.map((a, i) => (
                     <ReferenceDot
-                      key={`hotel-${a.day}`}
+                      key={`hotel-${a.day}-${i}`}
                       x={a.dist}
                       y={a.ele}
                       shape={<HotelDot accom={a} />}

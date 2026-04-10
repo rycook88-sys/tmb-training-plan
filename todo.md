@@ -348,3 +348,12 @@
 - [x] Differentiate toolbar buttons (SAT/FOOD/LOCATE/MAP/MORE) visually — subtle color coding while keeping same size
 - [x] Add purple day-circle selector buttons to the map view (currently only on elevation profile)
 - [x] Make food stops on elevation profile toggleable via FOOD button (currently always visible)
+
+## TMBRouteMap Fixes (April 2026 batch 3)
+- [x] Double-tap day circle button on map zooms out to full trail (like elevation profile toggle)
+- [x] Remove old oval pill day selector buttons from map section (ALL/ARR/D1/D2...)
+- [x] Fix ARR circle button not centering map to arrival area
+- [x] Food toggle on map should show ALL visible food stops based on zoom level, not just selected day
+- [x] Enrich food stop popups with descriptions, must-try items, operating hours for the specific hiking day
+- [x] Add food stop popup to elevation profile (currently only on map)
+- [x] Fix ghost D10 purple circles still appearing on elevation profile (need deeper fix)
