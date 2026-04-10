@@ -1133,11 +1133,10 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <button
               onClick={(e) => { e.stopPropagation(); setCoachOpen(true); }}
-              className="flex items-center gap-1 px-2 py-1 text-[9px] font-mono uppercase tracking-wider
+              className="flex items-center justify-center px-3 py-1 text-[9px] font-mono uppercase tracking-wider
                 border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/60
                 transition-all"
             >
-              <Sparkles className="w-3 h-3" />
               Coach
             </button>
             <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{wl.sessions.length} sessions logged</span>
