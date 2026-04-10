@@ -802,7 +802,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
           <div className="flex flex-col gap-3 px-1">
             <div className="flex flex-wrap gap-3 text-[10px] font-mono text-slate-500">
               <span className="flex items-center gap-1.5">
-                <span className="w-6 h-0.5 bg-violet-500 rounded-full inline-block" />
+                <span className="w-6 h-0.5 bg-orange-500 rounded-full inline-block" />
                 FRANCE
               </span>
               <span className="flex items-center gap-1.5">

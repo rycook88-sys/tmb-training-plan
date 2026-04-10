@@ -526,7 +526,7 @@ function SummaryStats() {
 }
 
 // ── Main Export ───────────────────────────────────────────────
-export default function TrainingAnalytics({ embedded = false }: { embedded?: boolean } = {}) {
+export default function TrainingAnalytics({ embedded = false }: { embedded?: boolean }) {
   const [open, setOpen] = useState(embedded);
 
   return (

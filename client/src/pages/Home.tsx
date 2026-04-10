@@ -846,6 +846,35 @@ function FootMobilitySection({ embedded = false }: { embedded?: boolean } = {}) 
 // ── Nutrition Card (wraps UtilityCard with dynamic calorie badge) ──
 function NutritionCard() {
   const [calData, setCalData] = useState<{ current: number; target: number }>({ current: 0, target: 2300 });
+
+  // Read today's calories from localStorage on mount so the banner is accurate before expanding
+  useEffect(() => {
+    try {
+      // Read custom calorie target if set
+      let target = 2300;
+      try {
+        const targetsRaw = localStorage.getItem("tmb-macro-targets");
+        if (targetsRaw) {
+          const parsed = JSON.parse(targetsRaw);
+          if (parsed.calories) target = parsed.calories;
+        }
+      } catch { /* use default */ }
+
+      let totalCal = 0;
+      const raw = localStorage.getItem("tmb-nutrition-log");
+      if (raw) {
+        const logs = JSON.parse(raw) as { date: string; entries: { calories?: number }[] }[];
+        const d = new Date();
+        const todayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const todayLog = logs.find((l) => l.date === todayKey);
+        if (todayLog && todayLog.entries.length > 0) {
+          totalCal = todayLog.entries.reduce((s, e) => s + (e.calories || 0), 0);
+        }
+      }
+      setCalData({ current: Math.round(totalCal), target });
+    } catch { /* ignore */ }
+  }, []);
+
   const handleCalorieUpdate = useCallback((current: number, target: number) => {
     setCalData({ current, target });
   }, []);

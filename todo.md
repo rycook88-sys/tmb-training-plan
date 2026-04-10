@@ -328,3 +328,17 @@
 - [x] Add Threshold Training exercise to Day C cardio options
 - [x] Fix "fill in the gaps" button showing blank window
 - [x] Fix NaN values in multiDayMicros avgPercent causing Fill My Gaps validation error
+- [x] Show today's logged calories in Nutrition Tracker banner on app load (not just when expanded)
+
+## Fill My Gaps Redesign (Macro/Micro Toggles + Calorie Slider)
+- [ ] Add two toggle buttons at top of Fill My Gaps panel: MACROS and MICROS (both can be on/off)
+- [ ] Add calorie slider below toggles (range: 100-1000 cal, default 500) to cap suggestion calories
+- [ ] Update client-side handleFillMacros to pass mode (macro/micro/both) and calorie cap to server
+- [ ] Update server-side AI prompt to only analyze macros, micros, or both based on user selection
+- [ ] AI suggestions must stay under the calorie cap from the slider
+- [x] Show today's logged calories in Nutrition Tracker banner on app load (not just when expanded)
+
+## Bug Fixes Batch (April 2026)
+- [x] Fix CoachSierra.tsx JSX fragment error (adjacent elements not wrapped)
+- [x] Fix calorie banner showing 0 cal on app load (useEffect to read localStorage on mount)
+- [x] Fix France legend color in TMBRouteMap — legend shows purple but trails are orange
