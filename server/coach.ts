@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { publicProcedure, router } from "./_core/trpc";
 import { invokeLLM } from "./_core/llm";
+import { storagePut } from "./storage";
+import { nanoid } from "nanoid";
 import type { Message } from "./_core/llm";
 
 /**
@@ -83,6 +85,14 @@ TONE GUIDELINES:
 
 CURRENT STYLE SETTING: ${styleDesc}
 
+IMAGE HANDLING:
+- When the user sends you a photo, look at it carefully and respond naturally.
+- If it's a gym/workout photo: comment on form, setup, or progress you can see.
+- If it's a food photo: give a quick take on whether it looks good for TMB prep nutrition.
+- If it's a trail/outdoor photo: get excited about it — relate it to the TMB.
+- If it's a selfie or personal photo: react like a real person would — warmly, genuinely.
+- Always acknowledge the photo first before any advice.
+
 RESPONSE RULES:
 - Keep responses conversational length — not walls of text. 2-5 short paragraphs or a mix of paragraphs and bullets.
 - Never start with "Great question!" or robotic openers — just talk naturally.
@@ -99,6 +109,22 @@ You will receive his current workout data, weight/body composition data, and nut
 }
 
 export const coachRouter = router({
+  /** Upload an image for Coach Sierra chat and return the S3 URL */
+  uploadImage: publicProcedure
+    .input(
+      z.object({
+        imageBase64: z.string().describe("Base64-encoded image data (no data URI prefix)"),
+        mimeType: z.string().default("image/jpeg"),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const imageBuffer = Buffer.from(input.imageBase64, "base64");
+      const ext = input.mimeType === "image/png" ? "png" : input.mimeType === "image/webp" ? "webp" : "jpg";
+      const fileKey = `coach-photos/${nanoid()}.${ext}`;
+      const { url } = await storagePut(fileKey, imageBuffer, input.mimeType);
+      return { url };
+    }),
+
   chat: publicProcedure
     .input(
       z.object({
@@ -106,6 +132,8 @@ export const coachRouter = router({
           z.object({
             role: z.enum(["user", "assistant"]),
             content: z.string(),
+            /** Optional image URLs attached to this message */
+            imageUrls: z.array(z.string()).optional(),
           })
         ),
         style: z.number().min(0).max(100).default(25),
@@ -134,12 +162,27 @@ export const coachRouter = router({
 
       const systemPrompt = buildSystemPrompt(style) + dataContext;
 
+      // Build LLM messages, converting image URLs to multimodal content
       const llmMessages: Message[] = [
         { role: "system", content: systemPrompt },
-        ...messages.map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
-        })),
+        ...messages.map((m) => {
+          const hasImages = m.imageUrls && m.imageUrls.length > 0;
+          if (hasImages) {
+            // Multimodal message: text + images
+            const content: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string; detail?: "auto" | "low" | "high" } }> = [
+              { type: "text" as const, text: m.content || "(photo)" },
+              ...m.imageUrls!.map((url) => ({
+                type: "image_url" as const,
+                image_url: { url, detail: "high" as const },
+              })),
+            ];
+            return { role: m.role as "user" | "assistant", content };
+          }
+          return {
+            role: m.role as "user" | "assistant",
+            content: m.content,
+          };
+        }),
       ];
 
       const result = await invokeLLM({ messages: llmMessages });

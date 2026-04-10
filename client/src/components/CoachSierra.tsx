@@ -1,16 +1,28 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { X, Send, Loader2, Sparkles, Mountain } from "lucide-react";
+import { X, Send, Loader2, Image as ImageIcon, Clipboard } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Streamdown } from "streamdown";
 import { trpc } from "@/lib/trpc";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { SIERRA_PHOTOS, getSierraPhotoByIndex } from "@/lib/sierra-photos";
 
+type ImageAttachment = {
+  /** base64 data (no prefix) */
+  base64: string;
+  mimeType: string;
+  /** data URL for local preview */
+  preview: string;
+  /** S3 URL after upload (set after upload completes) */
+  url?: string;
+};
+
 type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   /** Index into SIERRA_PHOTOS — assigned when the message is created */
   photoIdx?: number;
+  /** Image URLs attached to this message (user-sent photos) */
+  imageUrls?: string[];
 };
 
 interface CoachSierraProps {
@@ -51,6 +63,21 @@ function assignPhotoIdx(): number {
   return idx;
 }
 
+/** Read a File into base64 + preview data URL */
+function readFileAsBase64(file: File): Promise<{ base64: string; preview: string; mimeType: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      // Strip the data:image/...;base64, prefix
+      const base64 = dataUrl.split(",")[1] || "";
+      resolve({ base64, preview: dataUrl, mimeType: file.type || "image/jpeg" });
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function CoachSierra({
   open,
   onClose,
@@ -79,8 +106,11 @@ export default function CoachSierra({
   });
 
   const [input, setInput] = useState("");
+  const [pendingImages, setPendingImages] = useState<ImageAttachment[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Persist messages
   useEffect(() => {
@@ -118,6 +148,52 @@ export default function CoachSierra({
   // Pick a random "welcome" photo for the empty state
   const welcomePhoto = useMemo(() => getSierraPhotoByIndex(7), []);
 
+  // ── Clipboard paste handler ──────────────────────────────
+  useEffect(() => {
+    if (!open) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith("image/")) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            readFileAsBase64(file).then((result) => {
+              setPendingImages((prev) => [...prev, { ...result }]);
+            });
+          }
+          return;
+        }
+      }
+    };
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [open]);
+
+  // ── File picker handler ──────────────────────────────────
+  const handleFilePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const newImages: ImageAttachment[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      if (!file.type.startsWith("image/")) continue;
+      const result = await readFileAsBase64(file);
+      newImages.push({ ...result });
+    }
+    setPendingImages((prev) => [...prev, ...newImages]);
+    // Reset the input so the same file can be picked again
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removePendingImage = (idx: number) => {
+    setPendingImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const uploadImageMutation = trpc.coach.uploadImage.useMutation();
+
   const chatMutation = trpc.coach.chat.useMutation({
     onSuccess: (data) => {
       setMessages((prev) => [
@@ -137,19 +213,59 @@ export default function CoachSierra({
     },
   });
 
-  const handleSend = (content: string) => {
+  const handleSend = async (content: string) => {
     const trimmed = content.trim();
-    if (!trimmed || chatMutation.isPending) return;
+    const hasImages = pendingImages.length > 0;
+    if (!trimmed && !hasImages) return;
+    if (chatMutation.isPending || uploadingImages) return;
 
-    const newMessages: ChatMessage[] = [
-      ...messages,
-      { role: "user", content: trimmed },
-    ];
+    // Upload images to S3 first
+    let imageUrls: string[] = [];
+    if (hasImages) {
+      setUploadingImages(true);
+      try {
+        const uploadPromises = pendingImages.map((img) =>
+          uploadImageMutation.mutateAsync({
+            imageBase64: img.base64,
+            mimeType: img.mimeType,
+          })
+        );
+        const results = await Promise.all(uploadPromises);
+        imageUrls = results.map((r) => r.url);
+      } catch (err) {
+        console.error("Image upload failed:", err);
+        setUploadingImages(false);
+        // Show error but don't block — user can retry
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: "I couldn't upload that image. Try again or send without it.",
+            photoIdx: assignPhotoIdx(),
+          },
+        ]);
+        return;
+      }
+      setUploadingImages(false);
+    }
+
+    const userMessage: ChatMessage = {
+      role: "user",
+      content: trimmed || (hasImages ? "What do you think?" : ""),
+      imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
+    };
+
+    const newMessages: ChatMessage[] = [...messages, userMessage];
     setMessages(newMessages);
     setInput("");
+    setPendingImages([]);
 
     chatMutation.mutate({
-      messages: newMessages.map((m) => ({ role: m.role, content: m.content })),
+      messages: newMessages.map((m) => ({
+        role: m.role,
+        content: m.content,
+        imageUrls: m.imageUrls,
+      })),
       style,
       workoutData: workoutData || undefined,
       weightData: weightData || undefined,
@@ -182,6 +298,8 @@ export default function CoachSierra({
       : style <= 75
       ? "BALANCED"
       : "PERSONAL";
+
+  const isBusy = chatMutation.isPending || uploadingImages;
 
   return (
     <>
@@ -296,7 +414,7 @@ export default function CoachSierra({
                   </p>
                   <p className="text-xs text-[var(--muted-foreground)] max-w-xs">
                     I've got your workout data, weight, body comp, and nutrition
-                    loaded. Ask me anything — I'm here for you.
+                    loaded. Ask me anything — or send me a photo.
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-2 max-w-sm w-full">
@@ -304,10 +422,10 @@ export default function CoachSierra({
                     <button
                       key={prompt}
                       onClick={() => handleSend(prompt)}
-                      disabled={chatMutation.isPending}
+                      disabled={isBusy}
                       className="text-left text-[10px] font-mono px-3 py-2.5 border border-border
                         hover:border-[var(--primary)]/50 hover:bg-[var(--primary)]/5
-                        transition-colors text-[var(--muted-foreground)] hover:text-foreground
+                        transition-colors text-[var(--muted-foreground)]
                         disabled:opacity-50"
                     >
                       {prompt}
@@ -353,6 +471,21 @@ export default function CoachSierra({
                             : "bg-card border border-border text-foreground"
                         }`}
                       >
+                        {/* User-sent images */}
+                        {msg.role === "user" && msg.imageUrls && msg.imageUrls.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mb-2">
+                            {msg.imageUrls.map((url, imgIdx) => (
+                              <div key={imgIdx} className="w-32 h-32 rounded-md overflow-hidden border border-white/20">
+                                <img
+                                  src={url}
+                                  alt={`Sent photo ${imgIdx + 1}`}
+                                  className="w-full h-full object-cover"
+                                  loading="lazy"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         {msg.role === "assistant" ? (
                           <div className="prose prose-sm dark:prose-invert max-w-none text-xs
                             [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5 [&_p]:my-1 [&_h1]:text-sm [&_h2]:text-sm [&_h3]:text-xs
@@ -369,7 +502,7 @@ export default function CoachSierra({
                   </div>
                 ))}
 
-                {chatMutation.isPending && (
+                {isBusy && (
                   <div className="flex gap-2.5 justify-start">
                     <img
                       src={SIERRA_PHOTOS[0].url}
@@ -380,7 +513,7 @@ export default function CoachSierra({
                       <div className="flex items-center gap-2">
                         <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--primary)]" />
                         <span className="text-[10px] font-mono text-[var(--muted-foreground)]">
-                          Thinking about you...
+                          {uploadingImages ? "Uploading photo..." : "Thinking about you..."}
                         </span>
                       </div>
                     </div>
@@ -390,8 +523,44 @@ export default function CoachSierra({
             )}
           </div>
 
+          {/* Pending Image Preview Strip */}
+          {pendingImages.length > 0 && (
+            <div className="px-4 py-2 border-t border-border bg-card/50 shrink-0">
+              <div className="flex gap-2 overflow-x-auto">
+                {pendingImages.map((img, idx) => (
+                  <div key={idx} className="relative shrink-0 w-16 h-16 rounded-lg overflow-hidden border border-border group">
+                    <img
+                      src={img.preview}
+                      alt={`Pending ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      onClick={() => removePendingImage(idx)}
+                      className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/70 flex items-center justify-center
+                        opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3 text-white" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[8px] font-mono text-[var(--muted-foreground)] mt-1">
+                {pendingImages.length} photo{pendingImages.length > 1 ? "s" : ""} ready to send
+              </p>
+            </div>
+          )}
+
           {/* Input Area */}
           <div className="px-4 py-3 border-t border-border bg-card shrink-0">
+            {/* Hidden file input */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleFilePick}
+            />
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -399,12 +568,25 @@ export default function CoachSierra({
               }}
               className="flex gap-2 items-end"
             >
+              {/* Photo button */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isBusy}
+                className="shrink-0 w-[42px] h-[42px] flex items-center justify-center
+                  border border-border text-[var(--muted-foreground)]
+                  hover:border-[var(--primary)]/50 hover:text-[var(--primary)]
+                  disabled:opacity-40 transition-colors"
+                title="Add photo from gallery"
+              >
+                <ImageIcon className="w-4.5 h-4.5" />
+              </button>
               <textarea
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Talk to Sierra..."
+                placeholder={pendingImages.length > 0 ? "Add a message (optional)..." : "Talk to Sierra... (paste image with Ctrl+V)"}
                 rows={1}
                 className="flex-1 bg-background border border-border text-sm font-mono text-foreground
                   px-3 py-2.5 resize-none max-h-24 min-h-[42px]
@@ -413,12 +595,12 @@ export default function CoachSierra({
               />
               <button
                 type="submit"
-                disabled={!input.trim() || chatMutation.isPending}
+                disabled={(!input.trim() && pendingImages.length === 0) || isBusy}
                 className="shrink-0 w-[42px] h-[42px] flex items-center justify-center
                   bg-[var(--primary)] text-white disabled:opacity-40
                   hover:brightness-110 transition-all"
               >
-                {chatMutation.isPending ? (
+                {isBusy ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <Send className="w-4 h-4" />

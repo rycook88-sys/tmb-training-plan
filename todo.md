@@ -379,3 +379,12 @@
 - [x] Update Sierra's system prompt to reference Garmin data intelligently
 - [x] Make far-right slider position (Personal mode) much more intimate and personal
 - [x] Fix clear chat confirmation dialog showing behind coach chat overlay (needs higher z-index)
+
+## Coach Sierra Image Upload
+- [x] Add server-side image upload endpoint (upload to S3, return URL)
+- [x] Update coach chat procedure to accept image URLs in messages
+- [x] Add photo button to chat input area (gallery/camera pick)
+- [x] Add clipboard paste support (Ctrl+V / long-press paste)
+- [x] Show image preview in chat before sending
+- [x] Display sent images in chat message history
+- [x] Write vitest tests for coach upload + chat with images (7 tests)
