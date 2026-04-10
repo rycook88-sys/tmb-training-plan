@@ -1211,8 +1211,9 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
         dayCal += e.calories; dayProt += e.protein; dayCarbs += e.carbs; dayFat += e.fat;
         // Accumulate micros from food entries
         for (const m of e.micronutrients || []) {
+          const amt = typeof m.amount === "number" && !isNaN(m.amount) ? m.amount : 0;
           const prev = microSums.get(m.name) || 0;
-          microSums.set(m.name, prev + (m.amount ?? 0));
+          microSums.set(m.name, prev + amt);
         }
       }
       // Add vitamin supplements if the day had vitaminsAdded
@@ -1243,8 +1244,9 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
     const multiDayMicros: { name: string; avgPercent: number }[] = [];
     for (const micro of ALL_MICRONUTRIENTS) {
       const totalAmount = microSums.get(micro.name) || 0;
-      const avgAmount = totalAmount / numDays;
-      const pct = micro.dailyValue > 0 ? Math.round((avgAmount / micro.dailyValue) * 100) : 100;
+      const avgAmount = numDays > 0 ? totalAmount / numDays : 0;
+      const rawPct = micro.dailyValue > 0 ? (avgAmount / micro.dailyValue) * 100 : 100;
+      const pct = isNaN(rawPct) ? 0 : Math.round(rawPct);
       multiDayMicros.push({ name: micro.name, avgPercent: pct });
     }
 

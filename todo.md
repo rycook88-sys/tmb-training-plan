@@ -327,3 +327,4 @@
 - [ ] Fix button visibility so user can easily access Coach Sierra
 - [x] Add Threshold Training exercise to Day C cardio options
 - [x] Fix "fill in the gaps" button showing blank window
+- [x] Fix NaN values in multiDayMicros avgPercent causing Fill My Gaps validation error
