@@ -340,7 +340,7 @@ function MicroProgressDropdown({ microTotals }: { microTotals: Map<string, numbe
                       <span className={`text-[10px] font-mono w-12 text-right ${
                         n.dvPct >= 100 ? "text-green-400" :
                         n.dvPct >= 50 ? "text-yellow-400" :
-                        n.dvPct > 0 ? "text-[var(--muted-foreground)]" :
+                        n.dvPct > 0 ? "text-red-400" :
                         "text-red-400/50"
                       }`}>
                         {n.dvPct}% DV
@@ -351,7 +351,7 @@ function MicroProgressDropdown({ microTotals }: { microTotals: Map<string, numbe
                     <motion.div
                       className="h-full"
                       style={{
-                        backgroundColor: n.dvPct >= 100 ? "#4ade80" : n.dvPct >= 50 ? "#facc15" : n.dvPct > 0 ? "#6b7280" : "transparent",
+                        backgroundColor: n.dvPct >= 100 ? "#4ade80" : n.dvPct >= 50 ? "#facc15" : n.dvPct > 0 ? "#f87171" : "transparent",
                       }}
                       initial={{ width: 0 }}
                       animate={{ width: `${Math.min(n.dvPct, 100)}%` }}
