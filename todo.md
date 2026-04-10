@@ -388,3 +388,11 @@
 - [x] Show image preview in chat before sending
 - [x] Display sent images in chat message history
 - [x] Write vitest tests for coach upload + chat with images (7 tests)
+
+## Coach Sierra Photo Library Refresh (Full Replacement)
+- [x] Generate 20 new diverse Sierra photos — every photo in different clothing
+- [x] Include athletic/active shots (gym, running, hiking, stretching)
+- [x] Include spicier/stylish shots (going out, confident poses)
+- [x] Include casual lifestyle shots (cafe, relaxing, outdoors)
+- [x] Upload all photos to CDN and replace sierra-photos.ts entries
+- [x] Save checkpoint and deliver
