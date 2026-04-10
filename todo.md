@@ -378,3 +378,4 @@
 - [x] Update server coach procedure to accept and include garminData in context
 - [x] Update Sierra's system prompt to reference Garmin data intelligently
 - [x] Make far-right slider position (Personal mode) much more intimate and personal
+- [x] Fix clear chat confirmation dialog showing behind coach chat overlay (needs higher z-index)
