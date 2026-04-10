@@ -326,3 +326,4 @@
 - [ ] Investigate why the AI/Coach Sierra button is not visible or findable
 - [ ] Fix button visibility so user can easily access Coach Sierra
 - [x] Add Threshold Training exercise to Day C cardio options
+- [x] Fix "fill in the gaps" button showing blank window

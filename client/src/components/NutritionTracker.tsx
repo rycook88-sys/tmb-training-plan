@@ -1251,7 +1251,16 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
         macroTargets,
       });
       setFillMacrosSuggestions(result);
-    } catch (err) { console.error("Fill gaps failed:", err); setFillMacrosSuggestions(null); }
+    } catch (err) {
+      console.error("Fill gaps failed:", err);
+      setFillMacrosSuggestions({
+        microDeficiencies: [],
+        macroNotes: [],
+        suggestions: [],
+        overallSummary: "Analysis failed — please try again. Make sure you have food entries logged.",
+        confidenceNote: "",
+      });
+    }
   }, [logs, fillMacrosMutation, macroTargets]);
 
   /* ── Feedback ──────────────────────────────────── */
@@ -1871,6 +1880,12 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
                 <div className="flex items-center gap-2 py-4">
                   <Loader2 className="w-4 h-4 animate-spin text-[var(--primary)]" />
                   <span className="text-xs font-mono text-[var(--muted-foreground)]">Analyzing your multi-day nutrition patterns...</span>
+                </div>
+              )}
+              {!isFillMacrosLoading && !fillMacrosSuggestions && (
+                <div className="py-4 text-center">
+                  <p className="text-xs font-mono text-[var(--muted-foreground)]">Log some food first, then tap Fill My Gaps to analyze your nutrition patterns.</p>
+                  <button onClick={() => setShowFillMacros(false)} className="mt-2 text-[10px] font-mono text-[var(--primary)] hover:underline cursor-pointer">Close</button>
                 </div>
               )}
               {!isFillMacrosLoading && fillMacrosSuggestions && (
