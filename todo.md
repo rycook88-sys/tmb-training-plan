@@ -397,3 +397,26 @@
 - [x] Include casual lifestyle shots (cafe, relaxing, outdoors)
 - [x] Upload all photos to CDN and replace sierra-photos.ts entries
 - [x] Save checkpoint and deliver
+
+## Fill My Gaps Redesign
+- [x] Add two toggle buttons at top of Fill My Gaps panel: MACROS and MICROS (both can be on/off)
+- [x] Add calorie slider below toggles (range: 100-1000 cal, default 500) to cap suggestion calories
+- [x] Update client-side handleFillMacros to pass mode (macro/micro/both) and calorie cap to server
+- [x] Update server-side AI prompt to only analyze macros, micros, or both based on user selection
+- [x] AI suggestions must stay under the calorie cap from the slider
+- [x] Write vitest tests for mode and calorieCap params (2 new tests, 21 total)
+
+## Arrival & Departure Tab
+- [x] Create travel data file with all arrival/departure content
+- [x] Add Arrival & Departure navigation tab to Home.tsx
+- [x] Build ArrivalDeparture component with collapsible sections
+- [x] Section: International Travel Guide (first-timer walkthrough)
+- [x] Section: Flight Details (placeholder for user's flight info)
+- [x] Section: Geneva → Chamonix Transport (FlixBus focus + alternatives)
+- [x] Section: Money & Currency Guide (ATMs, cash-only refuges, tips)
+- [x] Section: eSIM / Connectivity (eSIM options for Meta phone)
+- [x] Section: Chamonix Essentials Map (supermarket, Decathlon, ATMs with Google Maps links)
+- [x] Section: Pre-Hike Checklist (interactive checklist)
+- [x] Section: Things to Do Day Before (activities in Chamonix)
+- [x] Section: Return Transport (Chamonix → Geneva, timeline)
+- [x] Section: Side Trip Option (Annecy)

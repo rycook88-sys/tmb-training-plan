@@ -8,7 +8,7 @@ import type { ItineraryDay, WorkoutDay } from "@/lib/data";
 import { useWeightTracker, useWorkoutLog, generateSummary } from "@/lib/hooks";
 import type { ExerciseLog, WorkoutSession } from "@/lib/hooks";
 import {
-  Mountain, ChevronDown, ChevronUp, ExternalLink, Footprints,
+  Mountain, ChevronDown, ChevronUp, ExternalLink, Footprints, Plane,
   Target, ArrowDown, ArrowUp, Play, Calendar, Trophy, Save, X, Trash2, Dumbbell, Pencil, Check, Sparkles,
 } from "lucide-react";
 import TrainingAnalytics from "@/components/TrainingAnalytics";
@@ -26,6 +26,7 @@ import TravelToolkit from "@/components/TravelToolkit";
 import BodyFatEstimator from "@/components/BodyFatEstimator";
 import CoachSierra from "@/components/CoachSierra";
 import NutritionTracker from "@/components/NutritionTracker";
+import ArrivalDeparture from "@/components/ArrivalDeparture";
 import elevationData from "@/lib/tmb_elevation_profile.json";
 import { GARMIN_SESSIONS, WEEKLY_VOLUME } from "@/lib/garmin-data";
 
@@ -983,7 +984,7 @@ function UtilityCard({ accent, accentBg, icon, title, subtitle, tag, tagColor, c
 }
 
 // ── Mode Toggle ──────────────────────────────────────────
-type AppMode = "training" | "trail";
+type AppMode = "training" | "trail" | "travel";
 
 function ModeToggle({ mode, setMode }: { mode: AppMode; setMode: (m: AppMode) => void }) {
   return (
@@ -1011,9 +1012,20 @@ function ModeToggle({ mode, setMode }: { mode: AppMode; setMode: (m: AppMode) =>
           <Mountain className="w-3.5 h-3.5" />
           Trail
         </button>
+        <button
+          onClick={() => setMode("travel")}
+          className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-mono uppercase tracking-[0.2em] transition-all duration-200 ${
+            mode === "travel"
+              ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-bold"
+              : "text-[var(--muted-foreground)] hover:text-foreground"
+          }`}
+        >
+          <Plane className="w-3.5 h-3.5" />
+          Travel
+        </button>
       </div>
       <p className="text-[10px] font-mono text-[var(--muted-foreground)] mt-2 tracking-wide">
-        {mode === "training" ? "Body composition, gear prep, analytics & mobility" : "Route map, itinerary, budget, phrasebook & weather"}
+        {mode === "training" ? "Body composition, gear prep, analytics & mobility" : mode === "trail" ? "Route map, itinerary, budget, phrasebook & weather" : "Arrival, departure, transport, money & pre-trip checklist"}
       </p>
     </div>
   );
@@ -1032,7 +1044,7 @@ export default function Home() {
   const [mode, setMode] = useState<AppMode>(() => {
     try {
       const saved = localStorage.getItem("tmb-app-mode");
-      if (saved === "training" || saved === "trail") return saved;
+      if (saved === "training" || saved === "trail" || saved === "travel") return saved;
     } catch {}
     return daysLeft <= 7 ? "trail" : "training";
   });
@@ -1381,6 +1393,18 @@ export default function Home() {
               </UtilityCard>
             </div>
           </section>
+        </motion.div>
+      )}
+
+      {/* ═══ TRAVEL MODE ═══ */}
+      {mode === "travel" && (
+        <motion.div
+          key="travel"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <ArrivalDeparture embedded />
         </motion.div>
       )}
 
