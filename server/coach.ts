@@ -105,7 +105,19 @@ RESPONSE RULES:
 
 ${TMB_CONTEXT}
 
-You will receive his current workout data, weight/body composition data, and nutrition data as context with each message. Use this data to give specific, personalized advice wrapped in genuine care.`;
+You will receive his current workout data, weight/body composition data, nutrition data, gear checklist progress, and pre-trip checklist status as context with each message. Use this data to give specific, personalized advice wrapped in genuine care.
+
+NUTRITION AWARENESS:
+- You now see his full 7-day food log with every meal, macro totals, and micronutrient gap analysis.
+- Reference specific foods he ate, specific deficiencies, and weekly trends when relevant.
+- If he's consistently low on a micronutrient, mention it naturally ("hey, your Vitamin D has been low all week — maybe grab some salmon or eggs?").
+- If he has saved meal plans, reference ones he rated highly.
+
+GEAR & LOGISTICS AWARENESS:
+- You can see his gear checklist (what's packed, what's missing, what's a maybe item).
+- You can see his pre-trip checklist progress (passport, FlixBus booking, ATM plans, etc.).
+- As the trip approaches, naturally remind him about unpacked gear or incomplete logistics.
+- Don't nag — mention it casually when it fits the conversation ("oh btw, have you booked that FlixBus yet?").`;
 }
 
 export const coachRouter = router({
@@ -143,10 +155,12 @@ export const coachRouter = router({
         bodyFatData: z.string().optional(),
         nutritionData: z.string().optional(),
         garminData: z.string().optional(),
+        gearData: z.string().optional(),
+        checklistData: z.string().optional(),
       })
     )
     .mutation(async ({ input }) => {
-      const { messages, style, workoutData, weightData, bodyFatData, nutritionData, garminData } = input;
+      const { messages, style, workoutData, weightData, bodyFatData, nutritionData, garminData, gearData, checklistData } = input;
 
       // Build context block from user data
       const contextParts: string[] = [];
@@ -155,6 +169,8 @@ export const coachRouter = router({
       if (bodyFatData) contextParts.push(`BODY FAT DATA:\n${bodyFatData}`);
       if (nutritionData) contextParts.push(`NUTRITION DATA:\n${nutritionData}`);
       if (garminData) contextParts.push(`GARMIN WATCH DATA (from Garmin Enduro 3):\n${garminData}`);
+      if (gearData) contextParts.push(`${gearData}`);
+      if (checklistData) contextParts.push(`${checklistData}`);
 
       const dataContext = contextParts.length > 0
         ? `\n\nUSER'S CURRENT DATA:\n${contextParts.join("\n\n")}`

@@ -38,6 +38,10 @@ interface CoachSierraProps {
   nutritionData?: string;
   /** Serialized Garmin analytics data */
   garminData?: string;
+  /** Serialized gear checklist progress */
+  gearData?: string;
+  /** Serialized pre-trip checklist progress */
+  checklistData?: string;
 }
 
 const SUGGESTED_PROMPTS = [
@@ -86,6 +90,8 @@ export default function CoachSierra({
   bodyFatData,
   nutritionData,
   garminData,
+  gearData,
+  checklistData,
 }: CoachSierraProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     try {
@@ -272,6 +278,8 @@ export default function CoachSierra({
       bodyFatData: bodyFatData || undefined,
       nutritionData: nutritionData || undefined,
       garminData: garminData || undefined,
+      gearData: gearData || undefined,
+      checklistData: checklistData || undefined,
     });
   };
 

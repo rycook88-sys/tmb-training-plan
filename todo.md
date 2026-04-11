@@ -420,3 +420,16 @@
 - [x] Section: Things to Do Day Before (activities in Chamonix)
 - [x] Section: Return Transport (Chamonix → Geneva, timeline)
 - [x] Section: Side Trip Option (Annecy)
+
+## Coach Sierra Full Data Access
+- [x] Fix nutrition data serialization (wrong localStorage key: tmb-nutrition-entries → tmb-nutrition-log)
+- [x] Send full 7-day nutrition logs (every food, calories, macros, micros per day)
+- [x] Send macro targets (custom calorie/protein/carbs/fat goals)
+- [x] Send micronutrient gap analysis (which vitamins/minerals consistently low)
+- [x] Send weekly calorie/protein trends (day-by-day totals)
+- [x] Send saved meal plans and ratings
+- [x] Send gear checklist progress (what's packed, what's missing)
+- [x] Send pre-trip checklist status (from Travel tab)
+- [x] Update CoachSierra props to accept new data fields
+- [x] Update server coach.ts system prompt to reference all new data intelligently
+- [x] All 21 tests passing (no new tests needed — data is serialized client-side)

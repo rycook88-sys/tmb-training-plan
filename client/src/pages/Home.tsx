@@ -29,6 +29,9 @@ import NutritionTracker from "@/components/NutritionTracker";
 import ArrivalDeparture from "@/components/ArrivalDeparture";
 import elevationData from "@/lib/tmb_elevation_profile.json";
 import { GARMIN_SESSIONS, WEEKLY_VOLUME } from "@/lib/garmin-data";
+import { ALL_MICRONUTRIENTS, getMicroDVPercent } from "@/lib/vitamin-data";
+import { loadMacroTargets } from "@/lib/vitamin-data";
+import { PRE_TRIP_CHECKLIST } from "@/lib/travel-data";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/hero-tmb-ridge-TA9BE2JzZxaxi68um9vvG9.webp";
 const TOPO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/topo-texture-3ai3ccpyxv32r72SNbY3MU.webp";
@@ -1133,16 +1136,128 @@ export default function Home() {
 
   const coachNutritionData = useMemo(() => {
     try {
-      const raw = localStorage.getItem('tmb-nutrition-entries');
+      // Read from correct storage key
+      const raw = localStorage.getItem('tmb-nutrition-log');
       if (!raw) return undefined;
-      const entries = JSON.parse(raw);
-      if (!entries.length) return undefined;
-      const today = entries.filter((e: any) => e.date === new Date().toISOString().slice(0, 10));
-      const totalCal = today.reduce((s: number, e: any) => s + (e.calories || 0), 0);
-      const totalP = today.reduce((s: number, e: any) => s + (e.protein || 0), 0);
-      const totalC = today.reduce((s: number, e: any) => s + (e.carbs || 0), 0);
-      const totalF = today.reduce((s: number, e: any) => s + (e.fat || 0), 0);
-      return `Today: ${totalCal} cal, ${totalP}g protein, ${totalC}g carbs, ${totalF}g fat\nTarget: 2300 cal, 180g protein, 222g carbs, 77g fat`;
+      const logs: { date: string; entries: any[]; vitaminsAdded?: boolean }[] = JSON.parse(raw);
+      if (!logs.length) return undefined;
+
+      // Get macro targets
+      const targets = loadMacroTargets();
+
+      // Last 7 days of logs
+      const last7 = logs.slice(-7);
+      let output = `MACRO TARGETS: ${targets.calories} cal, ${targets.protein}g protein, ${targets.carbs}g carbs, ${targets.fat}g fat\n\n`;
+
+      // Daily summaries with food details
+      output += `DAILY NUTRITION LOG (last ${last7.length} days):\n`;
+      const microTotalsAll: Record<string, number[]> = {};
+
+      last7.forEach(day => {
+        const cal = day.entries.reduce((s: number, e: any) => s + (e.calories || 0), 0);
+        const pro = day.entries.reduce((s: number, e: any) => s + (e.protein || 0), 0);
+        const carb = day.entries.reduce((s: number, e: any) => s + (e.carbs || 0), 0);
+        const fat = day.entries.reduce((s: number, e: any) => s + (e.fat || 0), 0);
+        const fiber = day.entries.reduce((s: number, e: any) => s + (e.fiber || 0), 0);
+        output += `\n  ${day.date}: ${Math.round(cal)} cal | ${Math.round(pro)}g P | ${Math.round(carb)}g C | ${Math.round(fat)}g F | ${Math.round(fiber)}g fiber${day.vitaminsAdded ? ' [vitamins taken]' : ''}\n`;
+        output += `    Foods: ${day.entries.map((e: any) => `${e.foodName} (${Math.round(e.calories)} cal)`).join(', ')}\n`;
+
+        // Accumulate micros per day
+        day.entries.forEach((e: any) => {
+          if (e.micronutrients) {
+            e.micronutrients.forEach((m: any) => {
+              if (!microTotalsAll[m.name]) microTotalsAll[m.name] = [];
+              const dayIdx = last7.indexOf(day);
+              if (!microTotalsAll[m.name][dayIdx]) microTotalsAll[m.name][dayIdx] = 0;
+              microTotalsAll[m.name][dayIdx] += m.amount || 0;
+            });
+          }
+        });
+      });
+
+      // Weekly averages
+      const avgCal = Math.round(last7.reduce((s, d) => s + d.entries.reduce((ss: number, e: any) => ss + (e.calories || 0), 0), 0) / last7.length);
+      const avgPro = Math.round(last7.reduce((s, d) => s + d.entries.reduce((ss: number, e: any) => ss + (e.protein || 0), 0), 0) / last7.length);
+      output += `\nWEEKLY AVERAGES: ${avgCal} cal/day, ${avgPro}g protein/day\n`;
+      output += `  vs targets: calories ${avgCal >= targets.calories ? 'ON TRACK' : `${targets.calories - avgCal} cal SHORT`}, protein ${avgPro >= targets.protein ? 'ON TRACK' : `${targets.protein - avgPro}g SHORT`}\n`;
+
+      // Micronutrient gap analysis
+      output += `\nMICRONUTRIENT GAP ANALYSIS (avg over ${last7.length} days):\n`;
+      const gaps: { name: string; avgPct: number }[] = [];
+      ALL_MICRONUTRIENTS.forEach(ref => {
+        const dailyAmounts = microTotalsAll[ref.name] || [];
+        const avgAmount = dailyAmounts.reduce((s, a) => s + (a || 0), 0) / Math.max(last7.length, 1);
+        const pct = getMicroDVPercent(ref.name, avgAmount);
+        if (pct < 80) gaps.push({ name: ref.name, avgPct: pct });
+      });
+      if (gaps.length > 0) {
+        gaps.sort((a, b) => a.avgPct - b.avgPct);
+        gaps.forEach(g => {
+          output += `  ⚠ ${g.name}: ${g.avgPct}% of DV (LOW)\n`;
+        });
+      } else {
+        output += `  All micronutrients above 80% DV — looking good!\n`;
+      }
+
+      // Saved meal plans
+      try {
+        const plansRaw = localStorage.getItem('tmb-saved-meal-plans');
+        if (plansRaw) {
+          const plans = JSON.parse(plansRaw);
+          if (plans.length > 0) {
+            output += `\nSAVED MEAL PLANS (${plans.length}):\n`;
+            plans.slice(0, 5).forEach((p: any) => {
+              const ratingStr = p.rating ? ` ★${p.rating}/5` : '';
+              output += `  ${p.name}${ratingStr} — ${p.meals?.map((m: any) => m.name).join(', ')}\n`;
+            });
+          }
+        }
+      } catch {}
+
+      return output;
+    } catch { return undefined; }
+  }, [coachOpen]);
+
+  // Gear checklist progress for Coach Sierra
+  const coachGearData = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('tmb-gear-list');
+      if (!raw) return undefined;
+      const items: { name: string; category: string; weightOz: number; packed: boolean; worn: boolean; maybe: boolean }[] = JSON.parse(raw);
+      const packed = items.filter(i => i.packed && !i.maybe);
+      const notPacked = items.filter(i => !i.packed && !i.maybe);
+      const maybe = items.filter(i => i.maybe);
+      const totalOz = packed.reduce((s, i) => s + i.weightOz, 0);
+      let output = `GEAR CHECKLIST:\n`;
+      output += `  Packed: ${packed.length} items (${(totalOz / 16).toFixed(1)} lbs)\n`;
+      output += `  Not yet packed: ${notPacked.length} items\n`;
+      if (notPacked.length > 0) {
+        output += `    Missing: ${notPacked.map(i => i.name).join(', ')}\n`;
+      }
+      if (maybe.length > 0) {
+        output += `  Maybe items: ${maybe.map(i => i.name).join(', ')}\n`;
+      }
+      return output;
+    } catch { return undefined; }
+  }, [coachOpen]);
+
+  // Pre-trip checklist progress for Coach Sierra
+  const coachChecklistData = useMemo(() => {
+    try {
+      const raw = localStorage.getItem('tmb-prehike-checklist');
+      const checked: Record<string, boolean> = raw ? JSON.parse(raw) : {};
+      const total = PRE_TRIP_CHECKLIST.length;
+      const done = Object.values(checked).filter(Boolean).length;
+      if (done === 0) return undefined;
+      let output = `PRE-TRIP CHECKLIST: ${done}/${total} completed\n`;
+      const incomplete = PRE_TRIP_CHECKLIST.filter(item => !checked[item.id]);
+      if (incomplete.length > 0 && incomplete.length <= 10) {
+        output += `  Still to do:\n`;
+        incomplete.forEach(item => {
+          output += `    ☐ ${item.text}\n`;
+        });
+      }
+      return output;
     } catch { return undefined; }
   }, [coachOpen]);
 
@@ -1251,6 +1366,8 @@ export default function Home() {
         bodyFatData={coachBodyFatData}
         nutritionData={coachNutritionData}
         garminData={coachGarminData}
+        gearData={coachGearData}
+        checklistData={coachChecklistData}
       />
 
       {/* MODE TOGGLE */}
