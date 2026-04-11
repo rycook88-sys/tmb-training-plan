@@ -3,10 +3,11 @@
 // Trail segments colored by country (France/Italy/Switzerland)
 // Food stop markers appear when a specific day is selected
 import { useState, useEffect, useRef, useCallback } from "react";
-import { ChevronDown, ChevronUp, Map, Bus, Layers, Mountain, UtensilsCrossed, LocateFixed, Navigation, Play, Square, MoreHorizontal, X, BarChart3, Phone, Mail, Globe, MapPin, Clock, CreditCard, Utensils, Bed, ChevronRight, Building } from "lucide-react";
+import { ChevronDown, ChevronUp, Map, Bus, Layers, Mountain, UtensilsCrossed, LocateFixed, Navigation, Play, Square, MoreHorizontal, X, BarChart3, Phone, Mail, Globe, MapPin, Clock, CreditCard, Utensils, Bed, ChevronRight, Building, Droplets } from "lucide-react";
 import ElevationProfile from "@/components/ElevationProfile";
 import { TMB_ITINERARY } from "@/lib/data";
 import { FOOD_STOPS, DAY_MILES, getStopsForDay, type FoodStopGeo } from "@/lib/tmb-food-stops";
+import { WATER_SOURCES, PRIMARY_SOURCES, type WaterSource } from "@/lib/tmb-water-sources";
 import { OfflineMapManager } from "@/components/OfflineMapManager";
 import AvatarCropper, { getAvatarUrl, onAvatarChange } from "@/components/AvatarCropper";
 import { watchPosition, clearWatch, haversineMeters, metersToMiles, type GpsPosition } from "@/lib/gps-tracker";
@@ -384,12 +385,15 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [showFoodStops, setShowFoodStops] = useState(true);
+  const [waterMode, setWaterMode] = useState<"off" | "potable" | "all">("off");
+  const [showSecondaryWater, setShowSecondaryWater] = useState(false);
   const [mapLayer, setMapLayer] = useState<"topo" | "satellite">("topo");
   const [viewMode, setViewMode] = useState<"map" | "elevation">("map");
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
   const foodStopMarkersRef = useRef<L.Marker[]>([]);
+  const waterMarkersRef = useRef<L.Marker[]>([]);
   const trailLayersRef = useRef<L.LayerGroup | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const LRef = useRef<typeof import("leaflet") | null>(null);
@@ -687,6 +691,98 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
       foodStopMarkersRef.current.push(marker);
     });
   }, [selectedDay, showFoodStops]);
+
+  // ── Add/remove water source markers when waterMode or selectedDay changes ──
+  useEffect(() => {
+    if (!mapInstanceRef.current || !LRef.current) return;
+    const L = LRef.current;
+    const map = mapInstanceRef.current;
+
+    // Remove existing water markers
+    waterMarkersRef.current.forEach(m => m.remove());
+    waterMarkersRef.current = [];
+
+    if (waterMode === "off") return;
+
+    // Filter sources based on mode and density
+    let sources = waterMode === "potable"
+      ? WATER_SOURCES.filter(s => s.potability === "potable")
+      : WATER_SOURCES; // "all" shows potable + filter-needed
+
+    // If a day is selected, only show that day's sources
+    if (selectedDay !== null && selectedDay >= 1) {
+      sources = sources.filter(s => s.day === selectedDay);
+    }
+
+    // If not showing secondary, only show primary (unless day is selected = show all for that day)
+    if (!showSecondaryWater && selectedDay === null) {
+      sources = sources.filter(s => s.priority === "primary");
+    }
+
+    sources.forEach((src) => {
+      const isPotable = src.potability === "potable";
+      const isDryWarning = src.lastBeforeDry;
+      const size = isDryWarning ? 28 : 22;
+      const bgColor = isPotable ? "#06B6D4" : "#67E8F9";
+      const borderColor = isDryWarning ? "#EF4444" : (isPotable ? "#A5F3FC" : "#A5F3FC");
+      const borderWidth = isDryWarning ? 3 : 2;
+
+      // Water drop shape via SVG
+      const icon = L.divIcon({
+        className: "tmb-water-marker",
+        html: `<div style="position:relative;width:${size}px;height:${size}px;cursor:pointer;">
+          <svg viewBox="0 0 24 24" width="${size}" height="${size}">
+            <path d="M12 2C12 2 5 10 5 15.5C5 19.64 8.13 23 12 23C15.87 23 19 19.64 19 15.5C19 10 12 2 12 2Z"
+              fill="${bgColor}" stroke="${borderColor}" stroke-width="${borderWidth}" />
+            ${!isPotable ? '<text x="12" y="17" text-anchor="middle" fill="#1E293B" font-size="10" font-weight="bold" font-family="sans-serif">F</text>' : ''}
+          </svg>
+          ${isDryWarning ? '<div style="position:absolute;top:-6px;right:-6px;width:14px;height:14px;background:#EF4444;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:white;font-weight:bold;border:1px solid #FCA5A5;">!</div>' : ''}
+        </div>`,
+        iconSize: [size, size],
+        iconAnchor: [size / 2, size],
+      });
+
+      const marker = L.marker([src.lat, src.lng], { icon, zIndexOffset: 800 }).addTo(map);
+
+      const typeLabel = src.type.replace("-", " ").replace(/\b\w/g, c => c.toUpperCase());
+      const potableLabel = isPotable
+        ? '<span style="background:#ECFDF5;color:#059669;padding:1px 6px;border-radius:3px;font-size:10px;">✓ Potable</span>'
+        : '<span style="background:#FEF3C7;color:#D97706;padding:1px 6px;border-radius:3px;font-size:10px;">⚠ Filter Needed</span>';
+      const dryWarningHtml = src.lastBeforeDry && src.dryStretchAhead
+        ? `<div style="margin-top:6px;padding:6px 8px;background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;">
+            <div style="font-size:10px;font-weight:700;color:#DC2626;margin-bottom:2px;">⚠ LAST WATER BEFORE DRY STRETCH</div>
+            <div style="font-size:10px;color:#991B1B;">${src.dryStretchAhead}</div>
+          </div>`
+        : '';
+
+      const popupHtml = `
+        <div style="font-family:system-ui,-apple-system,sans-serif;width:260px;padding:10px 12px;margin:-14px -20px -14px -20px;">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+            <span style="font-size:18px;">💧</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:#1E293B;line-height:1.2;">${src.name}</div>
+              <div style="font-size:9px;color:#94A3B8;margin-top:1px;">Day ${src.day} · ${typeLabel}</div>
+            </div>
+          </div>
+          <p style="font-size:11px;color:#475569;margin:0 0 6px;line-height:1.4;">${src.description}</p>
+          <div style="font-size:10px;color:#0E7490;margin-bottom:6px;line-height:1.3;"><b>Late July:</b> ${src.julyCondition}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;font-size:10px;margin-bottom:4px;">
+            ${potableLabel}
+            <span style="background:#EFF6FF;color:#2563EB;padding:1px 6px;border-radius:3px;">${u.elev(src.ele)} ${u.elevUnit}</span>
+            ${src.distToNext > 0 ? `<span style="background:#F0FDF4;color:#16A34A;padding:1px 6px;border-radius:3px;">Next: ${src.distToNext} mi</span>` : ''}
+          </div>
+          ${dryWarningHtml}
+        </div>
+      `;
+
+      marker.bindPopup(popupHtml, {
+        maxWidth: 280,
+        className: "tmb-popup",
+      });
+
+      waterMarkersRef.current.push(marker);
+    });
+  }, [waterMode, selectedDay, showSecondaryWater]);
 
   const flyToDay = (day: number) => {
     if (!mapInstanceRef.current || !LRef.current) return;
@@ -997,8 +1093,26 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                   FOOD STOPS
                 </span>
               )}
+              {waterMode !== "off" && (
+                <span className="flex items-center gap-1.5">
+                  <span className="inline-block w-3.5 h-3.5 rounded-full bg-cyan-500/80 border border-cyan-300" style={{ clipPath: 'polygon(50% 0%, 100% 38%, 80% 100%, 20% 100%, 0% 38%)' }} />
+                  {waterMode === "potable" ? "POTABLE WATER" : "ALL WATER"}
+                  {selectedDay === null && (
+                    <button
+                      onClick={() => setShowSecondaryWater(!showSecondaryWater)}
+                      className={`ml-1 px-1.5 py-0.5 rounded text-[8px] font-mono border transition-colors ${
+                        showSecondaryWater
+                          ? "bg-cyan-500/20 border-cyan-500/40 text-cyan-300"
+                          : "border-slate-600 text-slate-500 hover:text-cyan-400 hover:border-cyan-600"
+                      }`}
+                    >
+                      {showSecondaryWater ? "FEWER" : "MORE"}
+                    </button>
+                  )}
+                </span>
+              )}
             </div>
-            <div className="grid grid-cols-5 gap-1.5 w-full">
+            <div className="grid grid-cols-6 gap-1.5 w-full">
               {/* 1. Layer toggle — teal accent */}
               <button
                 onClick={() => setMapLayer(mapLayer === "topo" ? "satellite" : "topo")}
@@ -1007,7 +1121,24 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                 {mapLayer === "topo" ? <Layers className="w-3.5 h-3.5" /> : <Mountain className="w-3.5 h-3.5" />}
                 <span>{mapLayer === "topo" ? "SAT" : "TOPO"}</span>
               </button>
-              {/* 2. Food stops toggle — amber accent */}
+              {/* 2. Water sources toggle — cyan accent, cycles: off → potable → all */}
+              <button
+                onClick={() => {
+                  if (waterMode === "off") { setWaterMode("potable"); setShowSecondaryWater(false); }
+                  else if (waterMode === "potable") { setWaterMode("all"); setShowSecondaryWater(false); }
+                  else { setWaterMode("off"); setShowSecondaryWater(false); }
+                }}
+                className={`flex flex-col items-center justify-center gap-1 py-2 rounded-md border text-[9px] font-mono transition-colors ${
+                  waterMode !== "off"
+                    ? "bg-cyan-500/15 border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/25"
+                    : "bg-slate-800 border-cyan-700/30 text-cyan-400/50 hover:text-cyan-300 hover:border-cyan-600/50"
+                }`}
+                title={waterMode === "off" ? "Show potable water" : waterMode === "potable" ? "Show all water (+ filtered)" : "Hide water sources"}
+              >
+                <Droplets className="w-3.5 h-3.5" />
+                <span>{waterMode === "off" ? "WATER" : waterMode === "potable" ? "H₂O" : "ALL H₂O"}</span>
+              </button>
+              {/* 3. Food stops toggle — amber accent */}
               <button
                 onClick={() => setShowFoodStops(!showFoodStops)}
                 className={`flex flex-col items-center justify-center gap-1 py-2 rounded-md border text-[9px] font-mono transition-colors ${
@@ -1020,7 +1151,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                 <UtensilsCrossed className="w-3.5 h-3.5" />
                 <span>FOOD</span>
               </button>
-              {/* 3. GPS locate me — blue accent */}
+              {/* 4. GPS locate me — blue accent */}
               <button
                 onClick={gpsActive && gpsPosition ? centerOnGps : toggleGps}
                 className={`flex flex-col items-center justify-center gap-1 py-2 rounded-md border text-[9px] font-mono transition-colors ${
@@ -1034,7 +1165,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                 {gpsActive ? <Navigation className="w-3.5 h-3.5" /> : <LocateFixed className="w-3.5 h-3.5" />}
                 <span>{gpsActive ? "GPS" : "LOCATE"}</span>
               </button>
-              {/* 4. View toggle — Map / Elevation — rose accent */}
+              {/* 5. View toggle — Map / Elevation — rose accent */}
               <button
                 onClick={() => setViewMode(viewMode === "map" ? "elevation" : "map")}
                 className={`flex flex-col items-center justify-center gap-1 py-2 rounded-md border text-[9px] font-mono transition-colors ${
@@ -1046,7 +1177,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
                 {viewMode === "map" ? <BarChart3 className="w-3.5 h-3.5" /> : <Map className="w-3.5 h-3.5" />}
                 <span>{viewMode === "map" ? "ELEV" : "MAP"}</span>
               </button>
-              {/* 5. More menu */}
+              {/* 6. More menu */}
               <div className="relative" ref={moreMenuRef}>
                 <button
                   onClick={() => setMoreMenuOpen(!moreMenuOpen)}
@@ -1149,6 +1280,12 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
               <span className="text-slate-300">{u.dist(DAY_MILES[selectedDay] || 0)} {u.distUnit}</span>
               <span className="text-slate-400">·</span>
               <span className="text-amber-400">{getStopsForDay(selectedDay).length} food stops</span>
+              {waterMode !== "off" && (
+                <>
+                  <span className="text-slate-400">·</span>
+                  <span className="text-cyan-400">💧 {WATER_SOURCES.filter(s => s.day === selectedDay && (waterMode === "all" || s.potability === "potable")).length} water</span>
+                </>
+              )}
               {getStopsForDay(selectedDay).filter(s => s.highlight).length > 0 && (
                 <>
                   <span className="text-slate-400">·</span>
@@ -1233,7 +1370,11 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
           {/* Elevation Profile — only visible in elevation mode */}
           {viewMode === "elevation" && (
             <div className="border border-slate-700/50 rounded-xl overflow-hidden">
-              <ElevationProfile highlightDay={highlightDay} onDayHover={onDayHover} gpsPosition={gpsPosition ? { lat: gpsPosition.lat, lng: gpsPosition.lng } : null} embedded selectedDay={selectedDay} parentShowFoodStops={showFoodStops} onFoodToggle={() => setShowFoodStops(!showFoodStops)} />
+              <ElevationProfile highlightDay={highlightDay} onDayHover={onDayHover} gpsPosition={gpsPosition ? { lat: gpsPosition.lat, lng: gpsPosition.lng } : null} embedded selectedDay={selectedDay} parentShowFoodStops={showFoodStops} onFoodToggle={() => setShowFoodStops(!showFoodStops)} parentWaterMode={waterMode} onWaterToggle={() => {
+                  if (waterMode === "off") setWaterMode("potable");
+                  else if (waterMode === "potable") setWaterMode("all");
+                  else setWaterMode("off");
+                }} />
             </div>
           )}
 
@@ -1456,6 +1597,10 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
           border: none !important;
         }
         .tmb-food-marker {
+          background: transparent !important;
+          border: none !important;
+        }
+        .tmb-water-marker {
           background: transparent !important;
           border: none !important;
         }

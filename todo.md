@@ -433,3 +433,19 @@
 - [x] Update CoachSierra props to accept new data fields
 - [x] Update server coach.ts system prompt to reference all new data intelligently
 - [x] All 21 tests passing (no new tests needed — data is serialized client-side)
+
+## TMB Water Sources on Maps
+- [x] Deep research: water sources along all 10 TMB stages (fountains, taps, streams, refuges)
+- [x] Compile water source data with GPS coords, type, late July description, distances
+- [x] Blue water drop markers on overhead map with toggle: potable only → potable + filtered
+- [x] Red outline on last-before-dry-stretch drops ("fill up here" warning)
+- [x] Blue water drop markers on elevation profile with same toggle
+- [x] Tappable popups: source name, type, late July conditions, distance to next source
+- [x] Density toggle: default shows primary (~every 3mi), "MORE" button reveals secondary sources
+- [x] Filtered sources marked with "F" label and lighter blue to distinguish from potable
+- [x] Flag dry stretches in descriptions and popup warnings
+- [x] Synced water toggle state between overhead map and elevation profile views
+
+## Offline Mode (PARKED FOR LATER)
+- [ ] Offline PDF export (compact: itinerary, water sources, emergency info, key phrases)
+- [ ] Small unobtrusive download button in Travel tab

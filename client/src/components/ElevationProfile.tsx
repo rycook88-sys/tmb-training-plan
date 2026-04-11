@@ -14,9 +14,10 @@ import {
   ReferenceDot,
   ResponsiveContainer,
 } from "recharts";
-import { ChevronDown, Mountain, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, MapPin, TrendingUp, UtensilsCrossed, X, Clock, CreditCard } from "lucide-react";
+import { ChevronDown, Mountain, ZoomIn, ZoomOut, ChevronLeft, ChevronRight, MapPin, TrendingUp, UtensilsCrossed, X, Clock, CreditCard, Droplets } from "lucide-react";
 import profileRaw from "@/lib/tmb_elevation_profile.json";
 import { FOOD_STOPS, type FoodStopGeo } from "@/lib/tmb-food-stops";
+import { WATER_SOURCES, type WaterSource } from "@/lib/tmb-water-sources";
 import { haversineMeters } from "@/lib/gps-tracker";
 import trailGpsProfile from "@/lib/tmb-trail-gps-profile.json";
 import { useUnits } from "@/contexts/UnitContext";
@@ -365,7 +366,49 @@ function FoodStopDot({ cx, cy, stop, onTap }: { cx?: number; cy?: number; stop: 
   );
 }
 
-export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition, embedded, selectedDay, parentShowFoodStops, onFoodToggle }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void; gpsPosition?: { lat: number; lng: number } | null; embedded?: boolean; selectedDay?: number | null; parentShowFoodStops?: boolean; onFoodToggle?: () => void }) {
+// ── Water drop dot on chart ───────────────────────────────────────────
+function WaterDot({ cx, cy, source, onTap }: { cx?: number; cy?: number; source: WaterSource; onTap?: (s: WaterSource) => void }) {
+  if (!cx || !cy) return null;
+  const isPotable = source.potability === "potable";
+  const isDry = source.lastBeforeDry;
+  const fillColor = isPotable ? "#06B6D4" : "#67E8F9";
+  const strokeColor = isDry ? "#EF4444" : "#A5F3FC";
+  const strokeW = isDry ? 2.5 : 1.5;
+  return (
+    <g
+      style={{ cursor: "pointer" }}
+      onClick={(e) => { e.stopPropagation(); onTap?.(source); }}
+      onTouchEnd={(e) => { e.stopPropagation(); onTap?.(source); }}
+    >
+      {/* Invisible larger hitbox */}
+      <circle cx={cx} cy={cy} r={16} fill="transparent" />
+      {/* Vertical line */}
+      <line x1={cx} y1={cy} x2={cx} y2={cy + 15} stroke={fillColor} strokeWidth={1} strokeDasharray="2,2" opacity={0.6} />
+      {/* Water drop shape */}
+      <path
+        d={`M${cx},${cy - 10} Q${cx + 7},${cy - 2} ${cx + 6},${cy + 3} Q${cx + 5},${cy + 8} ${cx},${cy + 9} Q${cx - 5},${cy + 8} ${cx - 6},${cy + 3} Q${cx - 7},${cy - 2} ${cx},${cy - 10}Z`}
+        fill={fillColor}
+        stroke={strokeColor}
+        strokeWidth={strokeW}
+      />
+      {!isPotable && (
+        <text x={cx} y={cy + 3} textAnchor="middle" fill="#1E293B" fontSize={7} fontWeight="bold" fontFamily="sans-serif">F</text>
+      )}
+      {isDry && (
+        <>
+          <circle cx={cx + 8} cy={cy - 8} r={5} fill="#EF4444" stroke="#FCA5A5" strokeWidth={1} />
+          <text x={cx + 8} y={cy - 5} textAnchor="middle" fill="white" fontSize={7} fontWeight="bold">!</text>
+        </>
+      )}
+      {/* Name label */}
+      <text x={cx} y={cy + 24} textAnchor="middle" fill={fillColor} fontSize={6} fontFamily="'JetBrains Mono', monospace" opacity={0.9}>
+        {source.name.length > 16 ? source.name.slice(0, 14) + "…" : source.name}
+      </text>
+    </g>
+  );
+}
+
+export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition, embedded, selectedDay, parentShowFoodStops, onFoodToggle, parentWaterMode, onWaterToggle }: { highlightDay?: number | null; onDayHover?: (day: number | null) => void; gpsPosition?: { lat: number; lng: number } | null; embedded?: boolean; selectedDay?: number | null; parentShowFoodStops?: boolean; onFoodToggle?: () => void; parentWaterMode?: "off" | "potable" | "all"; onWaterToggle?: () => void }) {
   const u = useUnits();
   const [open, setOpen] = useState(embedded ? true : false);
   const [customScale, setCustomScale] = useState(1); // continuous zoom scale
@@ -381,8 +424,21 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
       setLocalShowFoodStops(!localShowFoodStops);
     }
   };
+  // Water source state — synced with parent when embedded
+  const [localWaterMode, setLocalWaterMode] = useState<"off" | "potable" | "all">("off");
+  const waterMode = embedded && parentWaterMode !== undefined ? parentWaterMode : localWaterMode;
+  const toggleWater = () => {
+    if (embedded && onWaterToggle) {
+      onWaterToggle();
+    } else {
+      if (localWaterMode === "off") setLocalWaterMode("potable");
+      else if (localWaterMode === "potable") setLocalWaterMode("all");
+      else setLocalWaterMode("off");
+    }
+  };
   const [zoomedDay, setZoomedDay] = useState<number | null>(null);
   const [selectedFoodStop, setSelectedFoodStop] = useState<FoodStopGeo | null>(null);
+  const [selectedWaterSource, setSelectedWaterSource] = useState<WaterSource | null>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
   // Sync parent selectedDay into zoomedDay when embedded
@@ -492,6 +548,20 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
     }
     return inWindow;
   }, [clampedStart, windowSize, zoomedDay]);
+
+  // Visible water sources
+  const visibleWaterSources = useMemo(() => {
+    if (waterMode === "off") return [];
+    const end = clampedStart + windowSize;
+    let sources = waterMode === "potable"
+      ? WATER_SOURCES.filter(s => s.potability === "potable")
+      : WATER_SOURCES;
+    // Only primary when zoomed out fully
+    if (customScale <= 1.05) {
+      sources = sources.filter(s => s.priority === "primary");
+    }
+    return sources.filter(s => s.mileAbs >= clampedStart - 1 && s.mileAbs <= end + 1);
+  }, [clampedStart, windowSize, waterMode, customScale]);
 
   // Visible food stops (always show all stops in window when toggled on)
   const visibleFoodStops = useMemo(() => {
@@ -696,6 +766,17 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
                   <UtensilsCrossed className="w-3 h-3" />
                   Stops
                 </button>
+                <button
+                  onClick={toggleWater}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[0.65rem] font-mono uppercase tracking-wider transition-all ${
+                    waterMode !== "off"
+                      ? "bg-cyan-700/60 text-cyan-300 shadow-sm"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                >
+                  <Droplets className="w-3 h-3" />
+                  {waterMode === "off" ? "Water" : waterMode === "potable" ? "H\u2082O" : "All H\u2082O"}
+                </button>
               </div>
 
               {/* Zoom + Nav Controls */}
@@ -895,6 +976,16 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
                   />
                 ))}
 
+                {/* Water source markers */}
+                {visibleWaterSources.map((s, i) => (
+                  <ReferenceDot
+                    key={`water-${s.day}-${i}`}
+                    x={s.mileAbs}
+                    y={s.ele}
+                    shape={<WaterDot source={s} onTap={(src) => setSelectedWaterSource(src)} />}
+                  />
+                ))}
+
                 {/* GPS "You Are Here" bubble */}
                 {gpsOnChart && (
                   <ReferenceDot
@@ -982,6 +1073,64 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Water source popup */}
+          {selectedWaterSource && (
+            <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setSelectedWaterSource(null)}>
+              <div
+                className="w-full max-w-md max-h-[75vh] bg-slate-900 border border-slate-700 rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Header */}
+                <div className="flex items-start justify-between p-4 pb-2 border-b border-slate-700/50">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">💧</span>
+                      <h3 className="text-base font-bold text-white">{selectedWaterSource.name}</h3>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <span className="capitalize">{selectedWaterSource.type.replace("-", " ")}</span>
+                      <span>&middot;</span>
+                      <span>Day {selectedWaterSource.day}</span>
+                      <span>&middot;</span>
+                      <span>{u.elev(selectedWaterSource.ele)} {u.elevUnit}</span>
+                    </div>
+                  </div>
+                  <button onClick={() => setSelectedWaterSource(null)} className="p-1 text-slate-400 hover:text-white">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                {/* Body */}
+                <div className="overflow-y-auto p-4 space-y-3">
+                  <p className="text-sm text-slate-300 leading-relaxed">{selectedWaterSource.description}</p>
+                  <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 rounded-lg">
+                    <p className="text-[10px] text-cyan-400 uppercase font-mono mb-1">Late July Conditions</p>
+                    <p className="text-sm text-cyan-200">{selectedWaterSource.julyCondition}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className={`px-2 py-1 rounded text-xs font-mono ${
+                      selectedWaterSource.potability === "potable"
+                        ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
+                        : "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+                    }`}>
+                      {selectedWaterSource.potability === "potable" ? "✓ Potable" : "⚠ Filter Needed"}
+                    </span>
+                    {selectedWaterSource.distToNext > 0 && (
+                      <span className="px-2 py-1 rounded text-xs font-mono bg-green-500/15 text-green-400 border border-green-500/30">
+                        Next water: {selectedWaterSource.distToNext} mi
+                      </span>
+                    )}
+                  </div>
+                  {selectedWaterSource.lastBeforeDry && selectedWaterSource.dryStretchAhead && (
+                    <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                      <p className="text-xs font-bold text-red-400 mb-1">⚠ LAST WATER BEFORE DRY STRETCH</p>
+                      <p className="text-sm text-red-300">{selectedWaterSource.dryStretchAhead}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
