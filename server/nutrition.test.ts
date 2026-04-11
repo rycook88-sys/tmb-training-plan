@@ -407,6 +407,96 @@ describe("nutrition router", () => {
     expect(result.confidenceNote).toBeTruthy();
   });
 
+  it("fillMyMacros accepts mode='micros' and calorieCap params", async () => {
+    const { invokeLLM } = await import("./_core/llm");
+    (invokeLLM as any).mockResolvedValueOnce({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            microDeficiencies: [
+              { name: "Iron", avgPercent: 30, severity: "low" },
+            ],
+            macroNotes: [],
+            suggestions: [
+              {
+                foodName: "Spinach Salad",
+                portion: "2 cups raw",
+                calories: 150,
+                protein: 5,
+                carbs: 8,
+                fat: 10,
+                coversNutrients: [{ name: "Iron", percentDV: 35 }],
+                reason: "Rich in iron and low calorie",
+              },
+            ],
+            overallSummary: "Micros-only analysis found iron gap.",
+            confidenceNote: "Based on 5 days.",
+          }),
+        },
+      }],
+    });
+
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.nutrition.fillMyMacros({
+      daysTracked: 5,
+      multiDayMicros: [
+        { name: "Iron", avgPercent: 30 },
+        { name: "Vitamin C", avgPercent: 95 },
+      ],
+      avgMacros: { calories: 2000, protein: 170, carbs: 210, fat: 65 },
+      macroTargets: { calories: 2300, protein: 180, carbs: 222, fat: 77 },
+      mode: "micros",
+      calorieCap: 200,
+    });
+
+    // Verify the LLM was called with micros-only instructions
+    expect(invokeLLM).toHaveBeenCalled();
+    const lastCall = (invokeLLM as any).mock.calls[(invokeLLM as any).mock.calls.length - 1][0];
+    expect(lastCall.messages[0].content).toContain("Micronutrients ONLY");
+    expect(lastCall.messages[1].content).toContain("200 calories or less");
+
+    // macroNotes should be empty since we asked for micros only
+    expect(result.macroNotes).toHaveLength(0);
+    expect(result.microDeficiencies).toHaveLength(1);
+    expect(result.suggestions[0].calories).toBeLessThanOrEqual(200);
+  });
+
+  it("fillMyMacros defaults mode to 'both' and calorieCap to 500", async () => {
+    const { invokeLLM } = await import("./_core/llm");
+    (invokeLLM as any).mockResolvedValueOnce({
+      choices: [{
+        message: {
+          content: JSON.stringify({
+            microDeficiencies: [],
+            macroNotes: [],
+            suggestions: [],
+            overallSummary: "All good.",
+            confidenceNote: "Based on 2 days.",
+          }),
+        },
+      }],
+    });
+
+    const ctx = createPublicContext();
+    const caller = appRouter.createCaller(ctx);
+
+    // Call without mode or calorieCap — should default
+    await caller.nutrition.fillMyMacros({
+      daysTracked: 2,
+      multiDayMicros: [{ name: "Vitamin C", avgPercent: 80 }],
+      avgMacros: { calories: 2100, protein: 175, carbs: 215, fat: 70 },
+      macroTargets: { calories: 2300, protein: 180, carbs: 222, fat: 77 },
+    });
+
+    const lastCall = (invokeLLM as any).mock.calls[(invokeLLM as any).mock.calls.length - 1][0];
+    // Default mode='both' should analyze both
+    expect(lastCall.messages[0].content).toContain("BOTH macros and micronutrients");
+    // Default calorieCap=500
+    expect(lastCall.messages[0].content).toContain("500 calories or less");
+  });
+
   it("MICRO_KEY_MAP covers all 29 tracked nutrients", async () => {
     const { MICRO_KEY_MAP } = await import("./nutrition");
 

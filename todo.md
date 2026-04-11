@@ -331,11 +331,12 @@
 - [x] Show today's logged calories in Nutrition Tracker banner on app load (not just when expanded)
 
 ## Fill My Gaps Redesign (Macro/Micro Toggles + Calorie Slider)
-- [ ] Add two toggle buttons at top of Fill My Gaps panel: MACROS and MICROS (both can be on/off)
-- [ ] Add calorie slider below toggles (range: 100-1000 cal, default 500) to cap suggestion calories
-- [ ] Update client-side handleFillMacros to pass mode (macro/micro/both) and calorie cap to server
-- [ ] Update server-side AI prompt to only analyze macros, micros, or both based on user selection
-- [ ] AI suggestions must stay under the calorie cap from the slider
+- [x] Add two toggle buttons at top of Fill My Gaps panel: MACROS and MICROS (both can be on/off)
+- [x] Add calorie slider below toggles (range: 100-1000 cal, default 500) to cap suggestion calories
+- [x] Update client-side handleFillMacros to pass mode (macro/micro/both) and calorie cap to server
+- [x] Update server-side AI prompt to only analyze macros, micros, or both based on user selection
+- [x] AI suggestions must stay under the calorie cap from the slider
+- [x] Write vitest tests for mode and calorieCap params (2 new tests, 21 total)
 - [x] Show today's logged calories in Nutrition Tracker banner on app load (not just when expanded)
 
 ## Bug Fixes Batch (April 2026)

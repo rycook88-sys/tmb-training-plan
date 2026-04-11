@@ -683,6 +683,10 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
   const [fillMacrosSuggestions, setFillMacrosSuggestions] = useState<any>(null);
   const [fillGapsStatus, setFillGapsStatus] = useState<string>("");
   const [fillGapsError, setFillGapsError] = useState(false);
+  // Fill My Gaps controls: mode toggles + calorie slider
+  const [fillGapsMode, setFillGapsMode] = useState<"macros" | "micros" | "both">("both");
+  const [fillGapsCalorieCap, setFillGapsCalorieCap] = useState(500);
+  const [showFillGapsConfig, setShowFillGapsConfig] = useState(false);
 
   // Food detail popup
   const [detailEntry, setDetailEntry] = useState<FoodEntry | null>(null);
@@ -1187,9 +1191,19 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
     } catch (err) { console.error("Trends fetch failed:", err); setRecommendations([]); }
   }, [logs, trendsMutation]);
 
-  /* ── Fill My Macros ────────────────────────────── */
-  const handleFillMacros = useCallback(async () => {
+  /* ── Fill My Gaps ────────────────────────────── */
+  // Step 1: Open the config panel (toggles + slider)
+  const handleFillMacros = useCallback(() => {
     setShowFillMacros(true);
+    setShowFillGapsConfig(true);
+    setFillMacrosSuggestions(null);
+    setFillGapsError(false);
+    setFillGapsStatus("");
+  }, []);
+
+  // Step 2: Run the analysis with the selected mode and calorie cap
+  const handleFillGapsRun = useCallback(async () => {
+    setShowFillGapsConfig(false);
     setFillMacrosSuggestions(null);
     setFillGapsError(false);
     setFillGapsStatus("Scanning food logs...");
@@ -1209,14 +1223,12 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
       let dayCal = 0, dayProt = 0, dayCarbs = 0, dayFat = 0;
       for (const e of day.entries) {
         dayCal += e.calories; dayProt += e.protein; dayCarbs += e.carbs; dayFat += e.fat;
-        // Accumulate micros from food entries
         for (const m of e.micronutrients || []) {
           const amt = typeof m.amount === "number" && !isNaN(m.amount) ? m.amount : 0;
           const prev = microSums.get(m.name) || 0;
           microSums.set(m.name, prev + amt);
         }
       }
-      // Add vitamin supplements if the day had vitaminsAdded
       if (day.vitaminsAdded) {
         for (const supp of DAILY_VITAMINS) {
           dayCal += supp.nutrients.calories;
@@ -1232,7 +1244,6 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
       totalCal += dayCal; totalProt += dayProt; totalCarbs += dayCarbs; totalFat += dayFat;
     }
 
-    // Average macros
     const avgMacros = {
       calories: totalCal / numDays,
       protein: totalProt / numDays,
@@ -1240,7 +1251,6 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
       fat: totalFat / numDays,
     };
 
-    // Average micros as %DV
     const multiDayMicros: { name: string; avgPercent: number }[] = [];
     for (const micro of ALL_MICRONUTRIENTS) {
       const totalAmount = microSums.get(micro.name) || 0;
@@ -1250,7 +1260,8 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
       multiDayMicros.push({ name: micro.name, avgPercent: pct });
     }
 
-    setFillGapsStatus(`Found ${numDays} day(s) with food. Avg: ${Math.round(totalCal / numDays)} cal, ${Math.round(totalProt / numDays)}g P. Calling AI...`);
+    const modeLabel = fillGapsMode === "both" ? "macros + micros" : fillGapsMode;
+    setFillGapsStatus(`Found ${numDays} day(s). Analyzing ${modeLabel} (≤${fillGapsCalorieCap} cal)...`);
 
     try {
       const result = await fillMacrosMutation.mutateAsync({
@@ -1258,6 +1269,8 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
         multiDayMicros,
         avgMacros,
         macroTargets,
+        mode: fillGapsMode,
+        calorieCap: fillGapsCalorieCap,
       });
       setFillGapsStatus("Analysis complete!");
       setFillMacrosSuggestions(result);
@@ -1267,7 +1280,7 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
       setFillGapsStatus(`Analysis failed: ${err?.message || "Unknown error"}. Please try again.`);
       setFillMacrosSuggestions(null);
     }
-  }, [logs, fillMacrosMutation, macroTargets]);
+  }, [logs, fillMacrosMutation, macroTargets, fillGapsMode, fillGapsCalorieCap]);
 
   /* ── Feedback ──────────────────────────────────── */
   const handleFeedback = useCallback((id: string, thumbsUp: boolean) => {
@@ -1881,25 +1894,120 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
                   <Zap className="w-3.5 h-3.5 text-[var(--primary)]" />
                   <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Fill My Gaps</span>
                 </div>
-                <button onClick={() => setShowFillMacros(false)} className="text-[var(--muted-foreground)] hover:text-foreground p-0.5"><X className="w-3.5 h-3.5" /></button>
+                <button onClick={() => { setShowFillMacros(false); setShowFillGapsConfig(false); }} className="text-[var(--muted-foreground)] hover:text-foreground p-0.5"><X className="w-3.5 h-3.5" /></button>
               </div>
+
+              {/* ── Config Panel: Mode Toggles + Calorie Slider ── */}
+              {showFillGapsConfig && !isFillMacrosLoading && (
+                <div className="space-y-4 py-2">
+                  {/* Mode Toggle Buttons */}
+                  <div>
+                    <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-[var(--muted-foreground)] font-bold block mb-2">Analyze</span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setFillGapsMode(fillGapsMode === "macros" ? "both" : fillGapsMode === "both" ? "micros" : "both")}
+                        className={`flex-1 py-2.5 px-3 border text-xs font-mono font-bold uppercase tracking-wider transition-all ${
+                          fillGapsMode === "macros" || fillGapsMode === "both"
+                            ? "border-amber-500 bg-amber-500/15 text-amber-400"
+                            : "border-border text-[var(--muted-foreground)] hover:border-amber-500/50"
+                        }`}
+                      >
+                        <span className="flex items-center justify-center gap-1.5">
+                          <BarChart3 className="w-3.5 h-3.5" />
+                          Macros
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => setFillGapsMode(fillGapsMode === "micros" ? "both" : fillGapsMode === "both" ? "macros" : "both")}
+                        className={`flex-1 py-2.5 px-3 border text-xs font-mono font-bold uppercase tracking-wider transition-all ${
+                          fillGapsMode === "micros" || fillGapsMode === "both"
+                            ? "border-[#2dd4bf] bg-[#2dd4bf]/15 text-[#2dd4bf]"
+                            : "border-border text-[var(--muted-foreground)] hover:border-[#2dd4bf]/50"
+                        }`}
+                      >
+                        <span className="flex items-center justify-center gap-1.5">
+                          <Pill className="w-3.5 h-3.5" />
+                          Micros
+                        </span>
+                      </button>
+                    </div>
+                    <p className="text-[9px] font-mono text-[var(--muted-foreground)] mt-1.5 text-center">
+                      {fillGapsMode === "both" ? "Analyzing both macro and micronutrient gaps" : fillGapsMode === "macros" ? "Analyzing macro gaps only (protein, carbs, fat)" : "Analyzing micronutrient gaps only (vitamins, minerals)"}
+                    </p>
+                  </div>
+
+                  {/* Calorie Cap Slider */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-[var(--muted-foreground)] font-bold">Max Calories Per Food</span>
+                      <span className="text-sm font-mono font-bold text-[var(--primary)]">{fillGapsCalorieCap} cal</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={100}
+                      max={1000}
+                      step={50}
+                      value={fillGapsCalorieCap}
+                      onChange={(e) => setFillGapsCalorieCap(Number(e.target.value))}
+                      className="w-full h-1.5 bg-border rounded-full appearance-none cursor-pointer
+                        [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
+                        [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--primary)]
+                        [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-background
+                        [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:cursor-pointer
+                        [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full
+                        [&::-moz-range-thumb]:bg-[var(--primary)] [&::-moz-range-thumb]:border-2
+                        [&::-moz-range-thumb]:border-background [&::-moz-range-thumb]:cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[8px] font-mono text-[var(--muted-foreground)] mt-0.5">
+                      <span>100</span>
+                      <span>500</span>
+                      <span>1000</span>
+                    </div>
+                  </div>
+
+                  {/* Run Button */}
+                  <button
+                    onClick={handleFillGapsRun}
+                    className="w-full py-3 bg-[var(--primary)] text-[var(--primary-foreground)] font-mono text-xs font-bold uppercase tracking-wider hover:opacity-90 transition-opacity"
+                  >
+                    Analyze My Gaps
+                  </button>
+                </div>
+              )}
+
+              {/* ── Loading State ── */}
               {isFillMacrosLoading && (
                 <div className="flex items-center gap-2 py-4">
                   <Loader2 className="w-4 h-4 animate-spin text-[var(--primary)]" />
                   <span className="text-xs font-mono text-[var(--muted-foreground)]">{fillGapsStatus || "Analyzing your multi-day nutrition patterns..."}</span>
                 </div>
               )}
-              {!isFillMacrosLoading && !hasFillGapsResults && (
+
+              {/* ── Error / Empty State ── */}
+              {!showFillGapsConfig && !isFillMacrosLoading && !hasFillGapsResults && fillGapsStatus && (
                 <div className="py-4 text-center">
-                  <p className={`text-xs font-mono ${fillGapsError ? "text-rose-400" : "text-[var(--muted-foreground)]"}`}>{fillGapsStatus || "Log some food first, then tap Fill My Gaps to analyze your nutrition patterns."}</p>
+                  <p className={`text-xs font-mono ${fillGapsError ? "text-rose-400" : "text-[var(--muted-foreground)]"}`}>{fillGapsStatus}</p>
                   {fillGapsError && (
-                    <button onClick={handleFillMacros} className="mt-2 text-[10px] font-mono text-[var(--primary)] hover:underline cursor-pointer">Retry</button>
+                    <button onClick={() => setShowFillGapsConfig(true)} className="mt-2 text-[10px] font-mono text-[var(--primary)] hover:underline cursor-pointer">Try Again</button>
                   )}
                   <button onClick={() => setShowFillMacros(false)} className="mt-2 ml-3 text-[10px] font-mono text-[var(--muted-foreground)] hover:underline cursor-pointer">Close</button>
                 </div>
               )}
+
+              {/* ── Results ── */}
               {hasFillGapsResults && (
                 <>
+                  {/* Mode + calorie badge */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="inline-flex items-center px-2 py-0.5 bg-[var(--primary)]/10 border border-[var(--primary)]/20 text-[var(--primary)] text-[9px] font-mono font-bold uppercase">
+                      {fillGapsMode === "both" ? "Macros + Micros" : fillGapsMode === "macros" ? "Macros Only" : "Micros Only"}
+                    </span>
+                    <span className="inline-flex items-center px-2 py-0.5 bg-border/50 text-[var(--muted-foreground)] text-[9px] font-mono">
+                      ≤{fillGapsCalorieCap} cal/item
+                    </span>
+                    <button onClick={() => { setShowFillGapsConfig(true); setFillMacrosSuggestions(null); setFillGapsStatus(""); }} className="ml-auto text-[9px] font-mono text-[var(--primary)] hover:underline cursor-pointer">Change</button>
+                  </div>
+
                   {/* Confidence note */}
                   {fillMacrosSuggestions.confidenceNote && (
                     <p className="text-[10px] font-mono text-[var(--muted-foreground)] italic mb-2 px-1">{fillMacrosSuggestions.confidenceNote}</p>

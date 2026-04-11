@@ -509,21 +509,37 @@ IMPORTANT RULES:
           carbs: z.number(),
           fat: z.number(),
         }),
+        // NEW: mode controls what gaps to analyze
+        mode: z.enum(["macros", "micros", "both"]).default("both"),
+        // NEW: calorie cap for each suggested food item
+        calorieCap: z.number().min(100).max(1000).default(500),
       })
     )
     .mutation(async ({ input }) => {
+      const analyzeMicros = input.mode === "micros" || input.mode === "both";
+      const analyzeMacros = input.mode === "macros" || input.mode === "both";
+
       // Build micro gap summary — only include those below 60% DV
       const lowMicros = input.multiDayMicros.filter(m => m.avgPercent < 60);
-      const microText = lowMicros.length > 0
+      const microText = analyzeMicros && lowMicros.length > 0
         ? `Micronutrient averages below 60% DV (sorted worst first):\n${lowMicros.sort((a, b) => a.avgPercent - b.avgPercent).map(m => `- ${m.name}: ${Math.round(m.avgPercent)}% DV avg`).join("\n")}`
-        : "All micronutrients are above 60% DV on average — no major deficiencies.";
+        : analyzeMicros ? "All micronutrients are above 60% DV on average — no major deficiencies." : "";
 
       // Build macro summary
-      const macroText = `Daily macro averages vs targets:
+      const macroText = analyzeMacros ? `Daily macro averages vs targets:
 - Calories: ${Math.round(input.avgMacros.calories)} / ${input.macroTargets.calories} cal
 - Protein: ${Math.round(input.avgMacros.protein)}g / ${input.macroTargets.protein}g
 - Carbs: ${Math.round(input.avgMacros.carbs)}g / ${input.macroTargets.carbs}g
-- Fat: ${Math.round(input.avgMacros.fat)}g / ${input.macroTargets.fat}g`;
+- Fat: ${Math.round(input.avgMacros.fat)}g / ${input.macroTargets.fat}g` : "";
+
+      // Build mode-specific instructions
+      const modeInstructions = input.mode === "micros"
+        ? `FOCUS: Micronutrients ONLY. Identify which micronutrients are consistently deficient (below 60% DV average). Suggest foods that efficiently cover multiple micronutrient gaps. Do NOT analyze or report on macros — leave macroNotes as an empty array.`
+        : input.mode === "macros"
+        ? `FOCUS: Macros ONLY. Identify significant macro imbalances (>15% off target). Suggest foods that help close macro gaps (protein, carbs, fat, calories). Do NOT analyze or report on micronutrients — leave microDeficiencies as an empty array.`
+        : `Analyze BOTH macros and micronutrients. Identify micronutrient deficiencies (below 60% DV) and significant macro imbalances (>15% off target). Prioritize foods that hit multiple deficiencies at once.`;
+
+      const calorieCapInstruction = `CRITICAL: Every suggested food item MUST be ${input.calorieCap} calories or less per serving. The user has set a ${input.calorieCap} calorie cap — do not exceed it for any single suggestion.`;
 
       const result = await invokeLLM({
         messages: [
@@ -531,16 +547,17 @@ IMPORTANT RULES:
             role: "system",
             content: `You are a practical nutrition advisor analyzing multi-day eating patterns for a male losing weight with a high protein target. He's training for a 10-day alpine hike (Tour du Mont Blanc).
 
-You are given averaged daily nutrient data across ${input.daysTracked} day(s) of food tracking. Your job is to:
-1. Identify which micronutrients are consistently deficient (below 60% DV average)
-2. Note any significant macro imbalances (>15% off target)
-3. Suggest 3-5 specific, practical foods to ADD to the regular diet that would efficiently cover the biggest gaps
+You are given averaged daily nutrient data across ${input.daysTracked} day(s) of food tracking.
 
-Prioritize foods that hit MULTIPLE deficiencies at once. Focus on micronutrient gaps first (these are harder to notice), then macro gaps. Be specific about portions. Keep it practical — real foods someone can easily buy and prepare.`,
+${modeInstructions}
+
+${calorieCapInstruction}
+
+Suggest 3-5 specific, practical foods to ADD to the regular diet. Be specific about portions. Keep it practical — real foods someone can easily buy and prepare.`,
           },
           {
             role: "user",
-            content: `Here is my ${input.daysTracked}-day nutrition analysis:\n\n${macroText}\n\n${microText}\n\nWhat are my biggest nutritional gaps and what specific foods should I add to my diet to fill them?`,
+            content: `Here is my ${input.daysTracked}-day nutrition analysis:\n\n${macroText ? macroText + "\n\n" : ""}${microText ? microText + "\n\n" : ""}What are my biggest nutritional gaps and what specific foods should I add to my diet to fill them? Remember: each food suggestion must be ${input.calorieCap} calories or less.`,
           },
         ],
         response_format: {
