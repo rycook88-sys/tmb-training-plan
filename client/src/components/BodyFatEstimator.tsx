@@ -207,6 +207,7 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
     neck: "", chest: "", bicep: "", forearm: "", waist: "", hip: "", thigh: "", wrist: "",
   });
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
   const [unit, setUnit] = useState<"in" | "cm">("in");
 
   // Sync tape unit with global metric toggle
@@ -848,28 +849,97 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                     {entries.map(entry => {
                       const ec = getCategory(entry.composite);
                       const methods = [
-                        entry.navy !== null ? `Navy:${entry.navy}%` : null,
-                        entry.ymca !== null ? `YMCA:${entry.ymca}%` : null,
-                        entry.covertBailey !== null ? `CB:${entry.covertBailey}%` : null,
+                        entry.navy !== null ? `Navy: ${entry.navy}%` : null,
+                        entry.ymca !== null ? `YMCA: ${entry.ymca}%` : null,
+                        entry.covertBailey !== null ? `CB: ${entry.covertBailey}%` : null,
                       ].filter(Boolean);
+                      const isExpanded = expandedEntryId === entry.id;
+                      const m = entry.measurements;
                       return (
-                        <div key={entry.id} className="flex items-center gap-3 py-1.5 px-2 border border-border bg-background group/entry">
-                          <span className="text-xs font-mono text-muted-foreground w-20 shrink-0">{entry.date}</span>
-                          <span className={`text-sm font-mono font-bold ${ec.color}`}>{entry.composite}%</span>
-                          <span className="text-[10px] font-mono text-muted-foreground">{ec.label}</span>
-                          <span className="text-[9px] font-mono text-muted-foreground/70 ml-auto hidden sm:inline">
-                            {methods.join(" · ")}
-                          </span>
-                          {entry.photos && entry.photos.length > 0 && (
-                            <Camera className="w-3 h-3 text-muted-foreground" />
-                          )}
+                        <div key={entry.id} className="border border-border bg-background">
                           <button
-                            onClick={() => setConfirmDeleteId(entry.id)}
-                            className="text-muted-foreground/50 hover:text-red-400 transition-all cursor-pointer ml-1"
-                            title="Delete entry"
+                            onClick={() => setExpandedEntryId(isExpanded ? null : entry.id)}
+                            className="w-full flex items-center gap-3 py-2 px-2 hover:bg-white/[0.02] transition-colors cursor-pointer"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <span className="text-xs font-mono text-muted-foreground w-20 shrink-0">{entry.date}</span>
+                            <span className={`text-sm font-mono font-bold ${ec.color}`}>{entry.composite}%</span>
+                            <span className="text-[10px] font-mono text-muted-foreground">{ec.label}</span>
+                            <span className="text-[9px] font-mono text-muted-foreground/70 ml-auto hidden sm:inline">
+                              {methods.join(" · ")}
+                            </span>
+                            {entry.photos && entry.photos.length > 0 && (
+                              <Camera className="w-3 h-3 text-muted-foreground" />
+                            )}
+                            <ChevronDown className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                           </button>
+                          <AnimatePresence>
+                            {isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: "auto", opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className="overflow-hidden"
+                              >
+                                <div className="px-3 pb-3 pt-1 border-t border-border space-y-3">
+                                  {/* Formula Results */}
+                                  <div>
+                                    <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/70 block mb-1">Formula Results</span>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      {entry.navy !== null && (
+                                        <div className="text-center py-1.5 bg-card border border-border">
+                                          <div className="text-[9px] font-mono text-muted-foreground">Navy</div>
+                                          <div className={`text-sm font-mono font-bold ${getCategory(entry.navy).color}`}>{entry.navy}%</div>
+                                        </div>
+                                      )}
+                                      {entry.ymca !== null && (
+                                        <div className="text-center py-1.5 bg-card border border-border">
+                                          <div className="text-[9px] font-mono text-muted-foreground">YMCA</div>
+                                          <div className={`text-sm font-mono font-bold ${getCategory(entry.ymca).color}`}>{entry.ymca}%</div>
+                                        </div>
+                                      )}
+                                      {entry.covertBailey !== null && (
+                                        <div className="text-center py-1.5 bg-card border border-border">
+                                          <div className="text-[9px] font-mono text-muted-foreground">C. Bailey</div>
+                                          <div className={`text-sm font-mono font-bold ${getCategory(entry.covertBailey).color}`}>{entry.covertBailey}%</div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {/* Measurements */}
+                                  <div>
+                                    <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/70 block mb-1">Measurements</span>
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-0.5">
+                                      {m.neck > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Neck</span><span className="text-foreground">{uu.isMetric ? (m.neck * 2.54).toFixed(1) : m.neck}"</span></div>}
+                                      {m.chest > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Chest</span><span className="text-foreground">{uu.isMetric ? (m.chest * 2.54).toFixed(1) : m.chest}"</span></div>}
+                                      {m.bicep > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Bicep</span><span className="text-foreground">{uu.isMetric ? (m.bicep * 2.54).toFixed(1) : m.bicep}"</span></div>}
+                                      {m.forearm > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Forearm</span><span className="text-foreground">{uu.isMetric ? (m.forearm * 2.54).toFixed(1) : m.forearm}"</span></div>}
+                                      {m.waist > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Waist</span><span className="text-foreground">{uu.isMetric ? (m.waist * 2.54).toFixed(1) : m.waist}"</span></div>}
+                                      {m.hip > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Hip</span><span className="text-foreground">{uu.isMetric ? (m.hip * 2.54).toFixed(1) : m.hip}"</span></div>}
+                                      {m.thigh > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Thigh</span><span className="text-foreground">{uu.isMetric ? (m.thigh * 2.54).toFixed(1) : m.thigh}"</span></div>}
+                                      {(m as any).wrist > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Wrist</span><span className="text-foreground">{uu.isMetric ? ((m as any).wrist * 2.54).toFixed(1) : (m as any).wrist}"</span></div>}
+                                    </div>
+                                  </div>
+                                  {/* Weight + Body Comp */}
+                                  <div className="flex items-center gap-4 text-xs font-mono">
+                                    <span className="text-muted-foreground">Weight: <span className="text-foreground font-bold">{uu.wt(entry.weightLbs, 1)} {uu.wtUnit}</span></span>
+                                    <span className="text-muted-foreground">Fat: <span className="text-red-400 font-bold">~{Math.round((entry.composite / 100) * entry.weightLbs)} {uu.wtUnit}</span></span>
+                                    <span className="text-muted-foreground">Lean: <span className="text-cyan-400 font-bold">~{Math.round(entry.weightLbs - (entry.composite / 100) * entry.weightLbs)} {uu.wtUnit}</span></span>
+                                  </div>
+                                  {/* Delete button */}
+                                  <div className="flex justify-end">
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(entry.id); }}
+                                      className="flex items-center gap-1.5 text-[10px] font-mono text-muted-foreground/60 hover:text-red-400 transition-colors cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                      Delete
+                                    </button>
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
                         </div>
                       );
                     })}

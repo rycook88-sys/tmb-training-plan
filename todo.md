@@ -478,3 +478,9 @@
 - [ ] Add a tRPC endpoint to upload localStorage data (body fat entries, weight log) to the server
 - [ ] Add a "Share Data for Analysis" button in the app that sends localStorage to server
 - [ ] Retrieve the data and perform detailed body composition analysis
+
+## Expandable BF% History Entries
+- [x] Make saved BF% history entries tappable/expandable to show full measurements
+- [x] Show all measurement values (neck, waist, hip, chest, bicep, forearm, thigh, wrist)
+- [x] Show individual formula results (Navy, YMCA, Covert Bailey) with colored values
+- [x] Show weight at time of measurement + fat mass + lean mass breakdown
