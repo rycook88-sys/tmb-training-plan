@@ -910,14 +910,24 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                                   <div>
                                     <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/70 block mb-1">Measurements</span>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-0.5">
-                                      {m.neck > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Neck</span><span className="text-foreground">{uu.isMetric ? (m.neck * 2.54).toFixed(1) : m.neck}"</span></div>}
-                                      {m.chest > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Chest</span><span className="text-foreground">{uu.isMetric ? (m.chest * 2.54).toFixed(1) : m.chest}"</span></div>}
-                                      {m.bicep > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Bicep</span><span className="text-foreground">{uu.isMetric ? (m.bicep * 2.54).toFixed(1) : m.bicep}"</span></div>}
-                                      {m.forearm > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Forearm</span><span className="text-foreground">{uu.isMetric ? (m.forearm * 2.54).toFixed(1) : m.forearm}"</span></div>}
-                                      {m.waist > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Waist</span><span className="text-foreground">{uu.isMetric ? (m.waist * 2.54).toFixed(1) : m.waist}"</span></div>}
-                                      {m.hip > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Hip</span><span className="text-foreground">{uu.isMetric ? (m.hip * 2.54).toFixed(1) : m.hip}"</span></div>}
-                                      {m.thigh > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Thigh</span><span className="text-foreground">{uu.isMetric ? (m.thigh * 2.54).toFixed(1) : m.thigh}"</span></div>}
-                                      {(m as any).wrist > 0 && <div className="flex justify-between text-xs font-mono"><span className="text-muted-foreground">Wrist</span><span className="text-foreground">{uu.isMetric ? ((m as any).wrist * 2.54).toFixed(1) : (m as any).wrist}"</span></div>}
+                                      {(["neck", "chest", "bicep", "forearm", "waist", "hip", "thigh"] as const).map(k => {
+                                        const v = m[k];
+                                        if (!v || v <= 0) return null;
+                                        const display = uu.isMetric ? (v * 2.54).toFixed(1) : (Math.round(v * 10) / 10).toString();
+                                        const suffix = uu.isMetric ? " cm" : '"';
+                                        return (
+                                          <div key={k} className="flex justify-between text-xs font-mono">
+                                            <span className="text-muted-foreground">{k.charAt(0).toUpperCase() + k.slice(1)}</span>
+                                            <span className="text-foreground">{display}{suffix}</span>
+                                          </div>
+                                        );
+                                      })}
+                                      {(m as any).wrist > 0 && (
+                                        <div className="flex justify-between text-xs font-mono">
+                                          <span className="text-muted-foreground">Wrist</span>
+                                          <span className="text-foreground">{uu.isMetric ? ((m as any).wrist * 2.54).toFixed(1) + " cm" : (Math.round((m as any).wrist * 10) / 10) + '"'}</span>
+                                        </div>
+                                      )}
                                     </div>
                                   </div>
                                   {/* Weight + Body Comp */}

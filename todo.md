@@ -484,3 +484,8 @@
 - [x] Show all measurement values (neck, waist, hip, chest, bicep, forearm, thigh, wrist)
 - [x] Show individual formula results (Navy, YMCA, Covert Bailey) with colored values
 - [x] Show weight at time of measurement + fat mass + lean mass breakdown
+
+## Bug: Expanded History Measurements Showing Raw Floats
+- [x] Fix measurements in expanded history entries showing unrounded values (e.g. 17.3228346456692913 instead of 17.3)
+- [x] Values are stored in inches with full float precision from cm->inch conversion; now rounded to 1 decimal
+- [x] Added proper unit suffix (" for inches, cm for metric) and DRY loop over measurement fields
