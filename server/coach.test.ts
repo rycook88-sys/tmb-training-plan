@@ -174,19 +174,45 @@ describe("Coach Router", () => {
       expect(userMessage.content[0]).toEqual({ type: "text", text: "(photo)" });
     });
 
-    it("should include garmin data in system prompt when provided", async () => {
+      it("should include garmin data in system prompt when provided", async () => {
       const caller = appRouter.createCaller(createTestContext());
-
       await caller.coach.chat({
         messages: [{ role: "user", content: "Analyze my cardio" }],
         style: 25,
         garminData: "VO2max: 48, Weekly miles: 22",
       });
-
       const llmCall = (invokeLLM as any).mock.calls[0][0];
       const systemMsg = llmCall.messages[0];
       expect(systemMsg.content).toContain("GARMIN WATCH DATA");
       expect(systemMsg.content).toContain("VO2max: 48");
+    });
+
+    it("should include body fat data in system prompt when provided", async () => {
+      const caller = appRouter.createCaller(createTestContext());
+      const bfData = "=== BODY FAT HISTORY ===\n  2026-04-10: 18.5% composite (Navy:19.2%, YMCA:18.1%, CB:18.2%) @ 226lbs\n\n=== BODY COMPOSITION ===\n  Weight: 226 lbs\n  Est. Fat Mass: ~42 lbs\n  Est. Lean Mass: ~184 lbs";
+      await caller.coach.chat({
+        messages: [{ role: "user", content: "How's my body fat?" }],
+        style: 50,
+        bodyFatData: bfData,
+      });
+      const llmCall = (invokeLLM as any).mock.calls[0][0];
+      const systemMsg = llmCall.messages[0];
+      expect(systemMsg.content).toContain("BODY FAT DATA");
+      expect(systemMsg.content).toContain("BODY FAT HISTORY");
+      expect(systemMsg.content).toContain("18.5% composite");
+      expect(systemMsg.content).toContain("Est. Lean Mass");
+    });
+
+    it("should include body composition awareness in system prompt", async () => {
+      const caller = appRouter.createCaller(createTestContext());
+      await caller.coach.chat({
+        messages: [{ role: "user", content: "test" }],
+        style: 25,
+      });
+      const llmCall = (invokeLLM as any).mock.calls[0][0];
+      const systemMsg = llmCall.messages[0];
+      expect(systemMsg.content).toContain("BODY COMPOSITION AWARENESS");
+      expect(systemMsg.content).toContain("body fat history with composite BF%");
     });
   });
 });

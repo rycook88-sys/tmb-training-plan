@@ -455,3 +455,12 @@
 - [x] Add 10 new sessions to garmin-data.ts (2 hikes, 8 strength)
 - [x] Update WEEKLY_VOLUME with W13 and W14 data
 - [x] TypeScript clean, all 21 tests passing
+
+## BF Calculator UI Fixes + Coach BF Data Access
+- [x] Round circumference values to 1 decimal place on unit conversion
+- [x] Sync tape unit toggle with global MI/KM unit toggle (useEffect on uu.isMetric)
+- [x] Fix BF% projection table: 18% uses yellow (Average category), not red
+- [x] Fix BF% projection table: grid with tabular-nums and fixed column widths
+- [x] Give Coach Sierra full body fat data (history with all formulas, measurements, lean/fat mass, goal projection)
+- [x] Add BODY COMPOSITION AWARENESS section to Sierra's system prompt
+- [x] Write 2 new vitest tests for body fat data injection (23 total tests passing)

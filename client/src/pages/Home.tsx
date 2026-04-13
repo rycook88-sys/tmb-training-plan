@@ -1097,7 +1097,48 @@ export default function Home() {
       if (!raw) return undefined;
       const entries = JSON.parse(raw);
       if (!entries.length) return undefined;
-      return entries.map((e: any) => `  ${e.date}: ${e.bf}% (${e.method})`).join('\n');
+      const latest = entries[0];
+      const prev = entries[1];
+      const delta = prev ? Math.round((latest.composite - prev.composite) * 10) / 10 : null;
+      const lines: string[] = [];
+      lines.push('=== BODY FAT HISTORY ===');
+      entries.slice(0, 10).forEach((e: any) => {
+        const methods = [
+          e.navy !== null ? `Navy:${e.navy}%` : null,
+          e.ymca !== null ? `YMCA:${e.ymca}%` : null,
+          e.covertBailey !== null ? `CB:${e.covertBailey}%` : null,
+        ].filter(Boolean).join(', ');
+        lines.push(`  ${e.date}: ${e.composite}% composite (${methods}) @ ${e.weightLbs}lbs`);
+      });
+      if (delta !== null) {
+        lines.push(`\nTrend: ${delta > 0 ? '+' : ''}${delta}% since last measurement`);
+      }
+      // Latest measurements
+      if (latest.measurements) {
+        const m = latest.measurements;
+        lines.push('\n=== LATEST MEASUREMENTS (inches) ===');
+        if (m.neck) lines.push(`  Neck: ${m.neck}"`);
+        if (m.chest) lines.push(`  Chest: ${m.chest}"`);
+        if (m.bicep) lines.push(`  Bicep: ${m.bicep}"`);
+        if (m.forearm) lines.push(`  Forearm: ${m.forearm}"`);
+        if (m.waist) lines.push(`  Waist: ${m.waist}"`);
+        if (m.hip) lines.push(`  Hip: ${m.hip}"`);
+        if (m.thigh) lines.push(`  Thigh: ${m.thigh}"`);
+        if (m.wrist) lines.push(`  Wrist: ${m.wrist}"`);
+      }
+      // Lean/fat mass
+      const bf = latest.composite / 100;
+      const w = latest.weightLbs;
+      lines.push(`\n=== BODY COMPOSITION ===`);
+      lines.push(`  Weight: ${w} lbs`);
+      lines.push(`  Est. Fat Mass: ~${Math.round(bf * w)} lbs`);
+      lines.push(`  Est. Lean Mass: ~${Math.round(w - bf * w)} lbs`);
+      // Goal projection
+      lines.push(`\n=== GOAL ===`);
+      lines.push(`  Target: 205 lbs at ~13% BF`);
+      lines.push(`  Current: ${w} lbs at ${latest.composite}%`);
+      lines.push(`  Needs to lose: ~${Math.round(w - 205)} lbs`);
+      return lines.join('\n');
     } catch { return undefined; }
   }, [coachOpen]);
 

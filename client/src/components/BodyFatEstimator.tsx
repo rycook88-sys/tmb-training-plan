@@ -208,6 +208,26 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
   });
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [unit, setUnit] = useState<"in" | "cm">("in");
+
+  // Sync tape unit with global metric toggle
+  useEffect(() => {
+    const newUnit = uu.isMetric ? "cm" : "in";
+    if (newUnit !== unit) {
+      // Convert existing measurements
+      setMeasurements(prev => {
+        const converted: Record<FieldKey, string> = {} as any;
+        for (const key of Object.keys(prev) as FieldKey[]) {
+          const v = parseFloat(prev[key]);
+          if (!v) { converted[key] = prev[key]; continue; }
+          converted[key] = newUnit === "cm"
+            ? (Math.round(v * 2.54 * 10) / 10).toString()
+            : (Math.round((v / 2.54) * 10) / 10).toString();
+        }
+        return converted;
+      });
+      setUnit(newUnit);
+    }
+  }, [uu.isMetric]);
   const [weightInput, setWeightInput] = useState("");
   const [prefilled, setPrefilled] = useState(false);
 
@@ -247,7 +267,7 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
   const heightIn = (parseInt(heightFt) || 0) * 12 + (parseInt(heightInR) || 0);
   const toIn = (v: string) => {
     const n = parseFloat(v) || 0;
-    return unit === "cm" ? n / 2.54 : n;
+    return unit === "cm" ? Math.round((n / 2.54) * 10) / 10 : n;
   };
 
   const vals: Record<FieldKey, number> = {} as any;
@@ -415,7 +435,22 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                     {(["in", "cm"] as const).map(u => (
                       <button
                         key={u}
-                        onClick={() => setUnit(u)}
+                        onClick={() => {
+                          if (u !== unit) {
+                            setMeasurements(prev => {
+                              const converted: Record<FieldKey, string> = {} as any;
+                              for (const key of Object.keys(prev) as FieldKey[]) {
+                                const v = parseFloat(prev[key]);
+                                if (!v) { converted[key] = prev[key]; continue; }
+                                converted[key] = u === "cm"
+                                  ? (Math.round(v * 2.54 * 10) / 10).toString()
+                                  : (Math.round((v / 2.54) * 10) / 10).toString();
+                              }
+                              return converted;
+                            });
+                            setUnit(u);
+                          }
+                        }}
                         className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider cursor-pointer transition-colors ${
                           unit === u
                             ? "bg-[var(--primary)] text-black font-bold"
@@ -693,7 +728,7 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                         return (
                           <div
                             key={p.weight}
-                            className={`px-4 py-2.5 flex items-center text-xs font-mono ${
+                            className={`px-4 py-2.5 grid grid-cols-[4.5rem_3.5rem_5rem_2.5rem_1fr] items-center text-xs font-mono tabular-nums ${
                               isCurrent
                                 ? "bg-[var(--primary)]/5 border-l-2 border-l-[var(--primary)]"
                                 : isTarget
@@ -701,21 +736,23 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                                 : "border-l-2 border-l-transparent"
                             }`}
                           >
-                            <span className={`w-[4.5rem] shrink-0 font-bold ${
+                            <span className={`font-bold ${
                               isCurrent ? "text-[var(--primary)]" : isTarget ? "text-green-400" : "text-foreground"
                             }`}>
                               {uu.wt(p.weight, 0)} {uu.wtUnit}
                             </span>
-                            <span className={`w-14 text-right font-bold ${pCat.color}`}>
+                            <span className={`text-right font-bold ${
+                              isCurrent ? "text-[var(--primary)]" : isTarget ? "text-green-400" : pCat.color
+                            }`}>
                               {p.bf.toFixed(1)}%
                             </span>
-                            <span className="w-[5.5rem] text-right text-cyan-400 font-semibold">
-                              {p.leanEst.toFixed(0)} lean
+                            <span className="text-right text-cyan-400 font-semibold">
+                              {Math.round(p.leanEst)} lean
                             </span>
-                            <span className="w-12 text-right text-muted-foreground">
-                              {p.fatEst.toFixed(0)}
+                            <span className="text-right text-muted-foreground">
+                              {Math.round(p.fatEst)}
                             </span>
-                            <span className="flex-1 text-right">
+                            <span className="text-right">
                               {isCurrent && (
                                 <span className="text-[8px] bg-[var(--primary)]/20 text-[var(--primary)] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">Now</span>
                               )}
