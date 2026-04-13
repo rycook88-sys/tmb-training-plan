@@ -473,3 +473,8 @@
 - [x] Remove NOW and GOAL pill badges — use only left border + translucent row tint to distinguish
 - [x] Fix 18% showing as light-red instead of yellow (color threshold issue)
 - [x] Create UI mockup for user approval before implementing
+
+## Data Export for Analysis
+- [ ] Add a tRPC endpoint to upload localStorage data (body fat entries, weight log) to the server
+- [ ] Add a "Share Data for Analysis" button in the app that sends localStorage to server
+- [ ] Retrieve the data and perform detailed body composition analysis

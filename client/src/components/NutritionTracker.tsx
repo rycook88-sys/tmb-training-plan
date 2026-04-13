@@ -829,6 +829,10 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
           { dataType: "presets", jsonData: JSON.stringify(presets) },
           { dataType: "commonItems", jsonData: JSON.stringify(commonItems) },
           { dataType: "savedMealPlans", jsonData: JSON.stringify(savedPlans) },
+          // Also backup body composition data from localStorage
+          ...(localStorage.getItem("tmb-bodyfat-entries") ? [{ dataType: "bodyfatEntries", jsonData: localStorage.getItem("tmb-bodyfat-entries")! }] : []),
+          ...(localStorage.getItem("tmb-weight-log") ? [{ dataType: "weightLog", jsonData: localStorage.getItem("tmb-weight-log")! }] : []),
+          ...(localStorage.getItem("tmb-workout-sessions") ? [{ dataType: "workoutSessions", jsonData: localStorage.getItem("tmb-workout-sessions")! }] : []),
         ],
       },
       {
