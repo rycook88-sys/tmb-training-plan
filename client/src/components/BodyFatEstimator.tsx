@@ -208,6 +208,8 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
   });
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [expandedEntryId, setExpandedEntryId] = useState<string | null>(null);
+  const [outlierWarnings, setOutlierWarnings] = useState<{ key: string; label: string; current: number; previous: number; pctChange: number }[]>([]);
+  const [showOutlierWarning, setShowOutlierWarning] = useState(false);
   const [unit, setUnit] = useState<"in" | "cm">("in");
 
   // Sync tape unit with global metric toggle
@@ -331,7 +333,39 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
     e.target.value = "";
   }, []);
 
-  const handleSave = useCallback(() => {
+  // Reasonable anatomical ranges for adult male (inches)
+  const REASONABLE_RANGES: Record<string, [number, number]> = {
+    neck: [12, 22], waist: [26, 55], hip: [30, 55], chest: [32, 56],
+    bicep: [9, 22], forearm: [8, 18], thigh: [18, 35], wrist: [5, 10],
+  };
+
+  const checkOutliers = useCallback((): { key: string; label: string; current: number; previous: number; pctChange: number }[] => {
+    const warnings: { key: string; label: string; current: number; previous: number; pctChange: number }[] = [];
+    const prev = entries[0];
+    for (const f of FIELDS) {
+      const cur = vals[f.key];
+      if (!cur || cur <= 0) continue;
+      // Check reasonable anatomical range
+      const range = REASONABLE_RANGES[f.key];
+      if (range && (cur < range[0] || cur > range[1])) {
+        warnings.push({ key: f.key, label: f.label, current: cur, previous: 0, pctChange: 100 });
+        continue;
+      }
+      // Check deviation from last entry
+      if (prev) {
+        const prevVal = prev.measurements[f.key];
+        if (prevVal && prevVal > 0) {
+          const pctChange = Math.abs((cur - prevVal) / prevVal) * 100;
+          if (pctChange > 15) {
+            warnings.push({ key: f.key, label: f.label, current: Math.round(cur * 10) / 10, previous: Math.round(prevVal * 10) / 10, pctChange: Math.round(pctChange) });
+          }
+        }
+      }
+    }
+    return warnings;
+  }, [vals, entries]);
+
+  const doSave = useCallback(() => {
     if (composite === null) return;
     const entry: BFEntry = {
       id: Date.now().toString(36),
@@ -349,7 +383,20 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
     const next = [entry, ...entries].slice(0, 20);
     setEntries(next);
     saveEntries(next);
+    setShowOutlierWarning(false);
+    setOutlierWarnings([]);
   }, [composite, vals, heightIn, weightLbs, navyResult, ymcaResult, cbResult, photos, entries]);
+
+  const handleSave = useCallback(() => {
+    if (composite === null) return;
+    const warnings = checkOutliers();
+    if (warnings.length > 0) {
+      setOutlierWarnings(warnings);
+      setShowOutlierWarning(true);
+    } else {
+      doSave();
+    }
+  }, [composite, checkOutliers, doSave]);
 
   const handleDelete = useCallback((id: string) => {
     const next = entries.filter(e => e.id !== id);
@@ -970,6 +1017,70 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
         onConfirm={() => { if (confirmDeleteId) { handleDelete(confirmDeleteId); setConfirmDeleteId(null); } }}
         onCancel={() => setConfirmDeleteId(null)}
       />
+
+      {/* Outlier warning modal */}
+      <AnimatePresence>
+        {showOutlierWarning && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+            onClick={() => { setShowOutlierWarning(false); setOutlierWarnings([]); }}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative bg-card border border-yellow-500/40 max-w-sm w-full overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 border-b border-yellow-500/30 bg-yellow-500/5">
+                <h3 className="text-sm font-mono uppercase tracking-[0.15em] text-yellow-400 font-semibold flex items-center gap-2">
+                  <span className="text-lg">⚠</span> Measurement Check
+                </h3>
+                <p className="text-[10px] font-mono text-muted-foreground mt-1">
+                  {outlierWarnings.length === 1 ? "1 measurement looks" : `${outlierWarnings.length} measurements look`} unusual compared to your last entry.
+                </p>
+              </div>
+              <div className="p-4 space-y-2 max-h-60 overflow-y-auto">
+                {outlierWarnings.map(w => (
+                  <div key={w.key} className="flex items-center justify-between text-xs font-mono border border-yellow-500/20 bg-yellow-500/5 px-3 py-2">
+                    <span className="text-yellow-400 font-semibold">{w.label}</span>
+                    <div className="text-right">
+                      {w.previous > 0 ? (
+                        <>
+                          <span className="text-muted-foreground">{w.previous}"</span>
+                          <span className="text-yellow-400 mx-1">→</span>
+                          <span className="text-foreground font-bold">{w.current}"</span>
+                          <span className="text-yellow-400 ml-2">({w.pctChange > 0 ? "+" : ""}{w.pctChange}%)</span>
+                        </>
+                      ) : (
+                        <span className="text-yellow-400">Out of range: {w.current}"</span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="p-4 border-t border-border flex gap-2">
+                <button
+                  onClick={() => { setShowOutlierWarning(false); setOutlierWarnings([]); }}
+                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] border border-border text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors cursor-pointer"
+                >
+                  Go Back
+                </button>
+                <button
+                  onClick={doSave}
+                  className="flex-1 py-2 text-xs font-mono uppercase tracking-[0.15em] font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 hover:bg-yellow-500/30 transition-colors cursor-pointer"
+                >
+                  Save Anyway
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Guide modal */}
       <AnimatePresence>

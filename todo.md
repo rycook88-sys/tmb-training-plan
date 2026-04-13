@@ -489,3 +489,10 @@
 - [x] Fix measurements in expanded history entries showing unrounded values (e.g. 17.3228346456692913 instead of 17.3)
 - [x] Values are stored in inches with full float precision from cm->inch conversion; now rounded to 1 decimal
 - [x] Added proper unit suffix (" for inches, cm for metric) and DRY loop over measurement fields
+
+## Measurement Consistency Check
+- [x] Compare new measurement values against previous entries before saving (>15% deviation threshold)
+- [x] Flag values that deviate more than 15% from the last entry as potential outliers
+- [x] Show warning modal with flagged measurements, previous vs current values, and % change
+- [x] Allow user to save anyway or go back and fix (two-button modal)
+- [x] Flag measurements outside reasonable anatomical ranges (e.g. neck 12-22", thigh 18-35")
