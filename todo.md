@@ -464,3 +464,12 @@
 - [x] Give Coach Sierra full body fat data (history with all formulas, measurements, lean/fat mass, goal projection)
 - [x] Add BODY COMPOSITION AWARENESS section to Sierra's system prompt
 - [x] Write 2 new vitest tests for body fat data injection (23 total tests passing)
+
+## BF% Projection Table Redesign v2
+- [x] First row shows actual current weight (221.5 lb), not rounded to nearest 5
+- [x] Subsequent rows go down by 5 from nearest multiple of 5 below current weight
+- [x] Weight text should be white (foreground) for all rows — not orange/green colored
+- [x] BF% text uses proper category colors: yellow for 18% (Average), green for Athletic/Fitness, red for Essential
+- [x] Remove NOW and GOAL pill badges — use only left border + translucent row tint to distinguish
+- [x] Fix 18% showing as light-red instead of yellow (color threshold issue)
+- [x] Create UI mockup for user approval before implementing

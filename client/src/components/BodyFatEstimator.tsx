@@ -677,17 +677,35 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                 // Use composite if available, otherwise default visual estimate of 22%
                 const activeBf = composite ?? 22;
                 const leanMass = weightLbs - (activeBf / 100) * weightLbs;
-                // Assume some muscle loss during cut: ~0.25 lb muscle lost per 1 lb total lost
                 const muscleRetention = retentionPct / 100;
-                const projections: { weight: number; bf: number; leanEst: number; fatEst: number }[] = [];
-                for (let w = Math.ceil(weightLbs / 5) * 5; w >= 195; w -= 5) {
+                const projections: { weight: number; bf: number; leanEst: number; fatEst: number; isCurrent: boolean; isGoal: boolean }[] = [];
+
+                // First row: actual current weight (not rounded)
+                const calcRow = (w: number) => {
                   const totalLost = weightLbs - w;
                   const muscleLost = totalLost * (1 - muscleRetention);
                   const adjLean = leanMass - muscleLost;
                   const adjFat = w - adjLean;
                   const bf = (adjFat / w) * 100;
-                  if (bf > 0) projections.push({ weight: w, bf, leanEst: adjLean, fatEst: adjFat });
+                  return { weight: w, bf, leanEst: adjLean, fatEst: adjFat };
+                };
+
+                // Row 1: exact current weight
+                const currentRow = calcRow(weightLbs);
+                if (currentRow.bf > 0) {
+                  projections.push({ ...currentRow, isCurrent: true, isGoal: weightLbs === 205 });
                 }
+
+                // Subsequent rows: nearest multiple of 5 below current weight, stepping down by 5
+                let start5 = Math.floor(weightLbs / 5) * 5;
+                if (start5 >= weightLbs) start5 -= 5;
+                for (let w = start5; w >= 195; w -= 5) {
+                  const row = calcRow(w);
+                  if (row.bf > 0) {
+                    projections.push({ ...row, isCurrent: false, isGoal: w === 205 });
+                  }
+                }
+
                 return (
                   <div className="border border-border bg-background">
                     <div className="px-4 py-2 border-b border-border">
@@ -723,45 +741,28 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                     <div className="divide-y divide-border">
                       {projections.map(p => {
                         const pCat = getCategory(p.bf);
-                        const isCurrent = p.weight === Math.ceil(weightLbs / 5) * 5;
-                        const isTarget = p.weight === 205;
                         return (
                           <div
                             key={p.weight}
-                            className={`px-4 py-2.5 grid grid-cols-[4.5rem_3.5rem_5rem_2.5rem_1fr] items-center text-xs font-mono tabular-nums ${
-                              isCurrent
+                            className={`px-4 py-2.5 grid grid-cols-[4.5rem_3.5rem_5rem_3.5rem] items-center text-xs font-mono tabular-nums ${
+                              p.isCurrent
                                 ? "bg-[var(--primary)]/5 border-l-2 border-l-[var(--primary)]"
-                                : isTarget
+                                : p.isGoal
                                 ? "bg-green-500/5 border-l-2 border-l-green-400"
-                                : "border-l-2 border-l-transparent"
+                                : "border-l-2 border-l-border"
                             }`}
                           >
-                            <span className={`font-bold ${
-                              isCurrent ? "text-[var(--primary)]" : isTarget ? "text-green-400" : "text-foreground"
-                            }`}>
-                              {uu.wt(p.weight, 0)} {uu.wtUnit}
+                            <span className={`font-bold text-foreground`}>
+                              {p.isCurrent ? uu.wt(p.weight, 1) : uu.wt(p.weight, 0)} {uu.wtUnit}
                             </span>
-                            <span className={`text-right font-bold ${
-                              isCurrent ? "text-[var(--primary)]" : isTarget ? "text-green-400" : pCat.color
-                            }`}>
+                            <span className={`text-right font-bold ${pCat.color}`}>
                               {p.bf.toFixed(1)}%
                             </span>
                             <span className="text-right text-cyan-400 font-semibold">
                               {Math.round(p.leanEst)} lean
                             </span>
                             <span className="text-right text-muted-foreground">
-                              {Math.round(p.fatEst)}
-                            </span>
-                            <span className="text-right">
-                              {isCurrent && (
-                                <span className="text-[8px] bg-[var(--primary)]/20 text-[var(--primary)] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">Now</span>
-                              )}
-                              {isTarget && !isCurrent && (
-                                <span className="text-[8px] bg-green-500/20 text-green-400 font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider">Goal</span>
-                              )}
-                              {!isCurrent && !isTarget && (
-                                <span className="text-muted-foreground text-[10px]">fat</span>
-                              )}
+                              {Math.round(p.fatEst)} fat
                             </span>
                           </div>
                         );
@@ -769,7 +770,7 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                     </div>
                     <div className="px-4 py-2 border-t border-border">
                       <p className="text-[9px] font-mono text-muted-foreground/60">
-                        Projections update automatically as you log new measurements and weight. Muscle loss ratio is conservative — strength training during a cut can improve retention to 85–90%.
+                        Projections update automatically as you log new measurements and weight. Strength training during a cut can improve retention to 85–90%.
                       </p>
                     </div>
                   </div>
