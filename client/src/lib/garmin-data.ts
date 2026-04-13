@@ -1,5 +1,5 @@
 // ============================================================
-// Garmin Activity Data — Parsed from 36 FIT files (Feb 1 – Mar 24, 2026)
+// Garmin Activity Data — Parsed from 46 FIT files (Feb 1 – Apr 9, 2026)
 // Zone calculation: %HRR method
 //   Max HR: 196, Resting HR: 56, HRR: 140
 //   Z1: 126–140  Z2: 140–154  Z3: 154–168  Z4: 168–182  Z5: 182–196
@@ -62,6 +62,17 @@ export const GARMIN_SESSIONS: GarminSession[] = [
   { id: "22243589754", date: "2026-03-21", type: "CARDIO", duration_min: 66, avg_hr: 139.1, max_hr: 161, calories: 968, distance_mi: 0, elevation_gain: 0, elevation_loss: 0, drift: 12.7, below_z1: 10.6, z1_pct: 38.7, z2_pct: 37.3, z3_pct: 13.4, z4_pct: 0.0, z5_pct: 0.0 },
   { id: "22274431152", date: "2026-03-23", type: "STRENGTH", duration_min: 97, avg_hr: 129.8, max_hr: 173, calories: 1018, distance_mi: 0, elevation_gain: 0, elevation_loss: 0, drift: -3.5, below_z1: 38.6, z1_pct: 34.3, z2_pct: 17.2, z3_pct: 9.2, z4_pct: 0.7, z5_pct: 0.0 },
   { id: "22286227603", date: "2026-03-24", type: "CARDIO", duration_min: 69, avg_hr: 148.6, max_hr: 173, calories: 1099, distance_mi: 0, elevation_gain: 0, elevation_loss: 0, drift: 8.3, below_z1: 6.8, z1_pct: 16.4, z2_pct: 40.4, z3_pct: 29.5, z4_pct: 6.8, z5_pct: 0.0 },
+  // ── New activities (Mar 29 – Apr 9, 2026) ──
+  { id: "22342604311", date: "2026-03-29", type: "HIKE", duration_min: 176, avg_hr: 128, max_hr: 183, calories: 1606, distance_mi: 6.17, elevation_gain: 1217, elevation_loss: 1201, drift: 0, below_z1: 6, z1_pct: 39, z2_pct: 28, z3_pct: 18, z4_pct: 10, z5_pct: 0 },
+  { id: "22353585821", date: "2026-03-30", type: "STRENGTH", duration_min: 66, avg_hr: 148, max_hr: 159, calories: 988, distance_mi: 0, elevation_gain: 0, elevation_loss: 0, drift: 0, below_z1: 0, z1_pct: 2, z2_pct: 20, z3_pct: 78, z4_pct: 0, z5_pct: 0 },
+  { id: "22367799632", date: "2026-03-31", type: "STRENGTH", duration_min: 95, avg_hr: 130, max_hr: 170, calories: 957, distance_mi: 0, elevation_gain: 0, elevation_loss: 0, drift: 0, below_z1: 4, z1_pct: 24, z2_pct: 51, z3_pct: 19, z4_pct: 1, z5_pct: 0 },
+  { id: "22421110060", date: "2026-04-05", type: "HIKE", duration_min: 159, avg_hr: 128, max_hr: 174, calories: 1475, distance_mi: 14.19, elevation_gain: 1316, elevation_loss: 1588, drift: 0, below_z1: 14, z1_pct: 35, z2_pct: 26, z3_pct: 20, z4_pct: 6, z5_pct: 0 },
+  { id: "22431276470", date: "2026-04-06", type: "STRENGTH", duration_min: 66, avg_hr: 135, max_hr: 176, calories: 726, distance_mi: 0, elevation_gain: 0, elevation_loss: 0, drift: 0, below_z1: 1, z1_pct: 28, z2_pct: 38, z3_pct: 25, z4_pct: 8, z5_pct: 0 },
+  { id: "22440727253", date: "2026-04-07", type: "STRENGTH", duration_min: 27, avg_hr: 143, max_hr: 184, calories: 352, distance_mi: 0, elevation_gain: 0, elevation_loss: 0, drift: 0, below_z1: 2, z1_pct: 5, z2_pct: 51, z3_pct: 28, z4_pct: 14, z5_pct: 0 },
+  { id: "22440730989", date: "2026-04-07", type: "STRENGTH", duration_min: 70, avg_hr: 146, max_hr: 167, calories: 956, distance_mi: 0, elevation_gain: 0, elevation_loss: 0, drift: 0, below_z1: 0, z1_pct: 10, z2_pct: 18, z3_pct: 73, z4_pct: 0, z5_pct: 0 },
+  { id: "22459420088", date: "2026-04-08", type: "STRENGTH", duration_min: 44, avg_hr: 119, max_hr: 154, calories: 401, distance_mi: 0, elevation_gain: 0, elevation_loss: 0, drift: 0, below_z1: 14, z1_pct: 47, z2_pct: 36, z3_pct: 3, z4_pct: 0, z5_pct: 0 },
+  { id: "22459693233", date: "2026-04-08", type: "STRENGTH", duration_min: 36, avg_hr: 141, max_hr: 156, calories: 493, distance_mi: 0, elevation_gain: 0, elevation_loss: 0, drift: 0, below_z1: 0, z1_pct: 14, z2_pct: 27, z3_pct: 60, z4_pct: 0, z5_pct: 0 },
+  { id: "22470584360", date: "2026-04-09", type: "STRENGTH", duration_min: 66, avg_hr: 154, max_hr: 180, calories: 1018, distance_mi: 0, elevation_gain: 0, elevation_loss: 0, drift: 0, below_z1: 0, z1_pct: 4, z2_pct: 11, z3_pct: 56, z4_pct: 29, z5_pct: 0 },
 ];
 
 export const WEEKLY_VOLUME: Record<string, { cardio: number; strength: number; yoga: number; hike: number; total: number }> = {
@@ -73,6 +84,8 @@ export const WEEKLY_VOLUME: Record<string, { cardio: number; strength: number; y
   "W10 (Mar 8)":  { cardio: 311, strength: 178, yoga: 0, hike: 193, total: 682 },
   "W11 (Mar 15)": { cardio: 66,  strength: 131, yoga: 0, hike: 0, total: 197 },
   "W12 (Mar 22)": { cardio: 69,  strength: 97,  yoga: 0, hike: 0, total: 166 },
+  "W13 (Mar 29)": { cardio: 0,   strength: 161, yoga: 0, hike: 176, total: 337 },
+  "W14 (Apr 5)":  { cardio: 0,   strength: 309, yoga: 0, hike: 159, total: 468 },
 };
 
 // Derived helpers

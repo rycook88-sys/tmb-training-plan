@@ -449,3 +449,9 @@
 ## Offline Mode (PARKED FOR LATER)
 - [ ] Offline PDF export (compact: itinerary, water sources, emergency info, key phrases)
 - [ ] Small unobtrusive download button in Travel tab
+
+## Garmin Data Update (10 new FIT files)
+- [x] Parse 10 uploaded Garmin .zip FIT files (Mar 29 – Apr 9, 2026)
+- [x] Add 10 new sessions to garmin-data.ts (2 hikes, 8 strength)
+- [x] Update WEEKLY_VOLUME with W13 and W14 data
+- [x] TypeScript clean, all 21 tests passing
