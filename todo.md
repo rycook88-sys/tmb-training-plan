@@ -509,4 +509,12 @@
 - [x] Merge strategy: server data wins if localStorage is empty/null/[]
 - [x] Works offline: localStorage remains primary store, server is backup + cross-device sync
 - [x] Components re-read localStorage on cloud-sync-restored event (weight, workout, BF, gear)
-- [ ] Sync indicator in UI (subtle, non-intrusive) — deferred for now
+- [x] Sync indicator in UI — sneaky 5px dot next to DAYS TO GO
+
+## Sneaky Sync Status Indicator
+- [x] Tiny 5px dot next to "DAYS TO GO" text
+- [x] Invisible by default (opacity-0)
+- [x] Pulsing grey/muted while syncing
+- [x] Brief green flash (2.5s) when synced/restored, then fades out
+- [x] Red flash on error (3s), then fades
+- [x] Nearly invisible — just a dot after the text

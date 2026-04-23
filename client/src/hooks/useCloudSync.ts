@@ -27,9 +27,26 @@ const SIMPLE_VALUE_KEYS = new Set(["tmb-bf-retention", "tmb-macro-targets"]);
 export type SyncStatus = "idle" | "syncing" | "synced" | "restored" | "error";
 
 /**
+ * Count the "richness" of a JSON string — number of array items, object keys, or string length.
+ * Used to decide which version (local vs server) has more data.
+ */
+function dataRichness(jsonStr: string | null | undefined): number {
+  if (!jsonStr || jsonStr === "null" || jsonStr === "[]" || jsonStr === "{}") return 0;
+  try {
+    const parsed = JSON.parse(jsonStr);
+    if (Array.isArray(parsed)) return parsed.length;
+    if (typeof parsed === "object" && parsed !== null) return Object.keys(parsed).length;
+    if (typeof parsed === "string") return parsed.length;
+    return 1; // number, boolean, etc.
+  } catch {
+    return jsonStr.length; // raw string
+  }
+}
+
+/**
  * Centralized cloud sync hook.
- * - On login with empty localStorage: restores all data from server
- * - On login with existing data: immediately backs up everything to server
+ * - On login: restores data from server when server has MORE data than local
+ * - On login with existing data: backs up everything to server
  * - On data change: debounced backup of changed keys to server
  * - Runs at app level so all components benefit
  */
@@ -50,7 +67,7 @@ export function useCloudSync() {
     enabled: isAuthenticated,
     retry: 1,
     refetchOnWindowFocus: false,
-    staleTime: 30000, // Don't refetch within 30s
+    staleTime: 30000,
   });
 
   // Core backup function using ref to avoid stale closures
@@ -93,35 +110,38 @@ export function useCloudSync() {
     );
   };
 
-  // Handle initial sync: restore if empty, backup if has data
+  // Handle initial sync: smart merge — server wins if it has more data
   useEffect(() => {
     if (!isAuthenticated || !restoreQuery.data || initialSyncDoneRef.current) return;
     initialSyncDoneRef.current = true;
 
     const backups = restoreQuery.data.backups;
     let restoredCount = 0;
-    let localHasData = false;
+    const keysToBackup: string[] = [];
 
-    // Phase 1: Restore any missing data from server
     for (const [lsKey, serverKey] of Object.entries(SYNC_KEYS)) {
       const serverData = backups[serverKey];
       const localData = localStorage.getItem(lsKey);
-      const localIsEmpty = !localData || localData === "[]" || localData === "{}" || localData === "null";
 
-      if (localIsEmpty && serverData) {
+      const serverRichness = dataRichness(serverData);
+      const localRichness = dataRichness(localData);
+
+      if (serverRichness > 0 && serverRichness > localRichness) {
+        // Server has more data — restore it to localStorage
         try {
-          if (!SIMPLE_VALUE_KEYS.has(lsKey)) {
-            const parsed = JSON.parse(serverData);
-            if (Array.isArray(parsed) && parsed.length === 0) continue;
-            if (typeof parsed === "object" && !Array.isArray(parsed) && Object.keys(parsed).length === 0) continue;
-          }
-          localStorage.setItem(lsKey, serverData);
+          localStorage.setItem(lsKey, serverData!);
           restoredCount++;
+          console.log(`[CloudSync] Restored ${serverKey}: server(${serverRichness}) > local(${localRichness})`);
         } catch {
           console.warn(`[CloudSync] Failed to restore ${serverKey}`);
         }
-      } else if (!localIsEmpty) {
-        localHasData = true;
+      } else if (localRichness > 0 && localRichness > serverRichness) {
+        // Local has more data — queue it for backup
+        keysToBackup.push(lsKey);
+        console.log(`[CloudSync] Will backup ${serverKey}: local(${localRichness}) > server(${serverRichness})`);
+      } else if (localRichness > 0 && localRichness === serverRichness) {
+        // Same richness — backup local to ensure server is up to date
+        keysToBackup.push(lsKey);
       }
     }
 
@@ -131,15 +151,11 @@ export function useCloudSync() {
       window.dispatchEvent(new CustomEvent("cloud-sync-restored", { detail: { count: restoredCount } }));
     }
 
-    // Phase 2: Backup all existing local data to server (ensures server has latest)
-    if (localHasData) {
-      for (const lsKey of Object.keys(SYNC_KEYS)) {
-        const value = localStorage.getItem(lsKey);
-        if (value && value !== "[]" && value !== "{}" && value !== "null") {
-          pendingKeysRef.current.add(lsKey);
-        }
+    // Backup local data that's richer than server
+    if (keysToBackup.length > 0) {
+      for (const lsKey of keysToBackup) {
+        pendingKeysRef.current.add(lsKey);
       }
-      // Small delay to let React settle, then backup
       setTimeout(doBackupNow, 2000);
     }
   }, [isAuthenticated, restoreQuery.data]);

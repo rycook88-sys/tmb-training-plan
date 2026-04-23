@@ -40,16 +40,41 @@ const DESC = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646Ksuc
 const MASS = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/mont-blanc-massif-9zhRqKCwtJsZQ3ZMrMW65f.webp";
 
 // ── Countdown ─────────────────────────────────────────────
-function Countdown() {
+function Countdown({ syncStatus }: { syncStatus?: string }) {
   const [days, setDays] = useState(getDaysUntilTrip());
+  const [dotVisible, setDotVisible] = useState(false);
+  const [dotColor, setDotColor] = useState("bg-muted-foreground/30");
   useEffect(() => {
     const t = setInterval(() => setDays(getDaysUntilTrip()), 60000);
     return () => clearInterval(t);
   }, []);
+  useEffect(() => {
+    if (syncStatus === "syncing") {
+      setDotVisible(true);
+      setDotColor("bg-muted-foreground/40 animate-pulse");
+    } else if (syncStatus === "synced" || syncStatus === "restored") {
+      setDotVisible(true);
+      setDotColor("bg-emerald-500/70");
+      const t = setTimeout(() => setDotVisible(false), 2500);
+      return () => clearTimeout(t);
+    } else if (syncStatus === "error") {
+      setDotVisible(true);
+      setDotColor("bg-red-500/50");
+      const t = setTimeout(() => setDotVisible(false), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [syncStatus]);
   return (
     <div className="flex items-baseline gap-3">
       <span className="font-mono text-5xl sm:text-7xl font-bold text-[var(--primary)] tracking-tighter leading-none">{days}</span>
-      <span className="text-sm uppercase tracking-[0.3em] text-[var(--muted-foreground)]">days to go</span>
+      <div className="flex flex-col">
+        <span className="text-sm uppercase tracking-[0.3em] text-[var(--muted-foreground)]">
+          days to go
+          <span
+            className={`inline-block w-[5px] h-[5px] rounded-full ml-1.5 align-middle transition-all duration-700 ${dotVisible ? dotColor + " opacity-100" : "opacity-0"}`}
+          />
+        </span>
+      </div>
     </div>
   );
 }
@@ -1333,7 +1358,7 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
             <div>
               <div className="flex items-center justify-between">
-                <Countdown />
+                <Countdown syncStatus={cloudSync.status} />
                 <div className="flex items-center gap-2">
                   <ThemeSwitcher />
                   <button onClick={u.toggle}
