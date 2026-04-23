@@ -244,11 +244,10 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
     const saved = localStorage.getItem("tmb-bf-retention");
     return saved ? Number(saved) : 75;
   });
-  useEffect(() => {
+  const loadAndPopulate = useCallback(() => {
     const loaded = loadEntries();
     setEntries(loaded);
-    // Pre-populate from last saved entry
-    if (loaded.length > 0 && !prefilled) {
+    if (loaded.length > 0) {
       const last = loaded[0];
       const m = last.measurements;
       setMeasurements({
@@ -265,6 +264,17 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
       setPrefilled(true);
     }
   }, []);
+
+  useEffect(() => {
+    loadAndPopulate();
+  }, []);
+
+  // Re-read from localStorage when cloud sync restores data
+  useEffect(() => {
+    const handler = () => loadAndPopulate();
+    window.addEventListener("cloud-sync-restored", handler);
+    return () => window.removeEventListener("cloud-sync-restored", handler);
+  }, [loadAndPopulate]);
 
   // Computed
   const heightIn = (parseInt(heightFt) || 0) * 12 + (parseInt(heightInR) || 0);

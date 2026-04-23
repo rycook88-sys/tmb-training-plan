@@ -32,6 +32,7 @@ import { GARMIN_SESSIONS, WEEKLY_VOLUME } from "@/lib/garmin-data";
 import { ALL_MICRONUTRIENTS, getMicroDVPercent } from "@/lib/vitamin-data";
 import { loadMacroTargets } from "@/lib/vitamin-data";
 import { PRE_TRIP_CHECKLIST } from "@/lib/travel-data";
+import { useCloudSync } from "@/hooks/useCloudSync";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/hero-tmb-ridge-TA9BE2JzZxaxi68um9vvG9.webp";
 const TOPO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/topo-texture-3ai3ccpyxv32r72SNbY3MU.webp";
@@ -1036,6 +1037,7 @@ function ModeToggle({ mode, setMode }: { mode: AppMode; setMode: (m: AppMode) =>
 
 // ── Main Page ─────────────────────────────────────────────
 export default function Home() {
+  const cloudSync = useCloudSync();
   const wt = useWeightTracker();
   const wl = useWorkoutLog();
   const [showSummary, setShowSummary] = useState<WorkoutSession | null>(null);

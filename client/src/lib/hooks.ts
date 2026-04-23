@@ -30,6 +30,18 @@ export function useWeightTracker() {
     localStorage.setItem("tmb-weight-log", JSON.stringify(entries));
   }, [entries]);
 
+  // Re-read from localStorage when cloud sync restores data
+  useEffect(() => {
+    const handler = () => {
+      try {
+        const saved = localStorage.getItem("tmb-weight-log");
+        if (saved) setEntries(JSON.parse(saved));
+      } catch {}
+    };
+    window.addEventListener("cloud-sync-restored", handler);
+    return () => window.removeEventListener("cloud-sync-restored", handler);
+  }, []);
+
   const addEntry = (weight: number) => {
     const today = new Date().toISOString().split("T")[0];
     setEntries((prev) => {
@@ -65,6 +77,18 @@ export function useWorkoutLog() {
       return [];
     }
   });
+
+  // Re-read from localStorage when cloud sync restores data
+  useEffect(() => {
+    const handler = () => {
+      try {
+        const saved = localStorage.getItem("tmb-workout-sessions");
+        if (saved) setSessions(JSON.parse(saved));
+      } catch {}
+    };
+    window.addEventListener("cloud-sync-restored", handler);
+    return () => window.removeEventListener("cloud-sync-restored", handler);
+  }, []);
 
   const [activeSession, setActiveSession] = useState<{
     dayId: string;

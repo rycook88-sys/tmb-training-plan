@@ -496,3 +496,17 @@
 - [x] Show warning modal with flagged measurements, previous vs current values, and % change
 - [x] Allow user to save anyway or go back and fix (two-button modal)
 - [x] Flag measurements outside reasonable anatomical ranges (e.g. neck 12-22", thigh 18-35")
+
+## Cloud Data Sync (Cross-Device)
+- [x] Reuse existing nutritionBackups table (key-value per user per data type)
+- [x] Reuse existing backup/restore server endpoints (generic dataType + jsonData)
+- [x] Sync weight log to server on every change (via localStorage.setItem intercept)
+- [x] Sync BF% entries to server on every change
+- [x] Sync workout sessions to server on every change
+- [x] Sync nutrition data to server on every change
+- [x] Sync gear list, macro targets, BF retention, prehike checklist, saved meal plans
+- [x] Auto-load all data from server on login / app startup (if logged in)
+- [x] Merge strategy: server data wins if localStorage is empty/null/[]
+- [x] Works offline: localStorage remains primary store, server is backup + cross-device sync
+- [x] Components re-read localStorage on cloud-sync-restored event (weight, workout, BF, gear)
+- [ ] Sync indicator in UI (subtle, non-intrusive) — deferred for now

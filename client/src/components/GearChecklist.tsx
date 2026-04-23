@@ -191,6 +191,13 @@ export default function GearChecklist({ embedded = false }: { embedded?: boolean
 
   useEffect(() => { saveGear(gear); }, [gear]);
 
+  // Re-read from localStorage when cloud sync restores data
+  useEffect(() => {
+    const handler = () => setGear(loadGear());
+    window.addEventListener("cloud-sync-restored", handler);
+    return () => window.removeEventListener("cloud-sync-restored", handler);
+  }, []);
+
   const togglePacked = (id: string) => {
     setGear((prev) => prev.map((g) => g.id === id ? { ...g, packed: !g.packed } : g));
   };
