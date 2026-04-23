@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 
@@ -12,6 +12,9 @@ const SYNC_KEYS: Record<string, string> = {
   "tmb-workout-sessions": "workoutSessions",
   "tmb-nutrition-log": "foodLog",
   "tmb-saved-meal-plans": "savedMealPlans",
+  "tmb-nutrition-presets": "presets",
+  "tmb-nutrition-common": "commonItems",
+  "tmb-nutrition-feedback": "nutritionFeedback",
   "tmb-gear-list": "gearList",
   "tmb-macro-targets": "macroTargets",
   "tmb-bf-retention": "bfRetention",
@@ -21,11 +24,12 @@ const SYNC_KEYS: Record<string, string> = {
 // Keys that are simple values (not JSON arrays/objects)
 const SIMPLE_VALUE_KEYS = new Set(["tmb-bf-retention", "tmb-macro-targets"]);
 
-export type SyncStatus = "idle" | "syncing" | "synced" | "restoring" | "restored" | "error";
+export type SyncStatus = "idle" | "syncing" | "synced" | "restored" | "error";
 
 /**
  * Centralized cloud sync hook.
- * - On login: restores all data from server if localStorage is empty
+ * - On login with empty localStorage: restores all data from server
+ * - On login with existing data: immediately backs up everything to server
  * - On data change: debounced backup of changed keys to server
  * - Runs at app level so all components benefit
  */
@@ -35,58 +39,25 @@ export function useCloudSync() {
   const [lastSynced, setLastSynced] = useState<string | null>(null);
   const backupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingKeysRef = useRef<Set<string>>(new Set());
-  const restoredRef = useRef(false);
-  const backupMutation = trpc.nutrition.backup.useMutation();
+  const initialSyncDoneRef = useRef(false);
+  const backupMutationRef = useRef<ReturnType<typeof trpc.nutrition.backup.useMutation> | null>(null);
 
-  // Restore from server on login if localStorage data is missing
+  const backupMutation = trpc.nutrition.backup.useMutation();
+  backupMutationRef.current = backupMutation;
+
+  // Restore from server on login
   const restoreQuery = trpc.nutrition.restore.useQuery(undefined, {
-    enabled: isAuthenticated && !restoredRef.current,
-    retry: false,
+    enabled: isAuthenticated,
+    retry: 1,
     refetchOnWindowFocus: false,
+    staleTime: 30000, // Don't refetch within 30s
   });
 
-  useEffect(() => {
-    if (!restoreQuery.data || restoredRef.current) return;
-    restoredRef.current = true;
+  // Core backup function using ref to avoid stale closures
+  const doBackupNow = () => {
+    const mutation = backupMutationRef.current;
+    if (!mutation) return;
 
-    const backups = restoreQuery.data.backups;
-    let restoredCount = 0;
-
-    for (const [lsKey, serverKey] of Object.entries(SYNC_KEYS)) {
-      const serverData = backups[serverKey];
-      if (!serverData) continue;
-
-      const localData = localStorage.getItem(lsKey);
-
-      // Only restore if localStorage is empty or has less data
-      if (!localData || localData === "[]" || localData === "{}" || localData === "null") {
-        try {
-          // Validate the server data is parseable (for non-simple keys)
-          if (!SIMPLE_VALUE_KEYS.has(lsKey)) {
-            const parsed = JSON.parse(serverData);
-            // Only restore if server actually has data
-            if (Array.isArray(parsed) && parsed.length === 0) continue;
-            if (typeof parsed === "object" && !Array.isArray(parsed) && Object.keys(parsed).length === 0) continue;
-          }
-          localStorage.setItem(lsKey, serverData);
-          restoredCount++;
-        } catch {
-          console.warn(`[CloudSync] Failed to restore ${serverKey}`);
-        }
-      }
-    }
-
-    if (restoredCount > 0) {
-      setStatus("restored");
-      console.log(`[CloudSync] Restored ${restoredCount} data types from server`);
-      // Dispatch a custom event so components can re-read localStorage
-      window.dispatchEvent(new CustomEvent("cloud-sync-restored", { detail: { count: restoredCount } }));
-    }
-  }, [restoreQuery.data]);
-
-  // Backup function — sends all pending changed keys to server
-  const doBackup = useCallback(() => {
-    if (!isAuthenticated) return;
     const keys = Array.from(pendingKeysRef.current);
     if (keys.length === 0) return;
 
@@ -104,29 +75,79 @@ export function useCloudSync() {
     setStatus("syncing");
     pendingKeysRef.current.clear();
 
-    backupMutation.mutate(
+    mutation.mutate(
       { data },
       {
         onSuccess: () => {
           setStatus("synced");
           setLastSynced(new Date().toISOString());
-          console.log(`[CloudSync] Backed up ${data.length} data types`);
+          console.log(`[CloudSync] Backed up ${data.length} data types to server`);
         },
         onError: () => {
           setStatus("error");
           // Re-add failed keys so they retry next time
           for (const lsKey of keys) pendingKeysRef.current.add(lsKey);
-          console.warn("[CloudSync] Backup failed, will retry");
+          console.warn("[CloudSync] Backup failed, will retry on next change");
         },
       }
     );
-  }, [isAuthenticated, backupMutation]);
+  };
+
+  // Handle initial sync: restore if empty, backup if has data
+  useEffect(() => {
+    if (!isAuthenticated || !restoreQuery.data || initialSyncDoneRef.current) return;
+    initialSyncDoneRef.current = true;
+
+    const backups = restoreQuery.data.backups;
+    let restoredCount = 0;
+    let localHasData = false;
+
+    // Phase 1: Restore any missing data from server
+    for (const [lsKey, serverKey] of Object.entries(SYNC_KEYS)) {
+      const serverData = backups[serverKey];
+      const localData = localStorage.getItem(lsKey);
+      const localIsEmpty = !localData || localData === "[]" || localData === "{}" || localData === "null";
+
+      if (localIsEmpty && serverData) {
+        try {
+          if (!SIMPLE_VALUE_KEYS.has(lsKey)) {
+            const parsed = JSON.parse(serverData);
+            if (Array.isArray(parsed) && parsed.length === 0) continue;
+            if (typeof parsed === "object" && !Array.isArray(parsed) && Object.keys(parsed).length === 0) continue;
+          }
+          localStorage.setItem(lsKey, serverData);
+          restoredCount++;
+        } catch {
+          console.warn(`[CloudSync] Failed to restore ${serverKey}`);
+        }
+      } else if (!localIsEmpty) {
+        localHasData = true;
+      }
+    }
+
+    if (restoredCount > 0) {
+      setStatus("restored");
+      console.log(`[CloudSync] Restored ${restoredCount} data types from server`);
+      window.dispatchEvent(new CustomEvent("cloud-sync-restored", { detail: { count: restoredCount } }));
+    }
+
+    // Phase 2: Backup all existing local data to server (ensures server has latest)
+    if (localHasData) {
+      for (const lsKey of Object.keys(SYNC_KEYS)) {
+        const value = localStorage.getItem(lsKey);
+        if (value && value !== "[]" && value !== "{}" && value !== "null") {
+          pendingKeysRef.current.add(lsKey);
+        }
+      }
+      // Small delay to let React settle, then backup
+      setTimeout(doBackupNow, 2000);
+    }
+  }, [isAuthenticated, restoreQuery.data]);
 
   // Listen for localStorage changes from any component
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // Intercept localStorage.setItem to detect changes
     const originalSetItem = localStorage.setItem.bind(localStorage);
     localStorage.setItem = function (key: string, value: string) {
       originalSetItem(key, value);
@@ -134,7 +155,7 @@ export function useCloudSync() {
         pendingKeysRef.current.add(key);
         // Debounce backup by 3 seconds
         if (backupTimerRef.current) clearTimeout(backupTimerRef.current);
-        backupTimerRef.current = setTimeout(doBackup, 3000);
+        backupTimerRef.current = setTimeout(doBackupNow, 3000);
       }
     };
 
@@ -142,24 +163,7 @@ export function useCloudSync() {
       localStorage.setItem = originalSetItem;
       if (backupTimerRef.current) clearTimeout(backupTimerRef.current);
     };
-  }, [isAuthenticated, doBackup]);
-
-  // Also do a full backup on mount (catches any data that changed while offline)
-  useEffect(() => {
-    if (!isAuthenticated || !restoredRef.current) return;
-
-    // Wait a bit for restore to finish, then backup everything
-    const timer = setTimeout(() => {
-      for (const lsKey of Object.keys(SYNC_KEYS)) {
-        if (localStorage.getItem(lsKey)) {
-          pendingKeysRef.current.add(lsKey);
-        }
-      }
-      doBackup();
-    }, 10000);
-
-    return () => clearTimeout(timer);
-  }, [isAuthenticated, doBackup]);
+  }, [isAuthenticated]);
 
   return { status, lastSynced };
 }
