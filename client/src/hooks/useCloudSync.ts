@@ -19,10 +19,11 @@ const SYNC_KEYS: Record<string, string> = {
   "tmb-macro-targets": "macroTargets",
   "tmb-bf-retention": "bfRetention",
   "tmb-prehike-checklist": "prehikeChecklist",
+  "tmb-bf-goal-weight": "bfGoalWeight",
 };
 
 // Keys that are simple values (not JSON arrays/objects)
-const SIMPLE_VALUE_KEYS = new Set(["tmb-bf-retention", "tmb-macro-targets"]);
+const SIMPLE_VALUE_KEYS = new Set(["tmb-bf-retention", "tmb-macro-targets", "tmb-bf-goal-weight"]);
 
 export type SyncStatus = "idle" | "syncing" | "synced" | "restored" | "error";
 

@@ -518,3 +518,26 @@
 - [x] Brief green flash (2.5s) when synced/restored, then fades out
 - [x] Red flash on error (3s), then fades
 - [x] Nearly invisible — just a dot after the text
+
+## Garmin FIT File Upload
+- [x] Add upload button/drop zone for Garmin .zip/.fit files
+- [x] Parse FIT files server-side to extract workout data (heart rate, distance, elevation, zones, drift)
+- [x] Store parsed sessions in database (nutritionBackups table with garmin-uploaded-sessions type)
+- [x] Display upload UI in TrainingAnalytics component with drag-and-drop support
+- [x] Support both .fit and .zip (containing .fit) formats
+- [x] Write vitest tests for garmin router (upload, getSessions, deduplication, ZIP handling)
+
+## Customizable Goal Weight
+- [x] Make the goal weight in BF% projection table tappable/editable
+- [x] Save custom goal weight to localStorage (and sync to server via cloud sync)
+- [x] Update projection table rows dynamically based on new goal
+- [ ] Update Altitude Gauge goal marker to reflect custom goal
+
+## Offline PWA Mode
+- [x] Create service worker via vite-plugin-pwa with Workbox caching
+- [x] Add web app manifest for PWA install support (manifest, icons, Apple meta tags)
+- [x] Cache app shell (JS, CSS, HTML, fonts) + CDN images on first load
+- [x] Register service worker in main.tsx with hourly update checks
+- [ ] Graceful offline states for server-dependent features (Coach Sierra, sync)
+- [ ] Queue offline data changes and sync when connection returns
+- [ ] Add install prompt / "Add to Home Screen" hint

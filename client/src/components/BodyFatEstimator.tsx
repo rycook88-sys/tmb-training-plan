@@ -244,6 +244,12 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
     const saved = localStorage.getItem("tmb-bf-retention");
     return saved ? Number(saved) : 75;
   });
+  const [goalWeight, setGoalWeight] = useState(() => {
+    const saved = localStorage.getItem("tmb-bf-goal-weight");
+    return saved ? Number(saved) : 205;
+  });
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalInput, setGoalInput] = useState("");
   const loadAndPopulate = useCallback(() => {
     const loaded = loadEntries();
     setEntries(loaded);
@@ -751,16 +757,26 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                 // Row 1: exact current weight
                 const currentRow = calcRow(weightLbs);
                 if (currentRow.bf > 0) {
-                  projections.push({ ...currentRow, isCurrent: true, isGoal: weightLbs === 205 });
+                  projections.push({ ...currentRow, isCurrent: true, isGoal: Math.round(weightLbs) === goalWeight });
                 }
 
                 // Subsequent rows: nearest multiple of 5 below current weight, stepping down by 5
                 let start5 = Math.floor(weightLbs / 5) * 5;
                 if (start5 >= weightLbs) start5 -= 5;
-                for (let w = start5; w >= 195; w -= 5) {
+                // Ensure goal weight is included in the range
+                const minWeight = Math.min(195, goalWeight - 10);
+                for (let w = start5; w >= minWeight; w -= 5) {
                   const row = calcRow(w);
                   if (row.bf > 0) {
-                    projections.push({ ...row, isCurrent: false, isGoal: w === 205 });
+                    projections.push({ ...row, isCurrent: false, isGoal: w === goalWeight });
+                  }
+                }
+                // If goal weight isn't a multiple of 5 and isn't the current weight, insert it
+                if (goalWeight % 5 !== 0 && Math.round(weightLbs) !== goalWeight) {
+                  const goalRow = calcRow(goalWeight);
+                  if (goalRow.bf > 0 && !projections.some(p => p.weight === goalWeight)) {
+                    projections.push({ ...goalRow, isCurrent: false, isGoal: true });
+                    projections.sort((a, b) => b.weight - a.weight);
                   }
                 }
 
@@ -770,6 +786,12 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                       <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
                         Weight → BF% Projection
                       </span>
+                      <button
+                        onClick={() => { setGoalInput(String(goalWeight)); setEditingGoal(true); }}
+                        className="ml-2 text-[9px] font-mono text-[var(--primary)] hover:text-[var(--primary)]/80 cursor-pointer underline underline-offset-2"
+                      >
+                        Goal: {goalWeight} lb
+                      </button>
                       {composite === null && (
                         <span className="text-[9px] font-mono text-muted-foreground/60 ml-2">
                           (using visual estimate ~22% — enter measurements for precision)
@@ -826,6 +848,53 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                         );
                       })}
                     </div>
+                    {editingGoal && (
+                      <div className="px-4 py-2 border-t border-border flex items-center gap-2">
+                        <span className="text-[9px] font-mono text-muted-foreground shrink-0">Goal Weight:</span>
+                        <input
+                          type="number"
+                          min={150}
+                          max={250}
+                          step={1}
+                          value={goalInput}
+                          onChange={e => setGoalInput(e.target.value)}
+                          className="w-16 bg-transparent border border-border px-1.5 py-0.5 text-xs font-mono text-foreground text-center"
+                          autoFocus
+                          onKeyDown={e => {
+                            if (e.key === "Enter") {
+                              const val = parseInt(goalInput);
+                              if (val >= 150 && val <= 250) {
+                                setGoalWeight(val);
+                                localStorage.setItem("tmb-bf-goal-weight", String(val));
+                              }
+                              setEditingGoal(false);
+                            } else if (e.key === "Escape") {
+                              setEditingGoal(false);
+                            }
+                          }}
+                        />
+                        <span className="text-[9px] font-mono text-muted-foreground">lb</span>
+                        <button
+                          onClick={() => {
+                            const val = parseInt(goalInput);
+                            if (val >= 150 && val <= 250) {
+                              setGoalWeight(val);
+                              localStorage.setItem("tmb-bf-goal-weight", String(val));
+                            }
+                            setEditingGoal(false);
+                          }}
+                          className="text-[9px] font-mono text-green-400 hover:text-green-300 cursor-pointer"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setEditingGoal(false)}
+                          className="text-[9px] font-mono text-muted-foreground hover:text-foreground cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                     <div className="px-4 py-2 border-t border-border">
                       <p className="text-[9px] font-mono text-muted-foreground/60">
                         Projections update automatically as you log new measurements and weight. Strength training during a cut can improve retention to 85–90%.

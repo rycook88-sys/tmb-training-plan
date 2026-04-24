@@ -19,6 +19,7 @@ import {
   getCardioSessions, getHikeSessions, getYogaSessions,
 } from "@/lib/garmin-data";
 import { useUnits } from "@/contexts/UnitContext";
+import GarminUpload from "@/components/GarminUpload";
 
 // ── Colors ───────────────────────────────────────────────────
 const C = {
@@ -587,6 +588,10 @@ export default function TrainingAnalytics({ embedded = false }: { embedded?: boo
 
               <MetricPanel title="Calories Burned Per Session" icon={Flame} badge="36 sessions">
                 <CaloriesBurned />
+              </MetricPanel>
+
+              <MetricPanel title="Upload FIT Files" icon={Activity} badge="sync new activities">
+                <GarminUpload />
               </MetricPanel>
 
               <div className="text-[10px] font-mono text-[var(--muted-foreground)] text-center mt-4 italic">
