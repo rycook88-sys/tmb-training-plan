@@ -93,10 +93,11 @@ function StatCard({ label, value, unit, color }: { label: string; value: string;
 }
 
 // ── Weight Gauge ──────────────────────────────────────────
-function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
+function WeightGauge({ currentWeight, progress, entries, onAddWeight, goalWeight }: {
   currentWeight: number; progress: number;
   entries: { date: string; weight: number }[];
   onAddWeight: (w: number) => void;
+  goalWeight: number;
 }) {
   const u = useUnits();
   const [inputVal, setInputVal] = useState("");
@@ -107,13 +108,13 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
     if (w > 150 && w < 300) { onAddWeight(w); setInputVal(""); setShowInput(false); }
   };
   const gaugeH = 280;
-  const goalReached = currentWeight <= ATHLETE.goalWeight;
+  const goalReached = currentWeight <= goalWeight;
 
   return (
     <div className="border border-border p-5 bg-card">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)]">Altitude Gauge</h3>
-        <span className="font-mono text-xs text-[var(--muted-foreground)]">{u.wt(ATHLETE.startWeight, 0)} → {u.wt(ATHLETE.goalWeight, 0)} {u.wtUnit}</span>
+        <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)]">Weight Descent</h3>
+        <span className="font-mono text-xs text-[var(--muted-foreground)]">{u.wt(ATHLETE.startWeight, 0)} → {u.wt(goalWeight, 0)} {u.wtUnit}</span>
       </div>
       <div className="flex gap-6 items-center">
         <div className="relative" style={{ width: 48, height: gaugeH }}>
@@ -126,7 +127,7 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
             transition={{ duration: 1.5, ease: "easeOut" }} />
           <div className="absolute left-0 right-0 top-0 h-px bg-[var(--primary)] opacity-50" />
           <div className="absolute left-0 right-0 bottom-0 h-px bg-border" />
-          <span className="absolute -right-8 top-0 text-[10px] font-mono text-[var(--primary)] translate-y-[-50%]">{u.wt(ATHLETE.goalWeight, 0)}</span>
+          <span className="absolute -right-8 top-0 text-[10px] font-mono text-[var(--primary)] translate-y-[-50%]">{u.wt(goalWeight, 0)}</span>
           <span className="absolute -right-8 bottom-0 text-[10px] font-mono text-[var(--muted-foreground)] translate-y-[50%]">{u.wt(ATHLETE.startWeight, 0)}</span>
         </div>
         <div className="flex-1">
@@ -137,7 +138,7 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight }: {
             {goalReached ? (
               <span className="text-xs font-mono text-amber-400 flex items-center gap-1"><Trophy className="w-3 h-3" /> GOAL REACHED</span>
             ) : (
-              <span className="text-xs font-mono text-[var(--muted-foreground)]">{u.wt(currentWeight - ATHLETE.goalWeight, 0)} {u.wtUnit} to go</span>
+              <span className="text-xs font-mono text-[var(--muted-foreground)]">{u.wt(currentWeight - goalWeight, 0)} {u.wtUnit} to go</span>
             )}
           </div>
           <div className="mt-1 text-xs font-mono text-[var(--primary)]">{Math.round(progress)}% complete</div>
@@ -1114,9 +1115,9 @@ export default function Home() {
 
   const coachWeightData = useMemo(() => {
     if (!wt.entries.length) return undefined;
-    return `Start: ${ATHLETE.startWeight} lbs | Goal: ${ATHLETE.goalWeight} lbs\nEntries:\n` +
+    return `Start: ${ATHLETE.startWeight} lbs | Goal: ${wt.goalWeight} lbs\nEntries:\n` +
       wt.entries.map(e => `  ${e.date}: ${e.weight} lbs`).join('\n');
-  }, [wt.entries]);
+  }, [wt.entries, wt.goalWeight]);
 
   const coachBodyFatData = useMemo(() => {
     try {
@@ -1374,7 +1375,7 @@ export default function Home() {
                 <StatCard label="Pack Weight" value={ATHLETE.packWeight} unit="" />
               </div>
             </div>
-            <WeightGauge currentWeight={wt.currentWeight} progress={wt.progress} entries={wt.entries} onAddWeight={wt.addEntry} />
+            <WeightGauge currentWeight={wt.currentWeight} progress={wt.progress} entries={wt.entries} onAddWeight={wt.addEntry} goalWeight={wt.goalWeight} />
           </div>
         </div>
       </section>

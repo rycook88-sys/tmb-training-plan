@@ -160,8 +160,10 @@ export function getDaysUntilTrip(): number {
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
 }
 
-export function getWeightProgress(current: number): number {
-  const total = ATHLETE.startWeight - ATHLETE.goalWeight;
+export function getWeightProgress(current: number, goalWeight?: number): number {
+  const goal = goalWeight ?? ATHLETE.goalWeight;
+  const total = ATHLETE.startWeight - goal;
+  if (total <= 0) return 0;
   const progress = ATHLETE.startWeight - current;
   return Math.min(100, Math.max(0, (progress / total) * 100));
 }

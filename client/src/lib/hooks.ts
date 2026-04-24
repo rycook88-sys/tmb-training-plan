@@ -26,6 +26,12 @@ export function useWeightTracker() {
     }
   });
 
+  // Read goal weight from localStorage (shared with BodyFatEstimator)
+  const [goalWeight, setGoalWeight] = useState(() => {
+    const saved = localStorage.getItem("tmb-bf-goal-weight");
+    return saved ? Number(saved) : ATHLETE.goalWeight;
+  });
+
   useEffect(() => {
     localStorage.setItem("tmb-weight-log", JSON.stringify(entries));
   }, [entries]);
@@ -36,10 +42,34 @@ export function useWeightTracker() {
       try {
         const saved = localStorage.getItem("tmb-weight-log");
         if (saved) setEntries(JSON.parse(saved));
+        const savedGoal = localStorage.getItem("tmb-bf-goal-weight");
+        if (savedGoal) setGoalWeight(Number(savedGoal));
       } catch {}
     };
     window.addEventListener("cloud-sync-restored", handler);
     return () => window.removeEventListener("cloud-sync-restored", handler);
+  }, []);
+
+  // Listen for goal weight changes from BodyFatEstimator (same-page localStorage writes)
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      if (e.key === "tmb-bf-goal-weight" && e.newValue) {
+        setGoalWeight(Number(e.newValue));
+      }
+    };
+    window.addEventListener("storage", handler);
+    // Also poll localStorage on an interval since StorageEvent doesn't fire for same-tab writes
+    const poll = setInterval(() => {
+      const saved = localStorage.getItem("tmb-bf-goal-weight");
+      if (saved) {
+        const val = Number(saved);
+        setGoalWeight(prev => prev !== val ? val : prev);
+      }
+    }, 2000);
+    return () => {
+      window.removeEventListener("storage", handler);
+      clearInterval(poll);
+    };
   }, []);
 
   const addEntry = (weight: number) => {
@@ -51,9 +81,9 @@ export function useWeightTracker() {
   };
 
   const currentWeight = entries.length > 0 ? entries[entries.length - 1].weight : ATHLETE.currentWeight;
-  const progress = getWeightProgress(currentWeight);
+  const progress = getWeightProgress(currentWeight, goalWeight);
 
-  return { entries, addEntry, currentWeight, progress };
+  return { entries, addEntry, currentWeight, progress, goalWeight };
 }
 
 export function useWorkoutLog() {

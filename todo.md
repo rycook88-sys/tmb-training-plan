@@ -541,3 +541,8 @@
 - [ ] Graceful offline states for server-dependent features (Coach Sierra, sync)
 - [ ] Queue offline data changes and sync when connection returns
 - [ ] Add install prompt / "Add to Home Screen" hint
+
+## Altitude Gauge → Weight Descent Rename + Goal Weight Sync
+- [x] Rename "Altitude Gauge" to "Weight Descent"
+- [x] Wire custom goal weight from BF% projection table into the gauge component
+- [x] Ensure gauge header, goal marker, progress calculation, and coach data all use the dynamic goal
