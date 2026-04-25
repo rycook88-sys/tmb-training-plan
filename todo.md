@@ -641,3 +641,9 @@
 ## Round 10 — Weight Descent Polish
 - [x] Fix 205 spacing above progress bar to match 232 spacing below (top: -28px)
 - [x] Add motivational stats to top-right corner (cal deficit + lbs off knees)
+
+## Round 10b — Strength Percentile Stats
+- [x] Build strength standards lookup table for exercises in the workout plan (~220 lb male)
+- [x] Create rotating strength percentile display that cycles through lifts every 12 seconds with fade animation
+- [x] Integrate into Weight Descent header alongside calorie deficit and knee relief
+- [x] Add 9 vitest tests for strength-standards module (threshold interpolation, invertBetter, shortNames)

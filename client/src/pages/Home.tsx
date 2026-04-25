@@ -40,6 +40,7 @@ import ChamonixWeather from "@/components/ChamonixWeather";
 import { HeroSkeleton, StatCardSkeleton, WeightGaugeSkeleton, TrainingGridSkeleton } from "@/components/Skeleton";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useCloudSync } from "@/hooks/useCloudSync";
+import { getStrengthPercentile, STRENGTH_STANDARDS } from "@/lib/strength-standards";
 
 const HERO_IMAGES = [
   "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/hero-tmb-ridge-TA9BE2JzZxaxi68um9vvG9.webp",
@@ -162,13 +163,14 @@ function WeightTrendLine({ entries, goalWeight }: { entries: { date: string; wei
   );
 }
 
-function WeightGauge({ currentWeight, progress, entries, onAddWeight, onEditWeight, onDeleteWeight, goalWeight }: {
+function WeightGauge({ currentWeight, progress, entries, onAddWeight, onEditWeight, onDeleteWeight, goalWeight, workoutSessions }: {
   currentWeight: number; progress: number;
   entries: { date: string; weight: number }[];
   onAddWeight: (w: number) => void;
   onEditWeight: (date: string, weight: number) => void;
   onDeleteWeight: (date: string) => void;
   goalWeight: number;
+  workoutSessions: WorkoutSession[];
 }) {
   const u = useUnits();
   const [inputVal, setInputVal] = useState("");
@@ -193,6 +195,46 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight, onEditWeig
   const kneeRelief = Math.round(lostLbs * 4);
   const percentLighter = ((lostLbs / ATHLETE.startWeight) * 100).toFixed(1);
 
+  // ── Rotating Strength Percentile ──
+  // Compute best logged weight per exercise from all saved workout sessions
+  const strengthStats = useMemo(() => {
+    const bestWeights = new Map<string, number>();
+    for (const session of workoutSessions) {
+      for (const ex of session.exercises) {
+        if (!ex.done || !ex.weight) continue;
+        const w = parseFloat(ex.weight);
+        if (isNaN(w) || w <= 0) continue;
+        // Find if this exercise has a strength standard
+        const std = STRENGTH_STANDARDS.find((s) => s.exercise === ex.name);
+        if (!std) continue;
+        const current = bestWeights.get(ex.name);
+        if (std.invertBetter) {
+          // For assist exercises, lower is better
+          if (current === undefined || w < current) bestWeights.set(ex.name, w);
+        } else {
+          if (current === undefined || w > current) bestWeights.set(ex.name, w);
+        }
+      }
+    }
+    const results: { shortName: string; percentile: number; exerciseName: string }[] = [];
+    for (const [name, weight] of Array.from(bestWeights.entries())) {
+      const result = getStrengthPercentile(name, weight);
+      if (result) results.push({ ...result, exerciseName: name });
+    }
+    // Sort by percentile descending so the strongest lifts show first
+    results.sort((a, b) => b.percentile - a.percentile);
+    return results;
+  }, [workoutSessions]);
+
+  const [strengthIdx, setStrengthIdx] = useState(0);
+  useEffect(() => {
+    if (strengthStats.length <= 1) return;
+    const interval = setInterval(() => {
+      setStrengthIdx((prev) => (prev + 1) % strengthStats.length);
+    }, 12000);
+    return () => clearInterval(interval);
+  }, [strengthStats.length]);
+
   return (
     <div className="border border-border p-5 bg-card">
       <ConfirmDeleteDialog
@@ -202,20 +244,41 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight, onEditWeig
         onConfirm={() => { if (deleteConfirm) onDeleteWeight(deleteConfirm); setDeleteConfirm(null); }}
         onCancel={() => setDeleteConfirm(null)}
       />
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)]">Weight Descent</h3>
-        <div className="flex gap-4 items-center">
+      <div className="flex items-start justify-between mb-4 gap-2">
+        <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)] flex-shrink-0 pt-1">Weight<br/>Descent</h3>
+        <div className="flex gap-2.5 items-center justify-end">
           {lostLbs > 0 && (
             <>
               <div className="text-right">
-                <div className="font-mono text-lg font-bold text-[var(--primary)] leading-none">{calsBurned.toLocaleString()}</div>
-                <div className="text-[9px] uppercase tracking-wider text-[var(--muted-foreground)] mt-0.5">cal deficit</div>
+                <div className="font-mono text-xs font-bold text-[var(--primary)] leading-none">{calsBurned.toLocaleString()}</div>
+                <div className="text-[7px] uppercase tracking-wider text-[var(--muted-foreground)] mt-0.5">cal deficit</div>
               </div>
               <div className="text-right">
-                <div className="font-mono text-lg font-bold text-emerald-400 leading-none">{kneeRelief}</div>
-                <div className="text-[9px] uppercase tracking-wider text-[var(--muted-foreground)] mt-0.5">lbs off knees</div>
+                <div className="font-mono text-xs font-bold text-emerald-400 leading-none">{kneeRelief}</div>
+                <div className="text-[7px] uppercase tracking-wider text-[var(--muted-foreground)] mt-0.5">lbs off knees</div>
               </div>
             </>
+          )}
+          {strengthStats.length > 0 && (
+            <div className="text-right relative overflow-hidden" style={{ minWidth: 48, height: 26 }}>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={strengthIdx}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.4 }}
+                  className="absolute inset-0 flex flex-col items-end justify-center"
+                >
+                  <div className="font-mono text-xs font-bold text-amber-400 leading-none">
+                    Top {100 - strengthStats[strengthIdx % strengthStats.length].percentile}%
+                  </div>
+                  <div className="text-[7px] uppercase tracking-wider text-[var(--muted-foreground)] mt-0.5">
+                    {strengthStats[strengthIdx % strengthStats.length].shortName}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
           )}
         </div>
       </div>
@@ -1649,7 +1712,7 @@ export default function Home() {
                 <ChamonixWeather />
               </div>
             </div>
-            <WeightGauge currentWeight={wt.currentWeight} progress={wt.progress} entries={wt.entries} onAddWeight={(w: number) => { const prev = wt.currentWeight; wt.addEntry(w); milestone.checkMilestone(w, prev); }} onEditWeight={wt.editEntry} onDeleteWeight={wt.deleteEntry} goalWeight={wt.goalWeight} />
+            <WeightGauge currentWeight={wt.currentWeight} progress={wt.progress} entries={wt.entries} onAddWeight={(w: number) => { const prev = wt.currentWeight; wt.addEntry(w); milestone.checkMilestone(w, prev); }} onEditWeight={wt.editEntry} onDeleteWeight={wt.deleteEntry} goalWeight={wt.goalWeight} workoutSessions={wl.sessions} />
           </div>
         </div>
       </section>
