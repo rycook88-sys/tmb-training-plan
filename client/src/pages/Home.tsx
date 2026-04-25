@@ -201,14 +201,13 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight, onEditWeig
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)]">Weight Descent</h3>
         <div className="flex items-center gap-1.5 text-[10px] font-mono text-[var(--muted-foreground)]">
-          <span className="text-[var(--muted-foreground)]/60">START</span>
           <span>{u.wt(ATHLETE.startWeight, 0)}</span>
           <span className="text-[var(--muted-foreground)]/40">→</span>
-          <span>{u.wt(goalWeight, 0)}</span>
-          <span className="text-[var(--primary)]/60">GOAL</span>
+          <span className="text-[var(--primary)]">{u.wt(goalWeight, 0)}</span>
         </div>
       </div>
       <div className="flex gap-6 items-center">
+        <div className="relative py-6" style={{ width: 48 }}>
         <div className="relative" style={{ width: 48, height: gaugeH }}>
           <div className="absolute inset-0 border border-border bg-[var(--secondary)]" />
           <motion.div className="absolute bottom-0 left-0 right-0 bg-[var(--primary)]"
@@ -219,14 +218,13 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight, onEditWeig
             transition={{ duration: 1.5, ease: "easeOut" }} />
           <div className="absolute left-0 right-0 top-0 h-px bg-[var(--primary)] opacity-50" />
           <div className="absolute left-0 right-0 bottom-0 h-px bg-border" />
-          <div className="absolute -right-2 top-0 translate-y-[-50%] flex items-center gap-1">
-            <span className="text-[9px] font-mono text-[var(--primary)] opacity-60">GOAL</span>
+          <div className="absolute left-1/2 -translate-x-1/2 -top-5 text-center">
             <span className="text-[10px] font-mono text-[var(--primary)]">{u.wt(goalWeight, 0)}</span>
           </div>
-          <div className="absolute -right-2 bottom-0 translate-y-[50%] flex items-center gap-1">
-            <span className="text-[9px] font-mono text-[var(--muted-foreground)] opacity-60">START</span>
+          <div className="absolute left-1/2 -translate-x-1/2 -bottom-5 text-center">
             <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{u.wt(ATHLETE.startWeight, 0)}</span>
           </div>
+        </div>
         </div>
         <div className="flex-1">
           <div className="font-mono text-4xl font-bold text-foreground leading-none">
@@ -1600,7 +1598,7 @@ export default function Home() {
             <div className="text-xs uppercase tracking-[0.4em] text-[var(--primary)] font-mono mb-2">Alpine Command Center</div>
             <h1 className="text-3xl sm:text-5xl font-bold tracking-tight text-white leading-none">Tour du Mont Blanc</h1>
             <p className="text-sm text-white/60 font-mono mt-2 tracking-wide">
-              {ATHLETE.tripDays}-Day {ATHLETE.tripStyle} · {u.dist(totalMi)} {u.distUnitLong} · {u.elev(totalA)} {u.elevUnit} gain · {u.elev(totalD)} {u.elevUnit} loss
+              {ATHLETE.tripDays}-Day {ATHLETE.tripStyle} · {u.dist(totalMi)} {u.distUnitLong}
             </p>
             <div className="mt-4 max-w-md">
               <p className="text-xs text-white/40 italic font-serif leading-relaxed">

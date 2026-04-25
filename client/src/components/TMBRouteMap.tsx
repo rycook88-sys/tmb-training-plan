@@ -413,6 +413,8 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
   const [avatarUrl, setAvatarUrl] = useState(getAvatarUrl);
+  const [tilesLoading, setTilesLoading] = useState(false);
+  const tileRetryCount = useRef(0);
 
   // Listen for avatar changes
   useEffect(() => {
@@ -449,13 +451,27 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
         attributionControl: true,
       });
 
+      setTilesLoading(true);
       const topoLayer = L.tileLayer(
         "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
         {
           maxZoom: 17,
           attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+          errorTileUrl: '',
         }
       );
+      topoLayer.on('load', () => { setTilesLoading(false); tileRetryCount.current = 0; });
+      topoLayer.on('tileerror', () => {
+        // Auto-retry: reload failed tiles after a short delay
+        if (tileRetryCount.current < 3) {
+          tileRetryCount.current++;
+          setTimeout(() => {
+            if (tileLayerRef.current && mapInstanceRef.current) {
+              (tileLayerRef.current as any).redraw();
+            }
+          }, 1500 * tileRetryCount.current);
+        }
+      });
       topoLayer.addTo(map);
       tileLayerRef.current = topoLayer;
 
@@ -599,24 +615,33 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
     const map = mapInstanceRef.current;
 
     tileLayerRef.current.remove();
+    setTilesLoading(true);
+    tileRetryCount.current = 0;
 
-    if (mapLayer === "topo") {
-      tileLayerRef.current = L.tileLayer(
-        "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-        {
+    const newLayer = mapLayer === "topo"
+      ? L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
           maxZoom: 17,
           attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
-        }
-      ).addTo(map);
-    } else {
-      tileLayerRef.current = L.tileLayer(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        {
+          errorTileUrl: '',
+        })
+      : L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
           maxZoom: 18,
           attribution: "&copy; Esri",
-        }
-      ).addTo(map);
-    }
+          errorTileUrl: '',
+        });
+    newLayer.on('load', () => { setTilesLoading(false); tileRetryCount.current = 0; });
+    newLayer.on('tileerror', () => {
+      if (tileRetryCount.current < 3) {
+        tileRetryCount.current++;
+        setTimeout(() => {
+          if (tileLayerRef.current && mapInstanceRef.current) {
+            (tileLayerRef.current as any).redraw();
+          }
+        }, 1500 * tileRetryCount.current);
+      }
+    });
+    newLayer.addTo(map);
+    tileLayerRef.current = newLayer;
   }, [mapLayer]);
 
   // ── Add/remove food stop markers when selectedDay or showFoodStops changes ──
@@ -1297,12 +1322,20 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
 
           {/* Map Container — only visible in map mode */}
           <div style={{ display: viewMode === "map" ? "block" : "none" }}>
-            <div className="rounded-xl overflow-hidden border border-slate-700/50">
+            <div className="rounded-xl overflow-hidden border border-slate-700/50 relative">
               <div
                 ref={mapContainerRef}
                 className="h-[450px] sm:h-[550px] w-full"
                 style={{ background: "#1a1a2e" }}
               />
+              {tilesLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-[#1a1a2e]/60 z-[1000] pointer-events-none">
+                  <div className="flex flex-col items-center gap-2">
+                    <div className="w-6 h-6 border-2 border-[var(--primary)] border-t-transparent rounded-full animate-spin" />
+                    <span className="text-xs text-slate-400 font-mono">Loading map tiles…</span>
+                  </div>
+                </div>
+              )}
             </div>
             {/* Day circle selector strip below map */}
             <div className="mt-3 overflow-x-auto">

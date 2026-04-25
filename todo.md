@@ -625,3 +625,8 @@
 
 ### Coach Sierra
 - [x] Typing indicator — animated bouncing dots with "Sierra is thinking..." text
+
+## Round 7 — UI Tweaks & Map Fix
+- [x] Remove elevation gain/loss from hero subtitle (keep in stat cards only)
+- [x] Weight Descent: remove START/GOAL text labels, center numbers above/below progress bar
+- [x] Fix intermittent trail map gray loading — added tile error retry (up to 3x), loading spinner overlay, and error handling on layer switch
