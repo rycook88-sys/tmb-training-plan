@@ -5,8 +5,9 @@ import {
   Trash2, X, AlertTriangle, TrendingUp, Pill, Utensils, Plus, RotateCcw,
   Loader2, Sparkles, ArrowUpToLine, Zap, Bookmark, Briefcase, Coffee,
   Square, CheckSquare, Settings, BarChart3, ChefHat, Shuffle, Star, ShoppingCart, ImagePlus, Target,
-  MessageSquare, Send, Type,
+  MessageSquare, Send, Type, Search,
 } from "lucide-react";
+import Fuse from "fuse.js";
 import { trpc } from "@/lib/trpc";
 import { useAuth } from "@/_core/hooks/useAuth";
 import SwipeToDelete from "@/components/SwipeToDelete";
@@ -369,7 +370,12 @@ function MicroProgressDropdown({ microTotals }: { microTotals: Map<string, numbe
 }
 
 /* ── Food Detail Popup ───────────────────────────── */
-function FoodDetailPopup({ entry, onClose }: { entry: FoodEntry; onClose: () => void }) {
+function FoodDetailPopup({ entry, onClose, onSaveToCommon, isCommon }: {
+  entry: FoodEntry;
+  onClose: () => void;
+  onSaveToCommon?: (entry: FoodEntry) => void;
+  isCommon?: boolean;
+}) {
   const nonZeroMicros = useMemo(() => {
     return entry.micronutrients
       .filter((m) => m.amount > 0)
@@ -460,6 +466,22 @@ function FoodDetailPopup({ entry, onClose }: { entry: FoodEntry; onClose: () => 
               ))}
             </div>
           </div>
+        )}
+
+        {/* Save to Common Items */}
+        {onSaveToCommon && (
+          <button
+            onClick={() => { onSaveToCommon(entry); onClose(); }}
+            disabled={isCommon}
+            className={`w-full mt-3 py-2 text-[10px] font-mono uppercase tracking-wider border transition-colors flex items-center justify-center gap-1.5 ${
+              isCommon
+                ? "border-amber-400/30 text-amber-400/60 cursor-default"
+                : "border-border text-[var(--muted-foreground)] hover:text-amber-400 hover:border-amber-400"
+            }`}
+          >
+            <Star className={`w-3 h-3 ${isCommon ? "fill-amber-400" : ""}`} />
+            {isCommon ? "Already in Common Items" : "Save to Common Items"}
+          </button>
         )}
       </motion.div>
     </motion.div>
@@ -557,11 +579,13 @@ function EditEntryModal({ entry, onConfirm, onCancel, isLoading }: {
 }
 
 /* ── Food Entry Card (with tap-to-detail + edit + timestamp column) ── */
-function FoodEntryCard({ entry, onDelete, onEdit, onTap }: {
+function FoodEntryCard({ entry, onDelete, onEdit, onTap, onSaveToCommon, isCommon }: {
   entry: FoodEntry;
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
   onTap: (entry: FoodEntry) => void;
+  onSaveToCommon?: (entry: FoodEntry) => void;
+  isCommon?: boolean;
 }) {
   const handleSwipeDelete = useCallback(() => {
     onDelete(entry.id);
@@ -592,6 +616,15 @@ function FoodEntryCard({ entry, onDelete, onEdit, onTap }: {
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
             <span className="text-[10px] font-mono text-[var(--muted-foreground)] tabular-nums">{formatTime(entry.timestamp)}</span>
             <div className="flex items-center gap-0.5">
+              {onSaveToCommon && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onSaveToCommon(entry); }}
+                  className={`transition-colors p-1 ${isCommon ? "text-amber-400" : "text-[var(--muted-foreground)] hover:text-amber-400"}`}
+                  title={isCommon ? "Already in common items" : "Save to common items"}
+                >
+                  <Star className={`w-3 h-3 ${isCommon ? "fill-amber-400" : ""}`} />
+                </button>
+              )}
               <button
                 onClick={(e) => { e.stopPropagation(); onEdit(entry.id); }}
                 className="text-[var(--muted-foreground)] hover:text-[var(--primary)] transition-colors p-1"
@@ -723,6 +756,8 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
   const [confirmDeletePlan, setConfirmDeletePlan] = useState<string | null>(null);
   const [confirmDeletePreset, setConfirmDeletePreset] = useState<{ tab: string; id: string } | null>(null);
   const [confirmDeleteCommon, setConfirmDeleteCommon] = useState<string | null>(null);
+  const [commonSearch, setCommonSearch] = useState("");
+  const [savePromptEntry, setSavePromptEntry] = useState<FoodEntry | null>(null);
 
   // Text entry
   const [showTextEntry, setShowTextEntry] = useState(false);
@@ -916,6 +951,41 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
   }, [todayEntries, vitaminsAdded, vitaminTotals, dailyTotals.sodium]);
 
   const daysWithFood = useMemo(() => logs.filter((l) => l.entries.length > 0).length, [logs]);
+
+  // Fuzzy search for common items
+  const commonFuse = useMemo(() => new Fuse(commonItems, {
+    keys: ["foodName"],
+    threshold: 0.4,
+    ignoreLocation: true,
+    minMatchCharLength: 2,
+  }), [commonItems]);
+
+  const filteredCommonItems = useMemo(() => {
+    if (!commonSearch.trim()) return commonItems;
+    return commonFuse.search(commonSearch.trim()).map((r) => r.item);
+  }, [commonSearch, commonFuse, commonItems]);
+
+  // Set of common item food names for quick lookup
+  const commonFoodNames = useMemo(() => new Set(commonItems.map((i) => i.foodName.toLowerCase())), [commonItems]);
+
+  // Save a food entry to common items
+  const handleSaveToCommon = useCallback((entry: FoodEntry) => {
+    if (commonFoodNames.has(entry.foodName.toLowerCase())) return; // already exists
+    const newItem: CommonItem = {
+      id: `common-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      foodName: entry.foodName,
+      calories: entry.calories,
+      protein: entry.protein,
+      carbs: entry.carbs,
+      fat: entry.fat,
+      fiber: entry.fiber,
+      sugar: entry.sugar,
+      sodium: entry.sodium,
+      micronutrients: entry.micronutrients,
+      imageUrl: entry.imageUrl,
+    };
+    setCommonItems((prev) => [...prev, newItem]);
+  }, [commonFoodNames]);
 
   // Weekly chart data — last 7 days
   const weeklyChartData = useMemo(() => {
@@ -1616,23 +1686,44 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
             </div>
           </motion.div>
         )}
-      </AnimatePresence>
-
-      {/* ── Common Items Panel ──────────────────── */}
+      </AnimatePresence>      {/* ── Common Items Panel ────────────────────── */}
       <AnimatePresence>
         {showCommonPanel && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
             <div className="mx-4 mb-3 border border-border bg-card p-3">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-[var(--primary)] font-bold">Common Items</span>
-                <button onClick={() => setShowCommonPanel(false)} className="text-[var(--muted-foreground)] hover:text-foreground p-0.5"><X className="w-3.5 h-3.5" /></button>
+                <button onClick={() => { setShowCommonPanel(false); setCommonSearch(""); }} className="text-[var(--muted-foreground)] hover:text-foreground p-0.5"><X className="w-3.5 h-3.5" /></button>
               </div>
 
-              {commonItems.length === 0 && (
-                <p className="text-[10px] font-mono text-[var(--muted-foreground)] text-center py-3">No common items saved. Snap a photo to add one.</p>
+              {/* Fuzzy search bar */}
+              {commonItems.length > 3 && (
+                <div className="relative mb-2">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-[var(--muted-foreground)]" />
+                  <input
+                    type="text"
+                    value={commonSearch}
+                    onChange={(e) => setCommonSearch(e.target.value)}
+                    placeholder="Search common items..."
+                    className="w-full pl-7 pr-2 py-1.5 bg-[var(--secondary)] border border-border text-xs font-mono text-foreground focus:border-[var(--primary)] focus:outline-none"
+                  />
+                  {commonSearch && (
+                    <button onClick={() => setCommonSearch("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-[var(--muted-foreground)] hover:text-foreground">
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
               )}
 
-              {commonItems.map((item) => (
+              {commonItems.length === 0 && (
+                <p className="text-[10px] font-mono text-[var(--muted-foreground)] text-center py-3">No common items saved. Tap the ★ on any food entry to save it here.</p>
+              )}
+
+              {commonSearch && filteredCommonItems.length === 0 && commonItems.length > 0 && (
+                <p className="text-[10px] font-mono text-[var(--muted-foreground)] text-center py-3">No matches for "{commonSearch}"</p>
+              )}
+
+              {filteredCommonItems.map((item) => (
                 <SwipeToDelete key={item.id} onSwipeDelete={() => setConfirmDeleteCommon(item.id)} className="border-b border-border/50 last:border-0">
                   <div className="flex items-center gap-2 py-1.5 bg-card">
                     <button onClick={() => {
@@ -1663,6 +1754,13 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
                   </div>
                 </SwipeToDelete>
               ))}
+
+              {/* Item count */}
+              {commonItems.length > 0 && (
+                <div className="text-[9px] font-mono text-[var(--muted-foreground)] text-right mb-1">
+                  {commonSearch ? `${filteredCommonItems.length} of ` : ""}{commonItems.length} items
+                </div>
+              )}
 
               <div className="flex gap-2 mt-3">
                 <button onClick={() => { setAddingToCommon(true); commonFileRef.current?.click(); }}
@@ -2115,6 +2213,8 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
               onDelete={handleDeleteEntry}
               onEdit={handleStartEditEntry}
               onTap={(e) => setDetailEntry(e)}
+              onSaveToCommon={handleSaveToCommon}
+              isCommon={commonFoodNames.has(entry.foodName.toLowerCase())}
             />
           ))}
         </div>
@@ -2186,7 +2286,12 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
       {/* ── Food Detail Popup ────────────────────── */}
       <AnimatePresence>
         {detailEntry && (
-          <FoodDetailPopup entry={detailEntry} onClose={() => setDetailEntry(null)} />
+          <FoodDetailPopup
+            entry={detailEntry}
+            onClose={() => setDetailEntry(null)}
+            onSaveToCommon={handleSaveToCommon}
+            isCommon={commonFoodNames.has(detailEntry.foodName.toLowerCase())}
+          />
         )}
       </AnimatePresence>
 

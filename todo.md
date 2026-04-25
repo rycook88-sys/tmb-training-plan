@@ -546,3 +546,60 @@
 - [x] Rename "Altitude Gauge" to "Weight Descent"
 - [x] Wire custom goal weight from BF% projection table into the gauge component
 - [x] Ensure gauge header, goal marker, progress calculation, and coach data all use the dynamic goal
+
+## Weight Descent UX Enhancements
+- [ ] Add mini trend line chart showing weight over time inside the Weight Descent box
+- [ ] Tap a past weight entry to edit or delete it (with confirmation dialog for delete)
+- [ ] Add "Start" / "Goal" labels to the floating numbers on the gauge for context
+
+## Workout Logging UX Improvements
+- [ ] Verify auto-fill from last session's weights/reps is working; fix if not
+- [ ] Add swipe-to-complete gesture on exercise rows (swipe right to mark done)
+
+## Round 5 — UX Improvements (19 items)
+
+### Weight Descent Box
+- [x] Mini trend line chart showing weight trajectory
+- [x] Tap entry to edit inline
+- [x] Delete entry with confirmation dialog
+- [x] "START" / "GOAL" labels on gauge numbers with adjusted sizing
+
+### Workout Logging
+- [x] Swipe right to mark exercise done (SwipeToComplete component)
+- [x] Confirm auto-fill from last session works (already implemented)
+- [x] PR badge with animated popup on new personal record
+
+### Nutrition Favorites with Fuzzy Search
+- [x] Star/save button on logged foods to save as favorite
+- [x] Quick-Add panel with fuzzy search bar at top (Fuse.js)
+- [x] Fuzzy search for approximate matching (threshold 0.4, ignoreLocation)
+- [x] Tap favorite to instantly log it (existing common items panel)
+- [x] Save-to-common button in food detail popup
+- [x] Item count and search result count display
+
+### Body Fat Estimator
+- [x] Trend indicator already exists (delta from last measurement shown in green/red)
+
+### Unit Conversion
+- [x] Fix significant digits when switching metric/standard — round to 1 decimal
+- [x] Fix loadAndPopulate to convert stored inch values to cm when in metric mode
+- [x] Fix heightIn computation for metric mode (cm → inches for formulas)
+- [x] Fix weightLbs to convert from kg when in metric mode
+- [x] Fix projection table lean/fat to use uu.wt() for proper unit display
+- [x] Fix history fat/lean mass to use uu.wt()
+
+### Progress Photos
+- [x] Photos displayed in expanded history entries with thumbnails
+- [x] Tap photo to open full-size comparison modal
+- [x] Side-by-side comparison: browse photos from different dates with BF% overlay
+- [x] Photo capture already existed in BF% form (up to 4 photos per entry)
+
+### Offline Maps
+- [x] Pre-download TMB route map tiles for offline use (already implemented: OfflineMapManager + offline-tiles.ts)
+
+### Coach Sierra
+- [x] Voice input — mic button using Web Speech API, pulsing animation while listening, haptic feedback
+
+### General UX
+- [x] Haptic feedback on exercise toggle, PR detection, weight logging, swipe-to-complete, pull-to-refresh
+- [x] Pull-to-refresh with spinner indicator — triggers cloud sync event

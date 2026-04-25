@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { X, Send, Loader2, Image as ImageIcon, Clipboard } from "lucide-react";
+import { X, Send, Loader2, Image as ImageIcon, Clipboard, Mic, MicOff } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Streamdown } from "streamdown";
 import { trpc } from "@/lib/trpc";
@@ -291,6 +291,55 @@ export default function CoachSierra({
   };
 
   const [confirmClear, setConfirmClear] = useState(false);
+
+  // ── Voice input (Web Speech API) ─────────────────────────
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const speechSupported = typeof window !== "undefined" && ("webkitSpeechRecognition" in window || "SpeechRecognition" in window);
+
+  const toggleVoice = useCallback(() => {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    if (!SpeechRecognition) return;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    let finalTranscript = "";
+    recognition.onresult = (event: any) => {
+      let interim = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interim += transcript;
+        }
+      }
+      setInput(prev => {
+        // Replace any previous interim with current state
+        const base = finalTranscript || "";
+        return (prev ? prev.replace(/\s*\[\.\.\.]$/, "") + " " : "") + base + (interim ? interim : "");
+      });
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      // Auto-focus the text input after voice
+      setTimeout(() => inputRef.current?.focus(), 100);
+    };
+    recognition.onerror = () => {
+      setIsListening(false);
+    };
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+    // Haptic feedback
+    if (navigator.vibrate) navigator.vibrate(30);
+  }, [isListening]);
 
   const clearChat = () => {
     setMessages([]);
@@ -589,6 +638,24 @@ export default function CoachSierra({
               >
                 <ImageIcon className="w-4.5 h-4.5" />
               </button>
+              {/* Voice input button */}
+              {speechSupported && (
+                <button
+                  type="button"
+                  onClick={toggleVoice}
+                  disabled={isBusy}
+                  className={`shrink-0 w-[42px] h-[42px] flex items-center justify-center
+                    border transition-colors
+                    ${isListening
+                      ? "border-rose-500 text-rose-400 bg-rose-500/10 animate-pulse"
+                      : "border-border text-[var(--muted-foreground)] hover:border-[var(--primary)]/50 hover:text-[var(--primary)]"
+                    }
+                    disabled:opacity-40`}
+                  title={isListening ? "Stop listening" : "Voice input"}
+                >
+                  {isListening ? <MicOff className="w-4.5 h-4.5" /> : <Mic className="w-4.5 h-4.5" />}
+                </button>
+              )}
               <textarea
                 ref={inputRef}
                 value={input}

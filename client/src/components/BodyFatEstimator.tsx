@@ -237,6 +237,7 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
   // Photos
   const [photos, setPhotos] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [comparePhoto, setComparePhoto] = useState<{ src: string; date: string; bf: number } | null>(null);
 
   // History
   const [entries, setEntries] = useState<BFEntry[]>([]);
@@ -256,20 +257,30 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
     if (loaded.length > 0) {
       const last = loaded[0];
       const m = last.measurements;
+      // Stored values are always in inches — convert to cm if in metric mode
+      const convertVal = (v: number | undefined) => {
+        if (!v) return "";
+        if (uu.isMetric) return (Math.round(v * 2.54 * 10) / 10).toString();
+        return (Math.round(v * 10) / 10).toString();
+      };
       setMeasurements({
-        neck: m.neck ? String(m.neck) : "",
-        chest: m.chest ? String(m.chest) : "",
-        bicep: m.bicep ? String(m.bicep) : "",
-        forearm: m.forearm ? String(m.forearm) : "",
-        waist: m.waist ? String(m.waist) : "",
-        hip: m.hip ? String(m.hip) : "",
-        thigh: m.thigh ? String(m.thigh) : "",
-        wrist: (m as any).wrist ? String((m as any).wrist) : "",
+        neck: convertVal(m.neck),
+        chest: convertVal(m.chest),
+        bicep: convertVal(m.bicep),
+        forearm: convertVal(m.forearm),
+        waist: convertVal(m.waist),
+        hip: convertVal(m.hip),
+        thigh: convertVal(m.thigh),
+        wrist: convertVal((m as any).wrist),
       });
-      if (last.weightLbs) setWeightInput(String(last.weightLbs));
+      if (last.weightLbs) {
+        setWeightInput(uu.isMetric
+          ? (Math.round(last.weightLbs * 0.453592 * 10) / 10).toString()
+          : String(last.weightLbs));
+      }
       setPrefilled(true);
     }
-  }, []);
+  }, [uu.isMetric]);
 
   useEffect(() => {
     loadAndPopulate();
@@ -282,8 +293,10 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
     return () => window.removeEventListener("cloud-sync-restored", handler);
   }, [loadAndPopulate]);
 
-  // Computed
-  const heightIn = (parseInt(heightFt) || 0) * 12 + (parseInt(heightInR) || 0);
+  // Computed — height always in inches for formulas
+  const heightIn = uu.isMetric
+    ? Math.round((parseFloat(heightFt) || 0) / 2.54)  // cm → inches
+    : (parseInt(heightFt) || 0) * 12 + (parseInt(heightInR) || 0);
   const toIn = (v: string) => {
     const n = parseFloat(v) || 0;
     return unit === "cm" ? Math.round((n / 2.54) * 10) / 10 : n;
@@ -295,7 +308,12 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
   }
 
   const gaugeWeight = getWeightFromGauge();
-  const weightLbs = weightInput ? (parseFloat(weightInput) || gaugeWeight) : gaugeWeight;
+  // If metric, user types kg — convert to lbs for formulas
+  const weightLbs = weightInput
+    ? (uu.isMetric
+        ? Math.round((parseFloat(weightInput) || 0) / 0.453592 * 10) / 10
+        : (parseFloat(weightInput) || gaugeWeight))
+    : gaugeWeight;
 
   // Run all formulas
   const navyResult = navyBodyFat(vals.neck, vals.waist, heightIn);
@@ -790,7 +808,7 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                         onClick={() => { setGoalInput(String(goalWeight)); setEditingGoal(true); }}
                         className="ml-2 text-[9px] font-mono text-[var(--primary)] hover:text-[var(--primary)]/80 cursor-pointer underline underline-offset-2"
                       >
-                        Goal: {goalWeight} lb
+                        Goal: {uu.wt(goalWeight, 0)} {uu.wtUnit}
                       </button>
                       {composite === null && (
                         <span className="text-[9px] font-mono text-muted-foreground/60 ml-2">
@@ -839,10 +857,10 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                               {p.bf.toFixed(1)}%
                             </span>
                             <span className="text-right text-cyan-400 font-semibold">
-                              {Math.round(p.leanEst)} lean
+                              {uu.wt(p.leanEst, 0)} lean
                             </span>
                             <span className="text-right text-muted-foreground">
-                              {Math.round(p.fatEst)} fat
+                              {uu.wt(p.fatEst, 0)} fat
                             </span>
                           </div>
                         );
@@ -1059,9 +1077,29 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
                                   {/* Weight + Body Comp */}
                                   <div className="flex items-center gap-4 text-xs font-mono">
                                     <span className="text-muted-foreground">Weight: <span className="text-foreground font-bold">{uu.wt(entry.weightLbs, 1)} {uu.wtUnit}</span></span>
-                                    <span className="text-muted-foreground">Fat: <span className="text-red-400 font-bold">~{Math.round((entry.composite / 100) * entry.weightLbs)} {uu.wtUnit}</span></span>
-                                    <span className="text-muted-foreground">Lean: <span className="text-cyan-400 font-bold">~{Math.round(entry.weightLbs - (entry.composite / 100) * entry.weightLbs)} {uu.wtUnit}</span></span>
+                                    <span className="text-muted-foreground">Fat: <span className="text-red-400 font-bold">~{uu.wt((entry.composite / 100) * entry.weightLbs, 0)} {uu.wtUnit}</span></span>
+                                    <span className="text-muted-foreground">Lean: <span className="text-cyan-400 font-bold">~{uu.wt(entry.weightLbs - (entry.composite / 100) * entry.weightLbs, 0)} {uu.wtUnit}</span></span>
                                   </div>
+                                  {/* Progress Photos */}
+                                  {entry.photos && entry.photos.length > 0 && (
+                                    <div>
+                                      <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground/70 block mb-1">Progress Photos</span>
+                                      <div className="flex gap-2 overflow-x-auto">
+                                        {entry.photos.map((src, pi) => (
+                                          <img
+                                            key={pi}
+                                            src={src}
+                                            alt={`Progress ${pi + 1}`}
+                                            className="w-24 h-24 object-cover border border-border cursor-pointer hover:border-[var(--primary)] transition-colors"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setComparePhoto({ src, date: entry.date, bf: entry.composite });
+                                            }}
+                                          />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                   {/* Delete button */}
                                   <div className="flex justify-end">
                                     <button
@@ -1159,6 +1197,73 @@ export default function BodyFatEstimator({ embedded = false }: { embedded?: bool
             </motion.div>
           </motion.div>
         )}
+      </AnimatePresence>
+
+      {/* Photo comparison modal */}
+      <AnimatePresence>
+        {comparePhoto && (() => {
+          // Find all entries with photos for side-by-side comparison
+          const photoEntries = entries
+            .filter(e => e.photos && e.photos.length > 0)
+            .map(e => ({ date: e.date, bf: e.composite, photos: e.photos! }));
+          const currentIdx = photoEntries.findIndex(pe => pe.date === comparePhoto.date);
+          return (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+              onClick={() => setComparePhoto(null)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-card border border-border max-w-lg w-full max-h-[85vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="p-4 border-b border-border flex items-center justify-between">
+                  <h3 className="text-sm font-mono uppercase tracking-[0.15em] text-foreground font-semibold">
+                    Progress Photos
+                  </h3>
+                  <button onClick={() => setComparePhoto(null)} className="text-muted-foreground hover:text-foreground cursor-pointer">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {/* Selected photo */}
+                <div className="p-4">
+                  <img src={comparePhoto.src} alt="Progress" className="w-full max-h-[50vh] object-contain border border-border" />
+                  <div className="mt-2 flex items-center justify-between">
+                    <span className="text-xs font-mono text-muted-foreground">{comparePhoto.date}</span>
+                    <span className={`text-sm font-mono font-bold ${getCategory(comparePhoto.bf).color}`}>{comparePhoto.bf}%</span>
+                  </div>
+                </div>
+                {/* Other dates for comparison */}
+                {photoEntries.length > 1 && (
+                  <div className="px-4 pb-4">
+                    <span className="text-[9px] font-mono uppercase tracking-[0.15em] text-muted-foreground block mb-2">Compare with other dates</span>
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {photoEntries.map((pe, idx) => (
+                        pe.photos.map((src, pi) => (
+                          <button
+                            key={`${pe.date}-${pi}`}
+                            onClick={() => setComparePhoto({ src, date: pe.date, bf: pe.bf })}
+                            className={`shrink-0 cursor-pointer transition-all ${
+                              src === comparePhoto.src ? "ring-2 ring-[var(--primary)]" : "opacity-60 hover:opacity-100"
+                            }`}
+                          >
+                            <img src={src} alt={pe.date} className="w-16 h-16 object-cover border border-border" />
+                            <span className="text-[8px] font-mono text-muted-foreground block mt-0.5 text-center">{pe.date.slice(5)}</span>
+                          </button>
+                        ))
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </motion.div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* Guide modal */}

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import TrainingAnalytics from "@/components/TrainingAnalytics";
 import SwipeToDelete from "@/components/SwipeToDelete";
+import SwipeToComplete from "@/components/SwipeToComplete";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import { useUnits } from "@/contexts/UnitContext";
 import { TMBRouteMap } from "@/components/TMBRouteMap";
@@ -32,6 +33,8 @@ import { GARMIN_SESSIONS, WEEKLY_VOLUME } from "@/lib/garmin-data";
 import { ALL_MICRONUTRIENTS, getMicroDVPercent } from "@/lib/vitamin-data";
 import { loadMacroTargets } from "@/lib/vitamin-data";
 import { PRE_TRIP_CHECKLIST } from "@/lib/travel-data";
+import { haptic } from "@/lib/haptics";
+import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useCloudSync } from "@/hooks/useCloudSync";
 
 const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/hero-tmb-ridge-TA9BE2JzZxaxi68um9vvG9.webp";
@@ -93,28 +96,82 @@ function StatCard({ label, value, unit, color }: { label: string; value: string;
 }
 
 // ── Weight Gauge ──────────────────────────────────────────
-function WeightGauge({ currentWeight, progress, entries, onAddWeight, goalWeight }: {
+function WeightTrendLine({ entries, goalWeight }: { entries: { date: string; weight: number }[]; goalWeight: number }) {
+  if (entries.length < 2) return null;
+  const recent = entries.slice(-12);
+  const weights = recent.map(e => e.weight);
+  const maxW = Math.max(...weights, ATHLETE.startWeight);
+  const minW = Math.min(...weights, goalWeight);
+  const range = maxW - minW || 1;
+  const h = 60;
+  const w = 100;
+  const step = w / (recent.length - 1);
+  const points = recent.map((e, i) => {
+    const x = i * step;
+    const y = h - ((e.weight - minW) / range) * h;
+    return `${x},${y}`;
+  }).join(" ");
+  const goalY = h - ((goalWeight - minW) / range) * h;
+  return (
+    <div className="mt-3 mb-1">
+      <svg viewBox={`-4 -4 ${w + 8} ${h + 8}`} className="w-full" style={{ height: 64 }} preserveAspectRatio="none">
+        <line x1="0" y1={goalY} x2={w} y2={goalY} stroke="var(--primary)" strokeWidth="0.5" strokeDasharray="3,3" opacity="0.5" />
+        <polyline fill="none" stroke="var(--primary)" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" points={points} />
+        {recent.map((e, i) => {
+          const x = i * step;
+          const y = h - ((e.weight - minW) / range) * h;
+          return <circle key={e.date} cx={x} cy={y} r="2" fill="var(--primary)" />;
+        })}
+      </svg>
+    </div>
+  );
+}
+
+function WeightGauge({ currentWeight, progress, entries, onAddWeight, onEditWeight, onDeleteWeight, goalWeight }: {
   currentWeight: number; progress: number;
   entries: { date: string; weight: number }[];
   onAddWeight: (w: number) => void;
+  onEditWeight: (date: string, weight: number) => void;
+  onDeleteWeight: (date: string) => void;
   goalWeight: number;
 }) {
   const u = useUnits();
   const [inputVal, setInputVal] = useState("");
   const [showInput, setShowInput] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<string | null>(null);
+  const [editVal, setEditVal] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const w = parseFloat(inputVal);
-    if (w > 150 && w < 300) { onAddWeight(w); setInputVal(""); setShowInput(false); }
+    if (w > 150 && w < 300) { onAddWeight(w); setInputVal(""); setShowInput(false); haptic("medium"); }
+  };
+  const handleEditSubmit = (date: string) => {
+    const w = parseFloat(editVal);
+    if (w > 150 && w < 300) { onEditWeight(date, w); haptic("light"); }
+    setEditingEntry(null);
   };
   const gaugeH = 280;
   const goalReached = currentWeight <= goalWeight;
 
   return (
     <div className="border border-border p-5 bg-card">
+      <ConfirmDeleteDialog
+        open={!!deleteConfirm}
+        title="Delete Weight Entry?"
+        description={`Remove the entry for ${deleteConfirm}? This cannot be undone.`}
+        onConfirm={() => { if (deleteConfirm) onDeleteWeight(deleteConfirm); setDeleteConfirm(null); }}
+        onCancel={() => setDeleteConfirm(null)}
+      />
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)]">Weight Descent</h3>
-        <span className="font-mono text-xs text-[var(--muted-foreground)]">{u.wt(ATHLETE.startWeight, 0)} → {u.wt(goalWeight, 0)} {u.wtUnit}</span>
+        <div className="flex items-center gap-1.5 text-[10px] font-mono text-[var(--muted-foreground)]">
+          <span className="text-[var(--muted-foreground)]/60">START</span>
+          <span>{u.wt(ATHLETE.startWeight, 0)}</span>
+          <span className="text-[var(--muted-foreground)]/40">→</span>
+          <span>{u.wt(goalWeight, 0)}</span>
+          <span className="text-[var(--primary)]/60">GOAL</span>
+        </div>
       </div>
       <div className="flex gap-6 items-center">
         <div className="relative" style={{ width: 48, height: gaugeH }}>
@@ -127,8 +184,14 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight, goalWeight
             transition={{ duration: 1.5, ease: "easeOut" }} />
           <div className="absolute left-0 right-0 top-0 h-px bg-[var(--primary)] opacity-50" />
           <div className="absolute left-0 right-0 bottom-0 h-px bg-border" />
-          <span className="absolute -right-8 top-0 text-[10px] font-mono text-[var(--primary)] translate-y-[-50%]">{u.wt(goalWeight, 0)}</span>
-          <span className="absolute -right-8 bottom-0 text-[10px] font-mono text-[var(--muted-foreground)] translate-y-[50%]">{u.wt(ATHLETE.startWeight, 0)}</span>
+          <div className="absolute -right-2 top-0 translate-y-[-50%] flex items-center gap-1">
+            <span className="text-[9px] font-mono text-[var(--primary)] opacity-60">GOAL</span>
+            <span className="text-[10px] font-mono text-[var(--primary)]">{u.wt(goalWeight, 0)}</span>
+          </div>
+          <div className="absolute -right-2 bottom-0 translate-y-[50%] flex items-center gap-1">
+            <span className="text-[9px] font-mono text-[var(--muted-foreground)] opacity-60">START</span>
+            <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{u.wt(ATHLETE.startWeight, 0)}</span>
+          </div>
         </div>
         <div className="flex-1">
           <div className="font-mono text-4xl font-bold text-foreground leading-none">
@@ -142,14 +205,38 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight, goalWeight
             )}
           </div>
           <div className="mt-1 text-xs font-mono text-[var(--primary)]">{Math.round(progress)}% complete</div>
-          <div className="mt-4 space-y-1">
-            {entries.slice(-4).map((e) => (
-              <div key={e.date} className="flex justify-between text-xs font-mono text-[var(--muted-foreground)]">
-                <span>{e.date}</span><span>{u.wt(e.weight)} {u.wtUnit}</span>
+          <WeightTrendLine entries={entries} goalWeight={goalWeight} />
+          <div className="space-y-0.5">
+            {entries.slice(-5).map((e) => (
+              <div key={e.date} className="group">
+                {editingEntry === e.date ? (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-mono text-[var(--muted-foreground)] w-[82px] flex-shrink-0">{e.date}</span>
+                    <input type="number" inputMode="decimal" step="0.1" value={editVal}
+                      onChange={(ev) => setEditVal(ev.target.value)}
+                      onKeyDown={(ev) => { if (ev.key === "Enter") handleEditSubmit(e.date); if (ev.key === "Escape") setEditingEntry(null); }}
+                      autoFocus
+                      className="w-16 bg-[var(--secondary)] border border-[var(--primary)] px-1.5 py-0.5 text-xs font-mono text-foreground text-right focus:outline-none" />
+                    <button onClick={() => handleEditSubmit(e.date)} className="text-green-400 hover:text-green-300"><Check className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => setEditingEntry(null)} className="text-[var(--muted-foreground)] hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-xs font-mono text-[var(--muted-foreground)] cursor-pointer hover:text-foreground transition-colors"
+                    onClick={() => { setEditingEntry(e.date); setEditVal(String(e.weight)); }}>
+                    <span>{e.date}</span>
+                    <div className="flex items-center gap-2">
+                      <span>{u.wt(e.weight)} {u.wtUnit}</span>
+                      <button onClick={(ev) => { ev.stopPropagation(); setDeleteConfirm(e.date); }}
+                        className="opacity-0 group-hover:opacity-100 text-red-400/60 hover:text-red-400 transition-opacity p-0.5">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
-          <div className="mt-4">
+          <div className="mt-3">
             {showInput ? (
               <form onSubmit={handleSubmit} className="flex gap-2">
                 <input type="number" inputMode="decimal" step="0.1" value={inputVal} onChange={(e) => setInputVal(e.target.value)}
@@ -173,14 +260,16 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight, goalWeight
 }
 
 // ── Active Workout Session Panel (Mobile-First Fullscreen) ──────────────────────────
-function ActiveWorkoutPanel({ dayId, exercises, onUpdate, onToggle, onSave, onCancel, lastSession }: {
+function ActiveWorkoutPanel({ dayId, exercises, onUpdate, onToggle, onSave, onCancel, lastSession, allSessions }: {
   dayId: string; exercises: ExerciseLog[];
   onUpdate: (i: number, field: keyof ExerciseLog, val: string | boolean) => void;
   onToggle: (i: number) => void;
   onSave: () => void;
   onCancel: () => void;
   lastSession?: { exercises: ExerciseLog[] } | null;
+  allSessions: WorkoutSession[];
 }) {
+  const [prPopup, setPrPopup] = useState<{ name: string; weight: string } | null>(null);
   const day = WORKOUT_PLAN.find((d) => d.id === dayId);
   if (!day) return null;
   const isPickOne = day.pickOne === true;
@@ -189,6 +278,26 @@ function ActiveWorkoutPanel({ dayId, exercises, onUpdate, onToggle, onSave, onCa
   const progressPct = isPickOne
     ? (doneCount >= 1 ? 100 : 0)
     : Math.round((doneCount / exercises.length) * 100);
+
+  // Check if current weight is an all-time PR across all saved sessions
+  const isNewPR = (exName: string, currentWeight: string, planUnit?: string): boolean => {
+    const curr = parseFloat(currentWeight);
+    if (isNaN(curr)) return false;
+    for (const session of allSessions) {
+      for (const e of session.exercises) {
+        if (e.name === exName && e.done && e.weight) {
+          const prev = parseFloat(e.weight);
+          if (isNaN(prev)) continue;
+          if (planUnit === "assist") {
+            if (prev <= curr) return false; // someone did equal or better (lower)
+          } else {
+            if (prev >= curr) return false; // someone did equal or better (higher)
+          }
+        }
+      }
+    }
+    return true; // no previous session beat this weight
+  };
 
   // Compare current input to last session's value for beat-last-session indicator
   const getBeatIndicator = (ex: ExerciseLog, planUnit?: string) => {
@@ -249,57 +358,89 @@ function ActiveWorkoutPanel({ dayId, exercises, onUpdate, onToggle, onSave, onCa
                 : parseFloat(ex.weight) >= planEx.goalValue
             ));
             const beat = getBeatIndicator(ex, planEx?.unit);
+            const handleSwipeToggle = () => {
+              // Check for PR before toggling
+              if (!ex.done && ex.weight && isNewPR(ex.name, ex.weight, planEx?.unit)) {
+                setPrPopup({ name: ex.name, weight: ex.weight });
+                setTimeout(() => setPrPopup(null), 2500);
+                haptic("success");
+              } else {
+                haptic("light");
+              }
+              onToggle(i);
+            };
             return (
-              <div key={ex.name} className={`px-4 py-4 transition-colors ${ex.done ? "bg-[var(--primary)]/5" : ""}`}>
-                <div className="flex items-start gap-3">
-                  <button onClick={() => onToggle(i)}
-                    className={`mt-0.5 w-8 h-8 border flex-shrink-0 flex items-center justify-center transition-all ${
-                      isPickOne ? "rounded-full" : ""
-                    } ${
-                      ex.done ? (goalHit ? "bg-amber-500 border-amber-500" : "bg-[var(--primary)] border-[var(--primary)]")
-                      : "border-border hover:border-[var(--primary)]"
-                    }`}>
-                    {ex.done && <span className={`text-sm font-bold ${goalHit ? "text-black" : "text-[var(--primary-foreground)]"}`}>{goalHit ? "★" : "✓"}</span>}
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`font-mono text-sm font-medium ${ex.done ? "line-through text-[var(--muted-foreground)]" : "text-foreground"}`}>{ex.name}</span>
-                      {goalHit && <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 bg-amber-400/10 px-1.5 py-0.5">GOAL HIT</span>}
-                      {planEx?.videoUrl && (
-                        <a href={planEx.videoUrl} target="_blank" rel="noopener noreferrer"
-                          className="text-[10px] font-mono text-blue-400 hover:text-blue-300 flex items-center gap-0.5">
-                          <Play className="w-3 h-3" /> HOW-TO
-                        </a>
-                      )}
+              <SwipeToComplete key={ex.name} onSwipeComplete={handleSwipeToggle} completed={ex.done}>
+                <div className={`px-4 py-4 transition-colors ${ex.done ? "bg-[var(--primary)]/5" : ""}`}>
+                  <div className="flex items-start gap-3">
+                    <button onClick={handleSwipeToggle}
+                      className={`mt-0.5 w-8 h-8 border flex-shrink-0 flex items-center justify-center transition-all ${
+                        isPickOne ? "rounded-full" : ""
+                      } ${
+                        ex.done ? (goalHit ? "bg-amber-500 border-amber-500" : "bg-[var(--primary)] border-[var(--primary)]")
+                        : "border-border hover:border-[var(--primary)]"
+                      }`}>
+                      {ex.done && <span className={`text-sm font-bold ${goalHit ? "text-black" : "text-[var(--primary-foreground)]"}`}>{goalHit ? "★" : "✓"}</span>}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`font-mono text-sm font-medium ${ex.done ? "line-through text-[var(--muted-foreground)]" : "text-foreground"}`}>{ex.name}</span>
+                        {goalHit && <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 bg-amber-400/10 px-1.5 py-0.5">GOAL HIT</span>}
+                        {planEx?.videoUrl && (
+                          <a href={planEx.videoUrl} target="_blank" rel="noopener noreferrer"
+                            className="text-[10px] font-mono text-blue-400 hover:text-blue-300 flex items-center gap-0.5">
+                            <Play className="w-3 h-3" /> HOW-TO
+                          </a>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs font-mono text-[var(--muted-foreground)]">
+                        <span>{planEx?.sets}×{planEx?.reps}</span>
+                        <span>Goal: <span className="text-[var(--primary)]">{planEx?.goal}</span></span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-2">
+                        <input type="text" placeholder={planEx?.placeholder1 || "weight"}
+                          value={ex.weight} onChange={(e) => onUpdate(i, "weight", e.target.value)}
+                          className="w-24 h-10 bg-[var(--secondary)] border border-border px-3 py-2 text-sm font-mono text-foreground focus:border-[var(--primary)] focus:outline-none" />
+                        <input type="text" placeholder={planEx?.placeholder2 || "reps"} value={ex.reps}
+                          onChange={(e) => onUpdate(i, "reps", e.target.value)}
+                          className="w-20 h-10 bg-[var(--secondary)] border border-border px-3 py-2 text-sm font-mono text-foreground focus:border-[var(--primary)] focus:outline-none" />
+                        {beat && (
+                          <span className={`flex items-center gap-0.5 text-[10px] font-mono font-bold ${
+                            beat === "up" ? "text-green-400" : beat === "down" ? "text-red-400" : "text-[var(--muted-foreground)]"
+                          }`}>
+                            {beat === "up" && <ArrowUp className="w-3 h-3" />}
+                            {beat === "down" && <ArrowDown className="w-3 h-3" />}
+                            {beat === "up" ? "PR" : beat === "down" ? "DOWN" : "SAME"}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-[var(--muted-foreground)] mt-1.5 italic leading-relaxed">{planEx?.notes}</div>
                     </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-xs font-mono text-[var(--muted-foreground)]">
-                      <span>{planEx?.sets}×{planEx?.reps}</span>
-                      <span>Goal: <span className="text-[var(--primary)]">{planEx?.goal}</span></span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <input type="text" placeholder={planEx?.placeholder1 || "weight"}
-                        value={ex.weight} onChange={(e) => onUpdate(i, "weight", e.target.value)}
-                        className="w-24 h-10 bg-[var(--secondary)] border border-border px-3 py-2 text-sm font-mono text-foreground focus:border-[var(--primary)] focus:outline-none" />
-                      <input type="text" placeholder={planEx?.placeholder2 || "reps"} value={ex.reps}
-                        onChange={(e) => onUpdate(i, "reps", e.target.value)}
-                        className="w-20 h-10 bg-[var(--secondary)] border border-border px-3 py-2 text-sm font-mono text-foreground focus:border-[var(--primary)] focus:outline-none" />
-                      {beat && (
-                        <span className={`flex items-center gap-0.5 text-[10px] font-mono font-bold ${
-                          beat === "up" ? "text-green-400" : beat === "down" ? "text-red-400" : "text-[var(--muted-foreground)]"
-                        }`}>
-                          {beat === "up" && <ArrowUp className="w-3 h-3" />}
-                          {beat === "down" && <ArrowDown className="w-3 h-3" />}
-                          {beat === "up" ? "PR" : beat === "down" ? "DOWN" : "SAME"}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[10px] text-[var(--muted-foreground)] mt-1.5 italic leading-relaxed">{planEx?.notes}</div>
                   </div>
                 </div>
-              </div>
+              </SwipeToComplete>
             );
           })}
         </div>
+
+        {/* PR Popup */}
+        <AnimatePresence>
+          {prPopup && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5, y: 50 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.5, y: 50 }}
+              className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[60] bg-gradient-to-r from-amber-500 to-orange-500 text-black px-6 py-3 shadow-2xl shadow-amber-500/30 flex items-center gap-3"
+            >
+              <Trophy className="w-6 h-6" />
+              <div>
+                <div className="font-mono text-xs font-bold uppercase tracking-wider">NEW PERSONAL RECORD</div>
+                <div className="font-mono text-sm font-bold">{prPopup.name} — {prPopup.weight}</div>
+              </div>
+              <Trophy className="w-6 h-6" />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Sticky bottom save button */}
@@ -1083,6 +1224,16 @@ export default function Home() {
     setMode(m);
     localStorage.setItem("tmb-app-mode", m);
   };
+  // Pull-to-refresh — triggers page reload to re-sync
+  const { pullDistance, isRefreshing, handlers: pullHandlers } = usePullToRefresh({
+    onRefresh: async () => {
+      // Dispatch cloud-sync-restored event to trigger re-reads from localStorage
+      window.dispatchEvent(new Event("cloud-sync-restored"));
+      // Small delay so user sees the refresh animation
+      await new Promise(r => setTimeout(r, 600));
+    },
+  });
+
   // Compute exact totals from stitched GPX elevation profile data
   const totalMi = elevationData.totalDistance;
   const { totalAscent, totalDescent } = useMemo(() => {
@@ -1332,11 +1483,30 @@ export default function Home() {
 
   const handleSave = () => {
     const session = wl.saveSession();
-    if (session) setShowSummary(session);
+    if (session) {
+      haptic("success");
+      setShowSummary(session);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div
+      className="min-h-screen bg-background"
+      {...pullHandlers}
+    >
+      {/* Pull-to-refresh indicator */}
+      {(pullDistance > 0 || isRefreshing) && (
+        <div
+          className="fixed top-0 left-0 right-0 z-[9998] flex items-center justify-center pointer-events-none transition-all"
+          style={{ height: pullDistance, opacity: Math.min(pullDistance / 60, 1) }}
+        >
+          <div className={`w-6 h-6 border-2 border-[var(--primary)] border-t-transparent rounded-full ${
+            isRefreshing ? "animate-spin" : ""
+          }`}
+            style={{ transform: isRefreshing ? undefined : `rotate(${pullDistance * 4}deg)` }}
+          />
+        </div>
+      )}
       {/* HERO */}
       <section className="relative h-[50vh] sm:h-[60vh] overflow-hidden">
         <img src={HERO} alt="TMB Ridge" className="absolute inset-0 w-full h-full object-cover object-center" />
@@ -1375,7 +1545,7 @@ export default function Home() {
                 <StatCard label="Pack Weight" value={ATHLETE.packWeight} unit="" />
               </div>
             </div>
-            <WeightGauge currentWeight={wt.currentWeight} progress={wt.progress} entries={wt.entries} onAddWeight={wt.addEntry} goalWeight={wt.goalWeight} />
+            <WeightGauge currentWeight={wt.currentWeight} progress={wt.progress} entries={wt.entries} onAddWeight={wt.addEntry} onEditWeight={wt.editEntry} onDeleteWeight={wt.deleteEntry} goalWeight={wt.goalWeight} />
           </div>
         </div>
       </section>
@@ -1618,6 +1788,7 @@ export default function Home() {
               const prev = [...wl.sessions].reverse().find((s) => s.dayId === wl.activeSession!.dayId);
               return prev || null;
             })()}
+            allSessions={wl.sessions}
           />
         )}
       </AnimatePresence>

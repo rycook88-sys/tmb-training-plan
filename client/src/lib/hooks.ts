@@ -80,10 +80,20 @@ export function useWeightTracker() {
     });
   };
 
+  const editEntry = (date: string, newWeight: number) => {
+    setEntries((prev) =>
+      prev.map((e) => (e.date === date ? { ...e, weight: newWeight } : e))
+    );
+  };
+
+  const deleteEntry = (date: string) => {
+    setEntries((prev) => prev.filter((e) => e.date !== date));
+  };
+
   const currentWeight = entries.length > 0 ? entries[entries.length - 1].weight : ATHLETE.currentWeight;
   const progress = getWeightProgress(currentWeight, goalWeight);
 
-  return { entries, addEntry, currentWeight, progress, goalWeight };
+  return { entries, addEntry, editEntry, deleteEntry, currentWeight, progress, goalWeight };
 }
 
 export function useWorkoutLog() {
