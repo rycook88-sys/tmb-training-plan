@@ -439,6 +439,7 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
   const [zoomedDay, setZoomedDay] = useState<number | null>(null);
   const [selectedFoodStop, setSelectedFoodStop] = useState<FoodStopGeo | null>(null);
   const [selectedWaterSource, setSelectedWaterSource] = useState<WaterSource | null>(null);
+  const [tooltipDismissed, setTooltipDismissed] = useState(false);
   const chartContainerRef = useRef<HTMLDivElement>(null);
 
   // Sync parent selectedDay into zoomedDay when embedded
@@ -855,9 +856,11 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
           )}
 
           {/* Chart — touch-action: none prevents page scroll when finger is inside */}
+          {/* Tap once to show tracking line, tap again to dismiss */}
           <div
             ref={chartContainerRef}
             style={{ width: "100%", height: 320, touchAction: "none", position: "relative" }}
+            onClick={() => setTooltipDismissed(prev => !prev)}
           >
             <ResponsiveContainer width="100%" height={320}>
               <AreaChart
@@ -916,13 +919,15 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
                     style: { fill: "#52525b", fontSize: 9, letterSpacing: "0.15em", fontFamily: "'JetBrains Mono', monospace" },
                   }}
                 />
-                <Tooltip
-                  content={<SmartTooltip mode={mode} />}
-                  wrapperStyle={{ pointerEvents: "none", position: "absolute", top: 0, left: 0, right: 0 }}
-                  position={{ x: 0, y: 0 }}
-                  allowEscapeViewBox={{ x: true, y: true }}
-                  isAnimationActive={false}
-                />
+                {!tooltipDismissed && (
+                  <Tooltip
+                    content={<SmartTooltip mode={mode} />}
+                    wrapperStyle={{ pointerEvents: "none", position: "absolute", top: 0, left: 0, right: 0 }}
+                    position={{ x: 0, y: 0 }}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    isAnimationActive={false}
+                  />
+                )}
 
                 {/* Day boundary lines */}
                 {dayBoundaries.map((b, i) => (
@@ -952,7 +957,7 @@ export default function ElevationProfile({ highlightDay, onDayHover, gpsPosition
                   fill="url(#eleGradientActive)"
                   fillOpacity={0.3}
                   dot={false}
-                  activeDot={{ r: 4, fill: "#f59e0b", stroke: "#1c1917", strokeWidth: 2 }}
+                  activeDot={tooltipDismissed ? false : { r: 4, fill: "#f59e0b", stroke: "#1c1917", strokeWidth: 2 }}
                   isAnimationActive={false}
                 />
 

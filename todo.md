@@ -634,3 +634,6 @@
 ## Round 8 — UI Tweaks
 - [x] Remove "232 → 205" from Weight Descent header (just show "WEIGHT DESCENT")
 - [x] Fix gauge spacing: 205 above bar same distance as 232 below bar (- [x] Food filter boxes on trail map unselected by default on app ope- [x] Expand Chamonix weather: add daily high/low temps and humidity range (Hi/Lo + humidity min-max)
+
+## Round 9 — Elevation Profile UX
+- [x] Tap on/near the tracking line to dismiss it and the info box (toggle tooltip visibility)
