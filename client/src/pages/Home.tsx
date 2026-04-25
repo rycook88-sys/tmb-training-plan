@@ -188,6 +188,10 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight, onEditWeig
   };
   const gaugeH = 280;
   const goalReached = currentWeight <= goalWeight;
+  const lostLbs = Math.max(0, ATHLETE.startWeight - currentWeight);
+  const calsBurned = Math.round(lostLbs * 3500);
+  const kneeRelief = Math.round(lostLbs * 4);
+  const percentLighter = ((lostLbs / ATHLETE.startWeight) * 100).toFixed(1);
 
   return (
     <div className="border border-border p-5 bg-card">
@@ -200,6 +204,20 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight, onEditWeig
       />
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)]">Weight Descent</h3>
+        <div className="flex gap-4 items-center">
+          {lostLbs > 0 && (
+            <>
+              <div className="text-right">
+                <div className="font-mono text-lg font-bold text-[var(--primary)] leading-none">{calsBurned.toLocaleString()}</div>
+                <div className="text-[9px] uppercase tracking-wider text-[var(--muted-foreground)] mt-0.5">cal deficit</div>
+              </div>
+              <div className="text-right">
+                <div className="font-mono text-lg font-bold text-emerald-400 leading-none">{kneeRelief}</div>
+                <div className="text-[9px] uppercase tracking-wider text-[var(--muted-foreground)] mt-0.5">lbs off knees</div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
       <div className="flex gap-6 items-center">
         <div className="relative py-6" style={{ width: 48 }}>
@@ -213,10 +231,10 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight, onEditWeig
             transition={{ duration: 1.5, ease: "easeOut" }} />
           <div className="absolute left-0 right-0 top-0 h-px bg-[var(--primary)] opacity-50" />
           <div className="absolute left-0 right-0 bottom-0 h-px bg-border" />
-          <div className="absolute left-1/2 -translate-x-1/2 text-center" style={{ top: -20 }}>
+          <div className="absolute left-1/2 -translate-x-1/2 text-center" style={{ top: -28 }}>
             <span className="text-[10px] font-mono text-[var(--primary)]">{u.wt(goalWeight, 0)}</span>
           </div>
-          <div className="absolute left-1/2 -translate-x-1/2 text-center" style={{ bottom: -20 }}>
+          <div className="absolute left-1/2 -translate-x-1/2 text-center" style={{ bottom: -28 }}>
             <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{u.wt(ATHLETE.startWeight, 0)}</span>
           </div>
         </div>

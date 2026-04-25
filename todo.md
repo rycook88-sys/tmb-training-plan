@@ -637,3 +637,7 @@
 
 ## Round 9 — Elevation Profile UX
 - [x] Tap on/near the tracking line to dismiss it and the info box (toggle tooltip visibility)
+
+## Round 10 — Weight Descent Polish
+- [x] Fix 205 spacing above progress bar to match 232 spacing below (top: -28px)
+- [x] Add motivational stats to top-right corner (cal deficit + lbs off knees)
