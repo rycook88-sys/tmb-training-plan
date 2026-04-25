@@ -630,3 +630,7 @@
 - [x] Remove elevation gain/loss from hero subtitle (keep in stat cards only)
 - [x] Weight Descent: remove START/GOAL text labels, center numbers above/below progress bar
 - [x] Fix intermittent trail map gray loading — added tile error retry (up to 3x), loading spinner overlay, and error handling on layer switch
+
+## Round 8 — UI Tweaks
+- [x] Remove "232 → 205" from Weight Descent header (just show "WEIGHT DESCENT")
+- [x] Fix gauge spacing: 205 above bar same distance as 232 below bar (- [x] Food filter boxes on trail map unselected by default on app ope- [x] Expand Chamonix weather: add daily high/low temps and humidity range (Hi/Lo + humidity min-max)

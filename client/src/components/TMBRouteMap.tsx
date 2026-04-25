@@ -384,7 +384,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
   const u = useUnits();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  const [showFoodStops, setShowFoodStops] = useState(true);
+  const [showFoodStops, setShowFoodStops] = useState(false);
   const [waterMode, setWaterMode] = useState<"off" | "potable" | "all">("off");
   const [showSecondaryWater, setShowSecondaryWater] = useState(false);
   const [mapLayer, setMapLayer] = useState<"topo" | "satellite">("topo");

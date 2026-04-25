@@ -200,11 +200,6 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight, onEditWeig
       />
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)]">Weight Descent</h3>
-        <div className="flex items-center gap-1.5 text-[10px] font-mono text-[var(--muted-foreground)]">
-          <span>{u.wt(ATHLETE.startWeight, 0)}</span>
-          <span className="text-[var(--muted-foreground)]/40">→</span>
-          <span className="text-[var(--primary)]">{u.wt(goalWeight, 0)}</span>
-        </div>
       </div>
       <div className="flex gap-6 items-center">
         <div className="relative py-6" style={{ width: 48 }}>
@@ -218,10 +213,10 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight, onEditWeig
             transition={{ duration: 1.5, ease: "easeOut" }} />
           <div className="absolute left-0 right-0 top-0 h-px bg-[var(--primary)] opacity-50" />
           <div className="absolute left-0 right-0 bottom-0 h-px bg-border" />
-          <div className="absolute left-1/2 -translate-x-1/2 -top-5 text-center">
+          <div className="absolute left-1/2 -translate-x-1/2 text-center" style={{ top: -20 }}>
             <span className="text-[10px] font-mono text-[var(--primary)]">{u.wt(goalWeight, 0)}</span>
           </div>
-          <div className="absolute left-1/2 -translate-x-1/2 -bottom-5 text-center">
+          <div className="absolute left-1/2 -translate-x-1/2 text-center" style={{ bottom: -20 }}>
             <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{u.wt(ATHLETE.startWeight, 0)}</span>
           </div>
         </div>
