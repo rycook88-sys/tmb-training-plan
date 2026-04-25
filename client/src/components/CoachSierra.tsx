@@ -560,21 +560,51 @@ export default function CoachSierra({
                 ))}
 
                 {isBusy && (
-                  <div className="flex gap-2.5 justify-start">
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex gap-2.5 justify-start"
+                  >
                     <img
                       src={SIERRA_PHOTOS[0].url}
                       alt="Sierra"
                       className="w-7 h-7 shrink-0 rounded-full object-cover"
                     />
                     <div className="bg-card border border-border rounded-lg px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--primary)]" />
-                        <span className="text-[10px] font-mono text-[var(--muted-foreground)]">
-                          {uploadingImages ? "Uploading photo..." : "Thinking about you..."}
-                        </span>
-                      </div>
+                      {uploadingImages ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-[var(--primary)]" />
+                          <span className="text-[10px] font-mono text-[var(--muted-foreground)]">
+                            Uploading photo...
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex gap-1">
+                            {[0, 1, 2].map(i => (
+                              <motion.div
+                                key={i}
+                                className="w-2 h-2 rounded-full bg-[var(--primary)]"
+                                animate={{
+                                  y: [0, -6, 0],
+                                  opacity: [0.4, 1, 0.4],
+                                }}
+                                transition={{
+                                  duration: 0.8,
+                                  repeat: Infinity,
+                                  delay: i * 0.15,
+                                  ease: "easeInOut",
+                                }}
+                              />
+                            ))}
+                          </div>
+                          <span className="text-[10px] font-mono text-[var(--muted-foreground)] ml-1">
+                            Sierra is thinking...
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  </div>
+                  </motion.div>
                 )}
               </div>
             )}

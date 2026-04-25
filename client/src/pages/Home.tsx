@@ -34,13 +34,48 @@ import { ALL_MICRONUTRIENTS, getMicroDVPercent } from "@/lib/vitamin-data";
 import { loadMacroTargets } from "@/lib/vitamin-data";
 import { PRE_TRIP_CHECKLIST } from "@/lib/travel-data";
 import { haptic } from "@/lib/haptics";
+import MilestoneCelebration, { useMilestoneDetector } from "@/components/MilestoneCelebration";
+import ExerciseSparkline from "@/components/ExerciseSparkline";
+import ChamonixWeather from "@/components/ChamonixWeather";
+import { HeroSkeleton, StatCardSkeleton, WeightGaugeSkeleton, TrainingGridSkeleton } from "@/components/Skeleton";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
 import { useCloudSync } from "@/hooks/useCloudSync";
 
-const HERO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/hero-tmb-ridge-TA9BE2JzZxaxi68um9vvG9.webp";
+const HERO_IMAGES = [
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/hero-tmb-ridge-TA9BE2JzZxaxi68um9vvG9.webp",
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/alpine-descent-fVYu9fsGi368uNUQov45Qu.webp",
+  "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/mont-blanc-massif-9zhRqKCwtJsZQ3ZMrMW65f.webp",
+];
 const TOPO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/topo-texture-3ai3ccpyxv32r72SNbY3MU.webp";
-const DESC = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/alpine-descent-fVYu9fsGi368uNUQov45Qu.webp";
-const MASS = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/mont-blanc-massif-9zhRqKCwtJsZQ3ZMrMW65f.webp";
+
+const MOTIVATIONAL_QUOTES = [
+  { text: "The mountains are calling and I must go.", author: "John Muir" },
+  { text: "It is not the mountain we conquer, but ourselves.", author: "Edmund Hillary" },
+  { text: "The best view comes after the hardest climb.", author: "Unknown" },
+  { text: "Every mountain top is within reach if you just keep climbing.", author: "Barry Finlay" },
+  { text: "You don't have to be fast. You just have to go.", author: "Ultra Proverb" },
+  { text: "Somewhere between the bottom of the climb and the summit is the answer.", author: "Greg Child" },
+  { text: "Pain is temporary. Quitting lasts forever.", author: "Lance Armstrong" },
+  { text: "The harder you work, the luckier you get.", author: "Gary Player" },
+  { text: "Discipline is choosing between what you want now and what you want most.", author: "Abraham Lincoln" },
+  { text: "Mountains know secrets we need to learn.", author: "Aldous Huxley" },
+  { text: "Great things are done when men and mountains meet.", author: "William Blake" },
+  { text: "Getting to the top is optional. Getting down is mandatory.", author: "Ed Viesturs" },
+];
+
+function getDailyQuote() {
+  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000);
+  return MOTIVATIONAL_QUOTES[dayOfYear % MOTIVATIONAL_QUOTES.length];
+}
+
+function useHeroRotation(intervalMs = 8000) {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIndex((i) => (i + 1) % HERO_IMAGES.length), intervalMs);
+    return () => clearInterval(t);
+  }, [intervalMs]);
+  return index;
+}
 
 // ── Countdown ─────────────────────────────────────────────
 function Countdown({ syncStatus }: { syncStatus?: string }) {
@@ -385,6 +420,7 @@ function ActiveWorkoutPanel({ dayId, exercises, onUpdate, onToggle, onSave, onCa
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={`font-mono text-sm font-medium ${ex.done ? "line-through text-[var(--muted-foreground)]" : "text-foreground"}`}>{ex.name}</span>
+                        <ExerciseSparkline exerciseName={ex.name} sessions={allSessions} lowerIsBetter={planEx?.unit === "assist"} />
                         {goalHit && <span className="text-[10px] font-mono uppercase tracking-wider text-amber-400 bg-amber-400/10 px-1.5 py-0.5">GOAL HIT</span>}
                         {planEx?.videoUrl && (
                           <a href={planEx.videoUrl} target="_blank" rel="noopener noreferrer"
@@ -909,7 +945,7 @@ function ItinerarySection() {
         onClick={() => setOpen(!open)}
         className="w-full h-48 overflow-hidden relative cursor-pointer group"
       >
-        <img src={MASS} alt="Mont Blanc Massif" className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" />
+        <img src={HERO_IMAGES[2]} alt="Mont Blanc Massif" className="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" />
         <div className="absolute inset-0 bg-gradient-to-b from-background via-transparent to-background" />
         <div className="absolute inset-0 flex items-center justify-center gap-3">
           <h2 className="text-xs uppercase tracking-[0.4em] text-white font-mono flex items-center gap-2">
@@ -1005,7 +1041,7 @@ function FootMobilitySection({ embedded = false }: { embedded?: boolean } = {}) 
               </div>
               <div className="hidden lg:block">
                 <div className="border border-border overflow-hidden h-full">
-                  <img src={DESC} alt="Alpine descent" className="w-full h-full object-cover" />
+                  <img src={HERO_IMAGES[1]} alt="Alpine descent" className="w-full h-full object-cover" />
                 </div>
               </div>
             </div>
@@ -1204,9 +1240,18 @@ function ModeToggle({ mode, setMode }: { mode: AppMode; setMode: (m: AppMode) =>
 
 // ── Main Page ─────────────────────────────────────────────
 export default function Home() {
+  const [appReady, setAppReady] = useState(false);
+  useEffect(() => {
+    // Brief delay to allow data to hydrate from localStorage before showing UI
+    const t = setTimeout(() => setAppReady(true), 150);
+    return () => clearTimeout(t);
+  }, []);
   const cloudSync = useCloudSync();
   const wt = useWeightTracker();
   const wl = useWorkoutLog();
+  const milestone = useMilestoneDetector();
+  const heroIdx = useHeroRotation(8000);
+  const [dailyQuote] = useState(() => getDailyQuote());
   const [showSummary, setShowSummary] = useState<WorkoutSession | null>(null);
   const [highlightDay, setHighlightDay] = useState<number | null>(null);
   const [gpsPosition, setGpsPosition] = useState<GpsPosition | null>(null);
@@ -1489,11 +1534,47 @@ export default function Home() {
     }
   };
 
+  // Show skeleton while app hydrates (must be after all hooks)
+  if (!appReady) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <HeroSkeleton />
+        <section className="container py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
+            <div>
+              <div className="flex items-baseline gap-3 mb-6">
+                <div className="animate-pulse bg-[var(--secondary)] h-16 w-24 rounded" />
+                <div className="animate-pulse bg-[var(--secondary)] h-4 w-20 rounded" />
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+                <StatCardSkeleton />
+              </div>
+            </div>
+            <WeightGaugeSkeleton />
+          </div>
+        </section>
+        <TrainingGridSkeleton />
+      </div>
+    );
+  }
+
   return (
     <div
       className="min-h-screen bg-background"
       {...pullHandlers}
     >
+      {/* Milestone celebration overlay */}
+      {milestone.celebration && (
+        <MilestoneCelebration
+          currentWeight={milestone.celebration.current}
+          previousWeight={milestone.celebration.previous}
+          show={true}
+          onComplete={milestone.dismiss}
+        />
+      )}
       {/* Pull-to-refresh indicator */}
       {(pullDistance > 0 || isRefreshing) && (
         <div
@@ -1509,7 +1590,10 @@ export default function Home() {
       )}
       {/* HERO */}
       <section className="relative h-[50vh] sm:h-[60vh] overflow-hidden">
-        <img src={HERO} alt="TMB Ridge" className="absolute inset-0 w-full h-full object-cover object-center" />
+        <AnimatePresence mode="wait">
+          <motion.img key={heroIdx} src={HERO_IMAGES[heroIdx]} alt="TMB" className="absolute inset-0 w-full h-full object-cover object-center"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.5 }} />
+        </AnimatePresence>
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/20 to-background" />
         <div className="absolute inset-0 flex flex-col justify-end p-6 sm:p-10">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
@@ -1518,6 +1602,12 @@ export default function Home() {
             <p className="text-sm text-white/60 font-mono mt-2 tracking-wide">
               {ATHLETE.tripDays}-Day {ATHLETE.tripStyle} · {u.dist(totalMi)} {u.distUnitLong} · {u.elev(totalA)} {u.elevUnit} gain · {u.elev(totalD)} {u.elevUnit} loss
             </p>
+            <div className="mt-4 max-w-md">
+              <p className="text-xs text-white/40 italic font-serif leading-relaxed">
+                "{dailyQuote.text}"
+                <span className="text-white/25 ml-2 not-italic font-mono">— {dailyQuote.author}</span>
+              </p>
+            </div>
           </motion.div>
         </div>
       </section>
@@ -1544,8 +1634,11 @@ export default function Home() {
                 <StatCard label="Total Descent" value={u.elev(totalD)} unit={u.elevUnit} color="text-[var(--primary)]" />
                 <StatCard label="Pack Weight" value={ATHLETE.packWeight} unit="" />
               </div>
+              <div className="mt-4">
+                <ChamonixWeather />
+              </div>
             </div>
-            <WeightGauge currentWeight={wt.currentWeight} progress={wt.progress} entries={wt.entries} onAddWeight={wt.addEntry} onEditWeight={wt.editEntry} onDeleteWeight={wt.deleteEntry} goalWeight={wt.goalWeight} />
+            <WeightGauge currentWeight={wt.currentWeight} progress={wt.progress} entries={wt.entries} onAddWeight={(w: number) => { const prev = wt.currentWeight; wt.addEntry(w); milestone.checkMilestone(w, prev); }} onEditWeight={wt.editEntry} onDeleteWeight={wt.deleteEntry} goalWeight={wt.goalWeight} />
           </div>
         </div>
       </section>
@@ -1614,13 +1707,15 @@ export default function Home() {
         <ModeToggle mode={mode} setMode={handleModeChange} />
       </div>
 
+      <AnimatePresence mode="wait">
       {/* ═══ TRAINING MODE ═══ */}
       {mode === "training" && (
         <motion.div
           key="training"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 20 }}
+          transition={{ duration: 0.25, ease: "easeInOut" }}
         >
           {/* All training tools in one card grid */}
           <section className="container py-8">
@@ -1692,9 +1787,10 @@ export default function Home() {
       {mode === "trail" && (
         <motion.div
           key="trail"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 20 }}
+          transition={{ duration: 0.25, ease: "easeInOut" }}
         >
           {/* Full-width visual sections — with accents */}
           <div className="border-l-4 border-l-indigo-500 bg-indigo-500/[0.03]">
@@ -1756,13 +1852,15 @@ export default function Home() {
       {mode === "travel" && (
         <motion.div
           key="travel"
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: 20 }}
+          transition={{ duration: 0.25, ease: "easeInOut" }}
         >
           <ArrivalDeparture embedded />
         </motion.div>
       )}
+      </AnimatePresence>
 
       {/* FOOTER */}
       <footer className="border-t border-border py-6">

@@ -603,3 +603,25 @@
 ### General UX
 - [x] Haptic feedback on exercise toggle, PR detection, weight logging, swipe-to-complete, pull-to-refresh
 - [x] Pull-to-refresh with spinner indicator — triggers cloud sync event
+
+## Round 6 — UI Polish & Delight
+
+### Weight Descent
+- [x] 5 lb milestone celebrations with confetti/mountain animation + camp names
+
+### Workout Session
+- [x] Exercise progress sparklines (inline trend charts for last 6-8 sessions)
+
+### Hero / Dashboard
+- [x] Dynamic hero images — rotating 3 TMB photos with 8s crossfade
+- [x] Motivational quotes — daily rotating mountaineer/endurance quotes in hero
+
+### Weather Widget
+- [x] Live Chamonix weather widget in stats area (Open-Meteo API, no key needed)
+
+### General App Feel
+- [x] Smooth tab transitions — AnimatePresence with horizontal slide for Training/Trail/Travel
+- [x] Skeleton loading states — animated placeholders during initial hydration
+
+### Coach Sierra
+- [x] Typing indicator — animated bouncing dots with "Sierra is thinking..." text
