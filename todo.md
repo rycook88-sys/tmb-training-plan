@@ -647,3 +647,9 @@
 - [x] Create rotating strength percentile display that cycles through lifts every 12 seconds with fade animation
 - [x] Integrate into Weight Descent header alongside calorie deficit and knee relief
 - [x] Add 9 vitest tests for strength-standards module (threshold interpolation, invertBetter, shortNames)
+
+## Round 10c — Weight Descent Header Redesign
+- [x] Make "WEIGHT DESCENT" title more prominent (larger text, font-semibold, tracking-[0.3em])
+- [x] Rearrange stats layout: 3-column grid with subtle background cards
+- [x] Make all 3 stats (cal deficit, lbs off knees, strength percentile) larger (text-lg) and fully readable on mobile
+- [x] Fix strength percentile clipping — each stat now has its own grid cell with proper padding

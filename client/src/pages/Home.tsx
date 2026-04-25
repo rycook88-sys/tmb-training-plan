@@ -244,43 +244,46 @@ function WeightGauge({ currentWeight, progress, entries, onAddWeight, onEditWeig
         onConfirm={() => { if (deleteConfirm) onDeleteWeight(deleteConfirm); setDeleteConfirm(null); }}
         onCancel={() => setDeleteConfirm(null)}
       />
-      <div className="flex items-start justify-between mb-4 gap-2">
-        <h3 className="text-xs uppercase tracking-[0.25em] text-[var(--muted-foreground)] flex-shrink-0 pt-1">Weight<br/>Descent</h3>
-        <div className="flex gap-2.5 items-center justify-end">
-          {lostLbs > 0 && (
-            <>
-              <div className="text-right">
-                <div className="font-mono text-xs font-bold text-[var(--primary)] leading-none">{calsBurned.toLocaleString()}</div>
-                <div className="text-[7px] uppercase tracking-wider text-[var(--muted-foreground)] mt-0.5">cal deficit</div>
+      {/* Header: title + stats grid */}
+      <div className="mb-4">
+        <h3 className="text-sm uppercase tracking-[0.3em] text-[var(--muted-foreground)] font-semibold mb-3">Weight Descent</h3>
+        {(lostLbs > 0 || strengthStats.length > 0) && (
+          <div className="grid grid-cols-3 gap-3">
+            {lostLbs > 0 ? (
+              <div className="bg-[var(--secondary)]/50 rounded px-2.5 py-2">
+                <div className="font-mono text-lg font-bold text-[var(--primary)] leading-none">{calsBurned.toLocaleString()}</div>
+                <div className="text-[9px] uppercase tracking-wider text-[var(--muted-foreground)] mt-1">cal deficit</div>
               </div>
-              <div className="text-right">
-                <div className="font-mono text-xs font-bold text-emerald-400 leading-none">{kneeRelief}</div>
-                <div className="text-[7px] uppercase tracking-wider text-[var(--muted-foreground)] mt-0.5">lbs off knees</div>
+            ) : <div />}
+            {lostLbs > 0 ? (
+              <div className="bg-[var(--secondary)]/50 rounded px-2.5 py-2">
+                <div className="font-mono text-lg font-bold text-emerald-400 leading-none">{kneeRelief}</div>
+                <div className="text-[9px] uppercase tracking-wider text-[var(--muted-foreground)] mt-1">lbs off knees</div>
               </div>
-            </>
-          )}
-          {strengthStats.length > 0 && (
-            <div className="text-right relative overflow-hidden" style={{ minWidth: 48, height: 26 }}>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={strengthIdx}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.4 }}
-                  className="absolute inset-0 flex flex-col items-end justify-center"
-                >
-                  <div className="font-mono text-xs font-bold text-amber-400 leading-none">
-                    Top {100 - strengthStats[strengthIdx % strengthStats.length].percentile}%
-                  </div>
-                  <div className="text-[7px] uppercase tracking-wider text-[var(--muted-foreground)] mt-0.5">
-                    {strengthStats[strengthIdx % strengthStats.length].shortName}
-                  </div>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          )}
-        </div>
+            ) : <div />}
+            {strengthStats.length > 0 ? (
+              <div className="bg-[var(--secondary)]/50 rounded px-2.5 py-2 relative overflow-hidden" style={{ minHeight: 42 }}>
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={strengthIdx}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ duration: 0.4 }}
+                    className="absolute inset-0 flex flex-col justify-center px-2.5 py-2"
+                  >
+                    <div className="font-mono text-lg font-bold text-amber-400 leading-none">
+                      Top {100 - strengthStats[strengthIdx % strengthStats.length].percentile}%
+                    </div>
+                    <div className="text-[9px] uppercase tracking-wider text-[var(--muted-foreground)] mt-1">
+                      {strengthStats[strengthIdx % strengthStats.length].shortName}
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            ) : <div />}
+          </div>
+        )}
       </div>
       <div className="flex gap-6 items-center">
         <div className="relative py-6" style={{ width: 48 }}>
