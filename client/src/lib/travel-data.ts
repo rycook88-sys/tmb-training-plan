@@ -617,3 +617,73 @@ export const FLIGHT_BOOKING: FlightBooking = {
     },
   ],
 };
+
+
+// ── Hotel Bookings ─────────────────────────────────────────
+
+export interface HotelBooking {
+  name: string;
+  location: string; // e.g. "Les Houches" or "Chamonix"
+  address: string;
+  phone: string;
+  confirmationNumber: string;
+  bookedVia: string; // "Hotels.com", "Priceline"
+  tripId?: string;
+  checkIn: { date: string; day: string; time: string }; // "Jul 25", "Sat", "3:00 PM"
+  checkOut: { date: string; day: string; time: string };
+  mapsQuery: string;
+  stars?: number;
+  notes?: string[];
+  luggageStorage?: {
+    available: boolean;
+    details: string;
+  };
+}
+
+export const HOTEL_BOOKINGS: HotelBooking[] = [
+  {
+    name: "RockyPop Chamonix – Les Houches",
+    location: "Les Houches",
+    address: "1476 Avenue des Alpages, Les Houches, 74310 France",
+    phone: "+33 4 85 30 00 00",
+    confirmationNumber: "72072638873766",
+    bookedVia: "Hotels.com",
+    tripId: "72072638873766",
+    checkIn: { date: "Jul 25", day: "Sat", time: "3:00 PM" },
+    checkOut: { date: "Jul 26", day: "Sun", time: "11:00 AM" },
+    mapsQuery: "RockyPop+Hotel+Les+Houches+Chamonix",
+    stars: 3,
+    notes: [
+      "Located in Les Houches, ~6 km from Chamonix center",
+      "Fun, modern hotel with pop-art style and game rooms",
+      "Luggage storage available but may charge a small fee (€5/day reported)",
+      "Close to Les Houches TMB trailhead — convenient if starting from there",
+    ],
+    luggageStorage: {
+      available: true,
+      details: "Available but may charge ~€5/day. Some reports say they won't store luggage without a return booking.",
+    },
+  },
+  {
+    name: "Hôtel Les Aiglons Chamonix",
+    location: "Chamonix",
+    address: "270 Avenue Courmayeur, Chamonix, 74400 France",
+    phone: "+33 4 50 55 90 93",
+    confirmationNumber: "5081305984",
+    bookedVia: "Priceline",
+    tripId: "323-532-073-95",
+    checkIn: { date: "Aug 4", day: "Tue", time: "4:00 PM" },
+    checkOut: { date: "Aug 5", day: "Wed", time: "12:00 PM" },
+    mapsQuery: "Hotel+Les+Aiglons+Chamonix+Mont+Blanc",
+    stars: 4,
+    notes: [
+      "4-star hotel adjacent to Chamonix Sud bus station",
+      "Spa, pool, concierge, 24-hour front desk",
+      "Perfect location for catching the FlixBus to Geneva Airport on departure day",
+    ],
+    luggageStorage: {
+      available: true,
+      details: "Free luggage storage for guests with a booking. Drop off a bag with fresh clothes before your TMB hike — they'll hold it until your check-in on Aug 4. Call ahead at +33 4 50 55 90 93 and reference confirmation #5081305984.",
+    },
+  },
+];

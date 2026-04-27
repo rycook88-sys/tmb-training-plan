@@ -664,3 +664,10 @@
 - [x] Copy-to-clipboard for confirmation code F7THJM
 - [x] Replace placeholder FlightDetails in ArrivalDeparture with real FlightCard
 - [x] All 39 vitest tests passing
+
+## Round 12 — Hotel Booking Cards
+- [x] Add hotel booking data types and constants to travel-data.ts (RockyPop + Les Aiglons)
+- [x] Build HotelCard component with check-in/out, address, confirmation, phone, notes, star ratings
+- [x] Add luggage storage pro-tip callout for both hotels (emerald for pre-hike, amber for post-hike)
+- [x] Integrate hotel cards into ArrivalDeparture Travel tab as "Your Hotels" section
+- [x] All 39 tests passing, verified in browser

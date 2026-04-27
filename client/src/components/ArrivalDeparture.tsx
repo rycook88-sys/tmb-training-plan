@@ -4,7 +4,7 @@ import {
   Plane, PlaneTakeoff, PlaneLanding, Bus, MapPin, CreditCard, Smartphone,
   ShoppingBag, CheckCircle2, Circle, ChevronDown, ChevronUp, ExternalLink,
   Clock, AlertTriangle, Landmark, Palmtree, ClipboardCheck, Luggage,
-  Banknote, Wifi, Mountain, Star, Info,
+  Banknote, Wifi, Mountain, Star, Info, Building2,
 } from "lucide-react";
 import {
   TRANSPORT_TO_CHAMONIX, TRANSPORT_FROM_CHAMONIX,
@@ -102,6 +102,9 @@ function InternationalTravelGuide() {
 
 // ── Flight Details ──────────────────────────────────────────
 import FlightCard from "@/components/FlightCard";
+
+// ── Hotel Bookings ─────────────────────────────────────────
+import HotelCard from "@/components/HotelCard";
 
 // ── Transport Section ───────────────────────────────────────
 
@@ -528,6 +531,16 @@ export default function ArrivalDeparture({ embedded = false }: { embedded?: bool
             defaultOpen={false}
           >
             <FlightCard />
+          </Section>
+
+          <Section
+            icon={<Building2 className="w-4 h-4" />}
+            title="Your Hotels"
+            subtitle="RockyPop (pre-hike) + Les Aiglons (post-hike)"
+            accent="border-l-emerald-500"
+            defaultOpen={false}
+          >
+            <HotelCard />
           </Section>
 
           <Section
