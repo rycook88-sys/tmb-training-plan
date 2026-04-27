@@ -653,3 +653,14 @@
 - [x] Rearrange stats layout: 3-column grid with subtle background cards
 - [x] Make all 3 stats (cal deficit, lbs off knees, strength percentile) larger (text-lg) and fully readable on mobile
 - [x] Fix strength percentile clipping — each stat now has its own grid cell with proper padding
+
+## Round 11 — Flight Details Card
+- [x] Look up Delta reservation F7THJM for Ryan Cook
+- [x] Extract all 6 flight legs (3 outbound, 3 return) with times, seats, aircraft, layovers
+- [x] Add FlightBooking data types and FLIGHT_BOOKING constant to travel-data.ts
+- [x] Build FlightCard component with confirmation header, quick summary bar, expandable itineraries
+- [x] Each leg shows flight number, aircraft, departure/arrival times, airport codes, seat, fare class, operated-by
+- [x] Layover connectors between legs with duration and "Change planes at XXX"
+- [x] Copy-to-clipboard for confirmation code F7THJM
+- [x] Replace placeholder FlightDetails in ArrivalDeparture with real FlightCard
+- [x] All 39 vitest tests passing

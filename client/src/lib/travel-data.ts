@@ -466,3 +466,154 @@ export const ANNECY_SIDE_TRIP = {
   transport: "Bus or train from Chamonix (~1 hour). Can also drive.",
   mapsQuery: "Annecy+France",
 };
+
+
+// ── Flight Data ─────────────────────────────────────────────
+
+export interface FlightLeg {
+  flightNumber: string;
+  airline: string;
+  operatedBy: string;
+  aircraft: string;
+  from: { code: string; city: string; terminal?: string };
+  to: { code: string; city: string; terminal?: string };
+  depart: { date: string; time: string }; // "Fri, Jul 24", "1:40 PM"
+  arrive: { date: string; time: string };
+  duration: string;
+  seat: string;
+  fareClass: string;
+  layoverAfter?: string; // e.g. "1h 28m"
+}
+
+export interface FlightItinerary {
+  direction: "outbound" | "return";
+  label: string;
+  route: string; // "OMA → MSP → CDG → GVA"
+  departDate: string;
+  arriveDate: string;
+  totalDuration: string;
+  legs: FlightLeg[];
+}
+
+export interface FlightBooking {
+  confirmationCode: string;
+  passenger: string;
+  eTicket: string;
+  ticketExpiration: string;
+  destination: string;
+  tripDates: string;
+  itineraries: FlightItinerary[];
+}
+
+export const FLIGHT_BOOKING: FlightBooking = {
+  confirmationCode: "F7THJM",
+  passenger: "Ryan Alan Cook",
+  eTicket: "#0067435618789",
+  ticketExpiration: "April 21, 2027",
+  destination: "Geneva, Switzerland",
+  tripDates: "Jul 24 – Aug 5, 2026",
+  itineraries: [
+    {
+      direction: "outbound",
+      label: "Outbound",
+      route: "OMA → MSP → CDG → GVA",
+      departDate: "Fri, Jul 24",
+      arriveDate: "Sat, Jul 25",
+      totalDuration: "17h 10m",
+      legs: [
+        {
+          flightNumber: "DL3848",
+          airline: "Delta",
+          operatedBy: "SkyWest DBA Delta Connection",
+          aircraft: "Embraer 175",
+          from: { code: "OMA", city: "Omaha, NE", terminal: "TBD" },
+          to: { code: "MSP", city: "Minneapolis/St Paul, MN", terminal: "Terminal 1" },
+          depart: { date: "Fri, Jul 24", time: "1:40 PM" },
+          arrive: { date: "Fri, Jul 24", time: "3:02 PM" },
+          duration: "22m",
+          seat: "12B",
+          fareClass: "Main Classic (V)",
+          layoverAfter: "1h 28m",
+        },
+        {
+          flightNumber: "DL0152",
+          airline: "Delta",
+          operatedBy: "Delta Air Lines",
+          aircraft: "Airbus A330-300",
+          from: { code: "MSP", city: "Minneapolis/St Paul, MN", terminal: "Terminal 1" },
+          to: { code: "CDG", city: "Paris-De Gaulle, France", terminal: "Aerogare 2 Term E" },
+          depart: { date: "Fri, Jul 24", time: "4:30 PM" },
+          arrive: { date: "Sat, Jul 25", time: "7:55 AM" },
+          duration: "8h 25m",
+          seat: "43H",
+          fareClass: "Main Classic (V)",
+          layoverAfter: "4h 45m",
+        },
+        {
+          flightNumber: "DL8528",
+          airline: "Delta",
+          operatedBy: "Air France",
+          aircraft: "Airbus A318",
+          from: { code: "CDG", city: "Paris-De Gaulle, France", terminal: "Aerogare 2 Term F" },
+          to: { code: "GVA", city: "Geneva, Switzerland", terminal: "Terminal 1" },
+          depart: { date: "Sat, Jul 25", time: "12:40 PM" },
+          arrive: { date: "Sat, Jul 25", time: "1:50 PM" },
+          duration: "1h 10m",
+          seat: "20D",
+          fareClass: "Economy (V)",
+        },
+      ],
+    },
+    {
+      direction: "return",
+      label: "Return",
+      route: "GVA → AMS → ATL → OMA",
+      departDate: "Wed, Aug 5",
+      arriveDate: "Wed, Aug 5",
+      totalDuration: "16h 39m",
+      legs: [
+        {
+          flightNumber: "KL1934",
+          airline: "KLM",
+          operatedBy: "KLM Cityhopper",
+          aircraft: "Embraer 190",
+          from: { code: "GVA", city: "Geneva, Switzerland", terminal: "Terminal 1" },
+          to: { code: "AMS", city: "Amsterdam, Netherlands" },
+          depart: { date: "Wed, Aug 5", time: "2:10 PM" },
+          arrive: { date: "Wed, Aug 5", time: "3:45 PM" },
+          duration: "1h 35m",
+          seat: "—",
+          fareClass: "Euro Economy (N)",
+          layoverAfter: "1h 20m",
+        },
+        {
+          flightNumber: "DL9374",
+          airline: "KLM",
+          operatedBy: "KLM",
+          aircraft: "Boeing 777-300ER",
+          from: { code: "AMS", city: "Amsterdam, Netherlands" },
+          to: { code: "ATL", city: "Atlanta, GA", terminal: "International Term" },
+          depart: { date: "Wed, Aug 5", time: "5:05 PM" },
+          arrive: { date: "Wed, Aug 5", time: "8:25 PM" },
+          duration: "9h 20m",
+          seat: "50C",
+          fareClass: "Economy (T)",
+          layoverAfter: "2h 3m",
+        },
+        {
+          flightNumber: "DL2010",
+          airline: "Delta",
+          operatedBy: "Delta Air Lines",
+          aircraft: "Airbus A320",
+          from: { code: "ATL", city: "Atlanta, GA", terminal: "Domestic Term-South" },
+          to: { code: "OMA", city: "Omaha, NE" },
+          depart: { date: "Wed, Aug 5", time: "10:28 PM" },
+          arrive: { date: "Wed, Aug 5", time: "11:49 PM" },
+          duration: "2h 21m",
+          seat: "15D",
+          fareClass: "Main Classic (T)",
+        },
+      ],
+    },
+  ],
+};

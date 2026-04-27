@@ -100,17 +100,8 @@ function InternationalTravelGuide() {
   );
 }
 
-// ── Flight Details (Placeholder) ────────────────────────────
-
-function FlightDetails() {
-  return (
-    <div className="border border-dashed border-border bg-card/50 p-4 text-center">
-      <Plane className="w-8 h-8 text-[var(--muted-foreground)] mx-auto mb-2" />
-      <p className="text-sm text-[var(--muted-foreground)] font-mono">Flight details coming soon</p>
-      <p className="text-[10px] text-[var(--muted-foreground)] mt-1">Share your flight booking and I'll populate this section</p>
-    </div>
-  );
-}
+// ── Flight Details ──────────────────────────────────────────
+import FlightCard from "@/components/FlightCard";
 
 // ── Transport Section ───────────────────────────────────────
 
@@ -536,7 +527,7 @@ export default function ArrivalDeparture({ embedded = false }: { embedded?: bool
             accent="border-l-sky-500"
             defaultOpen={false}
           >
-            <FlightDetails />
+            <FlightCard />
           </Section>
 
           <Section
