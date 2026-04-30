@@ -106,6 +106,9 @@ import FlightCard from "@/components/FlightCard";
 // ── Hotel Bookings ─────────────────────────────────────────
 import HotelCard from "@/components/HotelCard";
 
+// ── Bus Transfers ─────────────────────────────────────────
+import BusTransferCard from "@/components/BusTransferCard";
+
 // ── Transport Section ───────────────────────────────────────
 
 function TransportSection({ direction }: { direction: "to" | "from" }) {
@@ -545,8 +548,18 @@ export default function ArrivalDeparture({ embedded = false }: { embedded?: bool
 
           <Section
             icon={<Bus className="w-4 h-4" />}
-            title="Geneva → Chamonix Transport"
-            subtitle="FlixBus recommended · €19–25 · ~1.5 hours"
+            title="Your Bus Tickets"
+            subtitle="Outbound Jul 25 + Return Aug 5 · Book now"
+            accent="border-l-cyan-500"
+            defaultOpen={false}
+          >
+            <BusTransferCard />
+          </Section>
+
+          <Section
+            icon={<Bus className="w-4 h-4" />}
+            title="All Transport Options"
+            subtitle="FlixBus, AlpyBus, shuttles · €19–100"
             accent="border-l-green-500"
             defaultOpen={false}
           >

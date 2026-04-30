@@ -678,3 +678,11 @@
 - [x] Shift thresholds so trained individuals correctly show above 65th+ percentile
 - [x] Update vitest tests (10 tests, all passing) to validate new gen-pop calibration
 - [x] All 40 tests passing
+
+## Round 13 — Bus Transfer Cards
+- [x] Add bus transfer data types and options to travel-data.ts (outbound Jul 25 + return Aug 5)
+- [x] Build BusTransferCard component showing outbound + return options with booking links
+- [x] Show recommended option highlighted (emerald), budget (blue), risky (red warning)
+- [x] Include direct FlixBus search page booking links for each direction
+- [x] Integrate into ArrivalDeparture Travel tab as "Your Bus Tickets" section
+- [x] All 40 tests passing

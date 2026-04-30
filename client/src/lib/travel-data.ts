@@ -687,3 +687,110 @@ export const HOTEL_BOOKINGS: HotelBooking[] = [
     },
   },
 ];
+
+// ── Bus Transfer Options ──────────────────────────────────────────
+
+export interface BusOption {
+  carrier: "FlixBus" | "Alpine Fleet";
+  departTime: string;
+  arriveTime: string;
+  duration: string;
+  price: string;
+  stop: string; // destination stop name
+  tag?: "recommended" | "cheapest" | "budget";
+  note?: string;
+}
+
+export interface BusTransferRoute {
+  direction: "outbound" | "return";
+  label: string;
+  date: string;
+  from: string;
+  to: string;
+  context: string; // e.g. "Flight lands 1:50 PM — need ~45 min for customs"
+  bookingUrl: string;
+  options: BusOption[];
+}
+
+export const BUS_TRANSFERS: BusTransferRoute[] = [
+  {
+    direction: "outbound",
+    label: "Geneva Airport → Chamonix",
+    date: "Sat, Jul 25",
+    from: "Geneva Airport (GVA)",
+    to: "Chamonix",
+    context: "Flight lands 1:50 PM. After customs/baggage (~45 min), ready by ~2:35 PM.",
+    bookingUrl: "https://shop.flixbus.com/search?departureCity=89b7ebc7-cf52-4dac-97fd-b08ef8679623&arrivalCity=5e3178b2-bd1f-41a6-b5a0-a24c53e9e718&route=Geneva+Airport-Chamonix-Mont-Blanc&rideDate=25.07.2026&adult=1&_locale=en_US&departureCountryCode=CH&arrivalCountryCode=FR",
+    options: [
+      {
+        carrier: "FlixBus",
+        departTime: "2:30 PM",
+        arriveTime: "4:05 PM",
+        duration: "1h 35m",
+        price: "$27.48",
+        stop: "Chamonix",
+        note: "Tight — only 40 min buffer after landing. Risk of missing if customs is slow.",
+      },
+      {
+        carrier: "Alpine Fleet",
+        departTime: "3:30 PM",
+        arriveTime: "5:00 PM",
+        duration: "1h 30m",
+        price: "$42.06",
+        stop: "Chamonix Centre Bus Stop",
+        tag: "recommended",
+        note: "Safe 1h 40m buffer after landing. Arrive in time for dinner.",
+      },
+      {
+        carrier: "FlixBus",
+        departTime: "5:35 PM",
+        arriveTime: "7:10 PM",
+        duration: "1h 35m",
+        price: "$26.98",
+        stop: "Chamonix",
+        tag: "cheapest",
+        note: "Lowest price. Plenty of buffer but late arrival.",
+      },
+    ],
+  },
+  {
+    direction: "return",
+    label: "Chamonix → Geneva Airport",
+    date: "Wed, Aug 5",
+    from: "Chamonix",
+    to: "Geneva Airport (GVA)",
+    context: "Flight departs GVA at 2:10 PM. Need to arrive airport by ~11:30 AM. Les Aiglons checkout before 12:00 PM.",
+    bookingUrl: "https://shop.flixbus.com/search?departureCity=5e3178b2-bd1f-41a6-b5a0-a24c53e9e718&arrivalCity=89b7ebc7-cf52-4dac-97fd-b08ef8679623&route=Chamonix-Mont-Blanc-Geneva+Airport&rideDate=05.08.2026&adult=1&_locale=en_US&departureCountryCode=FR&arrivalCountryCode=CH",
+    options: [
+      {
+        carrier: "FlixBus",
+        departTime: "7:15 AM",
+        arriveTime: "9:00 AM",
+        duration: "1h 45m",
+        price: "$25.48",
+        stop: "Geneva Airport",
+        tag: "budget",
+        note: "Cheapest option. Maximum airport buffer but early wake-up.",
+      },
+      {
+        carrier: "Alpine Fleet",
+        departTime: "9:30 AM",
+        arriveTime: "11:00 AM",
+        duration: "1h 30m",
+        price: "$42.06",
+        stop: "Geneva Airport",
+        tag: "recommended",
+        note: "Relaxed morning. Checkout by 9 AM, arrive GVA 11:00 AM — 3+ hrs before flight.",
+      },
+      {
+        carrier: "FlixBus",
+        departTime: "11:15 AM",
+        arriveTime: "1:05 PM",
+        duration: "1h 50m",
+        price: "$23.48",
+        stop: "Geneva Airport",
+        note: "⚠️ Risky — only 1 hr before international flight. Not recommended.",
+      },
+    ],
+  },
+];
