@@ -671,3 +671,10 @@
 - [x] Add luggage storage pro-tip callout for both hotels (emerald for pre-hike, amber for post-hike)
 - [x] Integrate hotel cards into ArrivalDeparture Travel tab as "Your Hotels" section
 - [x] All 39 tests passing, verified in browser
+
+## Round 12b — Strength Percentile Recalibration
+- [x] Research CDC/NHANES data on resistance training participation (~65% of men don't train)
+- [x] Recalibrate all 11 exercises from gym-goer benchmarks to general adult male population
+- [x] Shift thresholds so trained individuals correctly show above 65th+ percentile
+- [x] Update vitest tests (10 tests, all passing) to validate new gen-pop calibration
+- [x] All 40 tests passing
