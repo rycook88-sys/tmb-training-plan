@@ -686,3 +686,11 @@
 - [x] Include direct FlixBus search page booking links for each direction
 - [x] Integrate into ArrivalDeparture Travel tab as "Your Bus Tickets" section
 - [x] All 40 tests passing
+
+## Round 14 — Travel Data Update (Confirmed Bookings)
+- [x] Update outbound flight data: DL3848 (OMA→MSP, seat 12B, Embraer 175), DL0152 (MSP→CDG, seat 43H, A330-300), DL8528 (CDG→GVA, seat 20C, A318, Air France)
+- [x] Update return flight data: KL1934 (GVA→AMS, no seat, Embraer 190, KLM Cityhopper), DL9374 (AMS→ATL, seat 50C, 777-300ER, KLM), DL2010 (ATL→OMA, seat 15D, A319)
+- [x] Update outbound departure time from 6:55 PM to 1:40 PM (DL3848)
+- [x] Update return arrival time to 11:59 PM (was 8:49 PM)
+- [x] Update bus transfers to confirmed status with booking numbers (outbound: 3354943817, return: 3354944548)
+- [x] Update BusTransferCard to show confirmed booking state instead of multiple options

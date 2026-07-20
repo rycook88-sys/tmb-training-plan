@@ -525,12 +525,12 @@ export const FLIGHT_BOOKING: FlightBooking = {
           flightNumber: "DL3848",
           airline: "Delta",
           operatedBy: "SkyWest DBA Delta Connection",
-          aircraft: "Embraer 175",
+          aircraft: "Embraer 175 (Enhanced Winglets)",
           from: { code: "OMA", city: "Omaha, NE", terminal: "TBD" },
           to: { code: "MSP", city: "Minneapolis/St Paul, MN", terminal: "Terminal 1" },
           depart: { date: "Fri, Jul 24", time: "1:40 PM" },
           arrive: { date: "Fri, Jul 24", time: "3:02 PM" },
-          duration: "22m",
+          duration: "1h 22m",
           seat: "12B",
           fareClass: "Main Classic (V)",
           layoverAfter: "1h 28m",
@@ -559,7 +559,7 @@ export const FLIGHT_BOOKING: FlightBooking = {
           depart: { date: "Sat, Jul 25", time: "12:40 PM" },
           arrive: { date: "Sat, Jul 25", time: "1:50 PM" },
           duration: "1h 10m",
-          seat: "20D",
+          seat: "20C",
           fareClass: "Economy (V)",
         },
       ],
@@ -570,7 +570,7 @@ export const FLIGHT_BOOKING: FlightBooking = {
       route: "GVA → AMS → ATL → OMA",
       departDate: "Wed, Aug 5",
       arriveDate: "Wed, Aug 5",
-      totalDuration: "16h 39m",
+      totalDuration: "16h 49m",
       legs: [
         {
           flightNumber: "KL1934",
@@ -598,18 +598,18 @@ export const FLIGHT_BOOKING: FlightBooking = {
           duration: "9h 20m",
           seat: "50C",
           fareClass: "Economy (T)",
-          layoverAfter: "2h 3m",
+          layoverAfter: "2h 15m",
         },
         {
           flightNumber: "DL2010",
           airline: "Delta",
           operatedBy: "Delta Air Lines",
-          aircraft: "Airbus A320",
+          aircraft: "Airbus A319",
           from: { code: "ATL", city: "Atlanta, GA", terminal: "Domestic Term-South" },
           to: { code: "OMA", city: "Omaha, NE" },
-          depart: { date: "Wed, Aug 5", time: "10:28 PM" },
-          arrive: { date: "Wed, Aug 5", time: "11:49 PM" },
-          duration: "2h 21m",
+          depart: { date: "Wed, Aug 5", time: "10:40 PM" },
+          arrive: { date: "Wed, Aug 5", time: "11:59 PM" },
+          duration: "2h 19m",
           seat: "15D",
           fareClass: "Main Classic (T)",
         },
@@ -688,109 +688,59 @@ export const HOTEL_BOOKINGS: HotelBooking[] = [
   },
 ];
 
-// ── Bus Transfer Options ──────────────────────────────────────────
+// ── Bus Transfer Bookings (CONFIRMED) ─────────────────────────────────
 
-export interface BusOption {
-  carrier: "FlixBus" | "Alpine Fleet";
-  departTime: string;
-  arriveTime: string;
-  duration: string;
-  price: string;
-  stop: string; // destination stop name
-  tag?: "recommended" | "cheapest" | "budget";
-  note?: string;
-}
-
-export interface BusTransferRoute {
+export interface BusBooking {
   direction: "outbound" | "return";
   label: string;
   date: string;
   from: string;
   to: string;
-  context: string; // e.g. "Flight lands 1:50 PM — need ~45 min for customs"
-  bookingUrl: string;
-  options: BusOption[];
+  departTime: string;
+  arriveTime: string;
+  duration: string;
+  carrier: string;
+  busNumber: string;
+  seat: string;
+  passenger: string;
+  bookingNumber: string;
+  context: string;
+  status: "confirmed";
 }
 
-export const BUS_TRANSFERS: BusTransferRoute[] = [
+export const BUS_BOOKINGS: BusBooking[] = [
   {
     direction: "outbound",
     label: "Geneva Airport → Chamonix",
-    date: "Sat, Jul 25",
-    from: "Geneva Airport (GVA)",
-    to: "Chamonix",
-    context: "Flight lands 1:50 PM. After customs/baggage (~45 min), ready by ~2:35 PM.",
-    bookingUrl: "https://shop.flixbus.com/search?departureCity=89b7ebc7-cf52-4dac-97fd-b08ef8679623&arrivalCity=5e3178b2-bd1f-41a6-b5a0-a24c53e9e718&route=Geneva+Airport-Chamonix-Mont-Blanc&rideDate=25.07.2026&adult=1&_locale=en_US&departureCountryCode=CH&arrivalCountryCode=FR",
-    options: [
-      {
-        carrier: "FlixBus",
-        departTime: "2:30 PM",
-        arriveTime: "4:05 PM",
-        duration: "1h 35m",
-        price: "$27.48",
-        stop: "Chamonix",
-        note: "Tight — only 40 min buffer after landing. Risk of missing if customs is slow.",
-      },
-      {
-        carrier: "Alpine Fleet",
-        departTime: "3:30 PM",
-        arriveTime: "5:00 PM",
-        duration: "1h 30m",
-        price: "$42.06",
-        stop: "Chamonix Centre Bus Stop",
-        tag: "recommended",
-        note: "Safe 1h 40m buffer after landing. Arrive in time for dinner.",
-      },
-      {
-        carrier: "FlixBus",
-        departTime: "5:35 PM",
-        arriveTime: "7:10 PM",
-        duration: "1h 35m",
-        price: "$26.98",
-        stop: "Chamonix",
-        tag: "cheapest",
-        note: "Lowest price. Plenty of buffer but late arrival.",
-      },
-    ],
+    date: "Fri, Jul 25",
+    from: "Geneva Airport (Bus Station)",
+    to: "Chamonix Centre (Bus Station)",
+    departTime: "3:30 PM",
+    arriveTime: "5:00 PM",
+    duration: "1h 30m",
+    carrier: "Alpine Fleet (via FlixBus)",
+    busNumber: "CDE3294",
+    seat: "Unassigned",
+    passenger: "Ryan Cook",
+    bookingNumber: "3354943817",
+    context: "Flight lands 1:50 PM — 1h 40m buffer for customs + baggage.",
+    status: "confirmed",
   },
   {
     direction: "return",
     label: "Chamonix → Geneva Airport",
-    date: "Wed, Aug 5",
-    from: "Chamonix",
-    to: "Geneva Airport (GVA)",
-    context: "Flight departs GVA at 2:10 PM. Need to arrive airport by ~11:30 AM. Les Aiglons checkout before 12:00 PM.",
-    bookingUrl: "https://shop.flixbus.com/search?departureCity=5e3178b2-bd1f-41a6-b5a0-a24c53e9e718&arrivalCity=89b7ebc7-cf52-4dac-97fd-b08ef8679623&route=Chamonix-Mont-Blanc-Geneva+Airport&rideDate=05.08.2026&adult=1&_locale=en_US&departureCountryCode=FR&arrivalCountryCode=CH",
-    options: [
-      {
-        carrier: "FlixBus",
-        departTime: "7:15 AM",
-        arriveTime: "9:00 AM",
-        duration: "1h 45m",
-        price: "$25.48",
-        stop: "Geneva Airport",
-        tag: "budget",
-        note: "Cheapest option. Maximum airport buffer but early wake-up.",
-      },
-      {
-        carrier: "Alpine Fleet",
-        departTime: "9:30 AM",
-        arriveTime: "11:00 AM",
-        duration: "1h 30m",
-        price: "$42.06",
-        stop: "Geneva Airport",
-        tag: "recommended",
-        note: "Relaxed morning. Checkout by 9 AM, arrive GVA 11:00 AM — 3+ hrs before flight.",
-      },
-      {
-        carrier: "FlixBus",
-        departTime: "11:15 AM",
-        arriveTime: "1:05 PM",
-        duration: "1h 50m",
-        price: "$23.48",
-        stop: "Geneva Airport",
-        note: "⚠️ Risky — only 1 hr before international flight. Not recommended.",
-      },
-    ],
+    date: "Tue, Aug 5",
+    from: "Chamonix Centre (Bus Station)",
+    to: "Geneva Airport (Bus Station)",
+    departTime: "9:30 AM",
+    arriveTime: "11:00 AM",
+    duration: "1h 30m",
+    carrier: "Alpine Fleet (via FlixBus)",
+    busNumber: "CDE3294",
+    seat: "Unassigned",
+    passenger: "Ryan Cook",
+    bookingNumber: "3354944548",
+    context: "Arrive GVA 11:00 AM — 3h 10m before flight departs 2:10 PM.",
+    status: "confirmed",
   },
 ];
