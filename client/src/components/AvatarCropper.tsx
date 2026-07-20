@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Camera, X, Check, RotateCcw } from "lucide-react";
 
 const AVATAR_KEY = "tmb-gps-avatar";
-const DEFAULT_AVATAR = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/face-marker_e35512b8.png";
+const DEFAULT_AVATAR = "/images/face-marker.png";
 
 /** Get the saved avatar data URL, or the default CDN image */
 export function getAvatarUrl(): string {

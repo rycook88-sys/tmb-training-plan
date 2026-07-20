@@ -285,9 +285,9 @@ function SteepnessLegend() {
 // ── GPS "You Are Here" bubble on chart ────────────────────────────
 function getFaceUrl(): string {
   try {
-    return localStorage.getItem("tmb-gps-avatar") || "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/face-marker-small_852b6cb1.png";
+    return localStorage.getItem("tmb-gps-avatar") || "/images/face-marker-small.png";
   } catch {
-    return "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/face-marker-small_852b6cb1.png";
+    return "/images/face-marker-small.png";
   }
 }
 

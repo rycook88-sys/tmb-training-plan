@@ -10,14 +10,14 @@ import { useUnits } from "@/contexts/UnitContext";
 
 // ── Guide images (CDN) ──────────────────────────────────────
 const GUIDE_IMAGES: Record<string, string> = {
-  neck: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-neck-dU4hoeM9RNsTid6yU45zP4.webp",
-  waist: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-waist-5vVK8eK8GgnLzRhm93wTh8.webp",
-  hip: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-hip-ihFs99LzAw8JaiCMEYEMB8.webp",
-  chest: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-chest-hWaJ9xpiagt6zAHECEg42D.webp",
-  bicep: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-bicep-Muxh72Tr95FUMMwDzBTuLP.webp",
-  thigh: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-thigh-JBYcKqeDhaVBtZvBeNMZU2.webp",
-  forearm: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-forearm-EUt7rSkBaSmnR67bnLJfEo.webp",
-  wrist: "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/measure-wrist-56qTtqsbwSNQTeySyrUDji.webp",
+  neck: "/images/measure-neck.webp",
+  waist: "/images/measure-waist.webp",
+  hip: "/images/measure-hip.webp",
+  chest: "/images/measure-chest.webp",
+  bicep: "/images/measure-bicep.webp",
+  thigh: "/images/measure-thigh.webp",
+  forearm: "/images/measure-forearm.webp",
+  wrist: "/images/measure-wrist.webp",
 };
 
 // ── Measurement fields ──────────────────────────────────────

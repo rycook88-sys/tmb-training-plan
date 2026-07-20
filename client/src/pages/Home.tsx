@@ -25,7 +25,6 @@ import WeatherForecast from "@/components/WeatherForecast";
 import TechniqueVideos from "@/components/TechniqueVideos";
 import TravelToolkit from "@/components/TravelToolkit";
 import BodyFatEstimator from "@/components/BodyFatEstimator";
-import CoachSierra from "@/components/CoachSierra";
 import NutritionTracker from "@/components/NutritionTracker";
 import ArrivalDeparture from "@/components/ArrivalDeparture";
 import elevationData from "@/lib/tmb_elevation_profile.json";
@@ -39,15 +38,14 @@ import ExerciseSparkline from "@/components/ExerciseSparkline";
 import ChamonixWeather from "@/components/ChamonixWeather";
 import { HeroSkeleton, StatCardSkeleton, WeightGaugeSkeleton, TrainingGridSkeleton } from "@/components/Skeleton";
 import { usePullToRefresh } from "@/hooks/usePullToRefresh";
-import { useCloudSync } from "@/hooks/useCloudSync";
 import { getStrengthPercentile, STRENGTH_STANDARDS } from "@/lib/strength-standards";
 
 const HERO_IMAGES = [
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/hero-tmb-ridge-TA9BE2JzZxaxi68um9vvG9.webp",
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/alpine-descent-fVYu9fsGi368uNUQov45Qu.webp",
-  "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/mont-blanc-massif-9zhRqKCwtJsZQ3ZMrMW65f.webp",
+  "/images/hero-tmb-ridge.webp",
+  "/images/alpine-descent.webp",
+  "/images/mont-blanc-massif.webp",
 ];
-const TOPO = "https://d2xsxph8kpxj0f.cloudfront.net/310519663340412157/kg646KsucyUqS5q5xNwGcx/topo-texture-3ai3ccpyxv32r72SNbY3MU.webp";
+const TOPO = "/images/topo-texture.webp";
 
 const MOTIVATIONAL_QUOTES = [
   { text: "The mountains are calling and I must go.", author: "John Muir" },
@@ -1323,7 +1321,7 @@ export default function Home() {
     const t = setTimeout(() => setAppReady(true), 150);
     return () => clearTimeout(t);
   }, []);
-  const cloudSync = useCloudSync();
+  // cloudSync removed
   const wt = useWeightTracker();
   const wl = useWorkoutLog();
   const milestone = useMilestoneDetector();
@@ -1372,236 +1370,17 @@ export default function Home() {
 
   // Workout history collapsed state
   const [workoutOpen, setWorkoutOpen] = useState(false);
-  const [coachOpen, setCoachOpen] = useState(false);
 
   // Serialize data for Coach Sierra
-  const coachWorkoutData = useMemo(() => {
-    if (!wl.sessions.length) return undefined;
-    return wl.sessions.map(s => {
-      const dayLabel = WORKOUT_PLAN.find(d => d.id === s.dayId)?.title || s.dayId;
-      const exStr = s.exercises.map(e =>
-        `  ${e.done ? '✓' : '✗'} ${e.name}: ${e.weight} × ${e.reps} reps`
-      ).join('\n');
-      return `${s.date} — ${dayLabel}\n${exStr}`;
-    }).join('\n\n');
-  }, [wl.sessions]);
 
-  const coachWeightData = useMemo(() => {
-    if (!wt.entries.length) return undefined;
-    return `Start: ${ATHLETE.startWeight} lbs | Goal: ${wt.goalWeight} lbs\nEntries:\n` +
-      wt.entries.map(e => `  ${e.date}: ${e.weight} lbs`).join('\n');
-  }, [wt.entries, wt.goalWeight]);
 
-  const coachBodyFatData = useMemo(() => {
-    try {
-      const raw = localStorage.getItem('tmb-bodyfat-entries');
-      if (!raw) return undefined;
-      const entries = JSON.parse(raw);
-      if (!entries.length) return undefined;
-      const latest = entries[0];
-      const prev = entries[1];
-      const delta = prev ? Math.round((latest.composite - prev.composite) * 10) / 10 : null;
-      const lines: string[] = [];
-      lines.push('=== BODY FAT HISTORY ===');
-      entries.slice(0, 10).forEach((e: any) => {
-        const methods = [
-          e.navy !== null ? `Navy:${e.navy}%` : null,
-          e.ymca !== null ? `YMCA:${e.ymca}%` : null,
-          e.covertBailey !== null ? `CB:${e.covertBailey}%` : null,
-        ].filter(Boolean).join(', ');
-        lines.push(`  ${e.date}: ${e.composite}% composite (${methods}) @ ${e.weightLbs}lbs`);
-      });
-      if (delta !== null) {
-        lines.push(`\nTrend: ${delta > 0 ? '+' : ''}${delta}% since last measurement`);
-      }
-      // Latest measurements
-      if (latest.measurements) {
-        const m = latest.measurements;
-        lines.push('\n=== LATEST MEASUREMENTS (inches) ===');
-        if (m.neck) lines.push(`  Neck: ${m.neck}"`);
-        if (m.chest) lines.push(`  Chest: ${m.chest}"`);
-        if (m.bicep) lines.push(`  Bicep: ${m.bicep}"`);
-        if (m.forearm) lines.push(`  Forearm: ${m.forearm}"`);
-        if (m.waist) lines.push(`  Waist: ${m.waist}"`);
-        if (m.hip) lines.push(`  Hip: ${m.hip}"`);
-        if (m.thigh) lines.push(`  Thigh: ${m.thigh}"`);
-        if (m.wrist) lines.push(`  Wrist: ${m.wrist}"`);
-      }
-      // Lean/fat mass
-      const bf = latest.composite / 100;
-      const w = latest.weightLbs;
-      lines.push(`\n=== BODY COMPOSITION ===`);
-      lines.push(`  Weight: ${w} lbs`);
-      lines.push(`  Est. Fat Mass: ~${Math.round(bf * w)} lbs`);
-      lines.push(`  Est. Lean Mass: ~${Math.round(w - bf * w)} lbs`);
-      // Goal projection
-      lines.push(`\n=== GOAL ===`);
-      lines.push(`  Target: 205 lbs at ~13% BF`);
-      lines.push(`  Current: ${w} lbs at ${latest.composite}%`);
-      lines.push(`  Needs to lose: ~${Math.round(w - 205)} lbs`);
-      return lines.join('\n');
-    } catch { return undefined; }
-  }, [coachOpen]);
 
-  const coachGarminData = useMemo(() => {
-    if (!GARMIN_SESSIONS.length) return undefined;
-    // Summary stats
-    const totalSessions = GARMIN_SESSIONS.length;
-    const totalMin = GARMIN_SESSIONS.reduce((s, g) => s + g.duration_min, 0);
-    const totalCal = GARMIN_SESSIONS.reduce((s, g) => s + g.calories, 0);
-    const hikeSessions = GARMIN_SESSIONS.filter(g => g.type === 'HIKE');
-    const totalHikeMi = hikeSessions.reduce((s, g) => s + g.distance_mi, 0);
-    const totalElevGain = hikeSessions.reduce((s, g) => s + g.elevation_gain, 0);
-    const avgZ2 = GARMIN_SESSIONS.reduce((s, g) => s + g.z2_pct, 0) / totalSessions;
-    const avgZ3 = GARMIN_SESSIONS.reduce((s, g) => s + g.z3_pct, 0) / totalSessions;
-
-    let summary = `GARMIN SUMMARY (${GARMIN_SESSIONS[0].date} to ${GARMIN_SESSIONS[totalSessions - 1].date}):\n`;
-    summary += `  Total sessions: ${totalSessions} | Total time: ${Math.round(totalMin / 60)}h ${totalMin % 60}m | Total calories: ${totalCal.toLocaleString()}\n`;
-    summary += `  Hikes: ${hikeSessions.length} sessions, ${totalHikeMi.toFixed(1)} mi, ${totalElevGain.toLocaleString()} ft gain\n`;
-    summary += `  Avg HR zone distribution: Z2 ${avgZ2.toFixed(1)}%, Z3 ${avgZ3.toFixed(1)}%\n`;
-    summary += `  HR zones: Max 196, Rest 56 | Z1: 126-140, Z2: 140-154, Z3: 154-168, Z4: 168-182, Z5: 182-196\n\n`;
-
-    summary += `WEEKLY VOLUME (minutes):\n`;
-    Object.entries(WEEKLY_VOLUME).forEach(([week, v]) => {
-      summary += `  ${week}: Cardio ${v.cardio} | Strength ${v.strength} | Yoga ${v.yoga} | Hike ${v.hike} | Total ${v.total}\n`;
-    });
-
-    summary += `\nRECENT SESSIONS (last 10):\n`;
-    GARMIN_SESSIONS.slice(-10).forEach(g => {
-      summary += `  ${g.date} ${g.type} ${g.duration_min}min | Avg HR ${g.avg_hr} | Cal ${g.calories}`;
-      if (g.distance_mi > 0) summary += ` | ${g.distance_mi}mi +${g.elevation_gain}ft`;
-      summary += ` | Z2:${g.z2_pct}% Z3:${g.z3_pct}% drift:${g.drift > 0 ? '+' : ''}${g.drift}%\n`;
-    });
-
-    return summary;
-  }, []);
-
-  const coachNutritionData = useMemo(() => {
-    try {
-      // Read from correct storage key
-      const raw = localStorage.getItem('tmb-nutrition-log');
-      if (!raw) return undefined;
-      const logs: { date: string; entries: any[]; vitaminsAdded?: boolean }[] = JSON.parse(raw);
-      if (!logs.length) return undefined;
-
-      // Get macro targets
-      const targets = loadMacroTargets();
-
-      // Last 7 days of logs
-      const last7 = logs.slice(-7);
-      let output = `MACRO TARGETS: ${targets.calories} cal, ${targets.protein}g protein, ${targets.carbs}g carbs, ${targets.fat}g fat\n\n`;
-
-      // Daily summaries with food details
-      output += `DAILY NUTRITION LOG (last ${last7.length} days):\n`;
-      const microTotalsAll: Record<string, number[]> = {};
-
-      last7.forEach(day => {
-        const cal = day.entries.reduce((s: number, e: any) => s + (e.calories || 0), 0);
-        const pro = day.entries.reduce((s: number, e: any) => s + (e.protein || 0), 0);
-        const carb = day.entries.reduce((s: number, e: any) => s + (e.carbs || 0), 0);
-        const fat = day.entries.reduce((s: number, e: any) => s + (e.fat || 0), 0);
-        const fiber = day.entries.reduce((s: number, e: any) => s + (e.fiber || 0), 0);
-        output += `\n  ${day.date}: ${Math.round(cal)} cal | ${Math.round(pro)}g P | ${Math.round(carb)}g C | ${Math.round(fat)}g F | ${Math.round(fiber)}g fiber${day.vitaminsAdded ? ' [vitamins taken]' : ''}\n`;
-        output += `    Foods: ${day.entries.map((e: any) => `${e.foodName} (${Math.round(e.calories)} cal)`).join(', ')}\n`;
-
-        // Accumulate micros per day
-        day.entries.forEach((e: any) => {
-          if (e.micronutrients) {
-            e.micronutrients.forEach((m: any) => {
-              if (!microTotalsAll[m.name]) microTotalsAll[m.name] = [];
-              const dayIdx = last7.indexOf(day);
-              if (!microTotalsAll[m.name][dayIdx]) microTotalsAll[m.name][dayIdx] = 0;
-              microTotalsAll[m.name][dayIdx] += m.amount || 0;
-            });
-          }
-        });
-      });
-
-      // Weekly averages
-      const avgCal = Math.round(last7.reduce((s, d) => s + d.entries.reduce((ss: number, e: any) => ss + (e.calories || 0), 0), 0) / last7.length);
-      const avgPro = Math.round(last7.reduce((s, d) => s + d.entries.reduce((ss: number, e: any) => ss + (e.protein || 0), 0), 0) / last7.length);
-      output += `\nWEEKLY AVERAGES: ${avgCal} cal/day, ${avgPro}g protein/day\n`;
-      output += `  vs targets: calories ${avgCal >= targets.calories ? 'ON TRACK' : `${targets.calories - avgCal} cal SHORT`}, protein ${avgPro >= targets.protein ? 'ON TRACK' : `${targets.protein - avgPro}g SHORT`}\n`;
-
-      // Micronutrient gap analysis
-      output += `\nMICRONUTRIENT GAP ANALYSIS (avg over ${last7.length} days):\n`;
-      const gaps: { name: string; avgPct: number }[] = [];
-      ALL_MICRONUTRIENTS.forEach(ref => {
-        const dailyAmounts = microTotalsAll[ref.name] || [];
-        const avgAmount = dailyAmounts.reduce((s, a) => s + (a || 0), 0) / Math.max(last7.length, 1);
-        const pct = getMicroDVPercent(ref.name, avgAmount);
-        if (pct < 80) gaps.push({ name: ref.name, avgPct: pct });
-      });
-      if (gaps.length > 0) {
-        gaps.sort((a, b) => a.avgPct - b.avgPct);
-        gaps.forEach(g => {
-          output += `  ⚠ ${g.name}: ${g.avgPct}% of DV (LOW)\n`;
-        });
-      } else {
-        output += `  All micronutrients above 80% DV — looking good!\n`;
-      }
-
-      // Saved meal plans
-      try {
-        const plansRaw = localStorage.getItem('tmb-saved-meal-plans');
-        if (plansRaw) {
-          const plans = JSON.parse(plansRaw);
-          if (plans.length > 0) {
-            output += `\nSAVED MEAL PLANS (${plans.length}):\n`;
-            plans.slice(0, 5).forEach((p: any) => {
-              const ratingStr = p.rating ? ` ★${p.rating}/5` : '';
-              output += `  ${p.name}${ratingStr} — ${p.meals?.map((m: any) => m.name).join(', ')}\n`;
-            });
-          }
-        }
-      } catch {}
-
-      return output;
-    } catch { return undefined; }
-  }, [coachOpen]);
 
   // Gear checklist progress for Coach Sierra
-  const coachGearData = useMemo(() => {
-    try {
-      const raw = localStorage.getItem('tmb-gear-list');
-      if (!raw) return undefined;
-      const items: { name: string; category: string; weightOz: number; packed: boolean; worn: boolean; maybe: boolean }[] = JSON.parse(raw);
-      const packed = items.filter(i => i.packed && !i.maybe);
-      const notPacked = items.filter(i => !i.packed && !i.maybe);
-      const maybe = items.filter(i => i.maybe);
-      const totalOz = packed.reduce((s, i) => s + i.weightOz, 0);
-      let output = `GEAR CHECKLIST:\n`;
-      output += `  Packed: ${packed.length} items (${(totalOz / 16).toFixed(1)} lbs)\n`;
-      output += `  Not yet packed: ${notPacked.length} items\n`;
-      if (notPacked.length > 0) {
-        output += `    Missing: ${notPacked.map(i => i.name).join(', ')}\n`;
-      }
-      if (maybe.length > 0) {
-        output += `  Maybe items: ${maybe.map(i => i.name).join(', ')}\n`;
-      }
-      return output;
-    } catch { return undefined; }
-  }, [coachOpen]);
+
 
   // Pre-trip checklist progress for Coach Sierra
-  const coachChecklistData = useMemo(() => {
-    try {
-      const raw = localStorage.getItem('tmb-prehike-checklist');
-      const checked: Record<string, boolean> = raw ? JSON.parse(raw) : {};
-      const total = PRE_TRIP_CHECKLIST.length;
-      const done = Object.values(checked).filter(Boolean).length;
-      if (done === 0) return undefined;
-      let output = `PRE-TRIP CHECKLIST: ${done}/${total} completed\n`;
-      const incomplete = PRE_TRIP_CHECKLIST.filter(item => !checked[item.id]);
-      if (incomplete.length > 0 && incomplete.length <= 10) {
-        output += `  Still to do:\n`;
-        incomplete.forEach(item => {
-          output += `    ☐ ${item.text}\n`;
-        });
-      }
-      return output;
-    } catch { return undefined; }
-  }, [coachOpen]);
+
 
   const handleSave = () => {
     const session = wl.saveSession();
@@ -1696,7 +1475,7 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-8">
             <div>
               <div className="flex items-center justify-between">
-                <Countdown syncStatus={cloudSync.status} />
+                <Countdown syncStatus={"idle"} />
                 <div className="flex items-center gap-2">
                   <ThemeSwitcher />
                   <button onClick={u.toggle}
@@ -1730,14 +1509,7 @@ export default function Home() {
             <span className="text-xl">🏋️</span> Training Protocol
           </h2>
           <div className="flex items-center gap-3">
-            <button
-              onClick={(e) => { e.stopPropagation(); setCoachOpen(true); }}
-              className="flex items-center justify-center px-3 py-1 text-[9px] font-mono uppercase tracking-wider
-                border border-rose-500/40 text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/60
-                transition-all"
-            >
-              Coach
-            </button>
+
             <span className="text-[10px] font-mono text-[var(--muted-foreground)]">{wl.sessions.length} sessions logged</span>
             <motion.div animate={{ rotate: workoutOpen ? 180 : 0 }} transition={{ duration: 0.3 }}>
               <ChevronDown className="w-4 h-4 text-[var(--muted-foreground)] group-hover:text-[var(--primary)] transition-colors" />
@@ -1765,19 +1537,6 @@ export default function Home() {
           )}
         </AnimatePresence>
       </section>
-
-      {/* Coach Sierra AI Chat */}
-      <CoachSierra
-        open={coachOpen}
-        onClose={() => setCoachOpen(false)}
-        workoutData={coachWorkoutData}
-        weightData={coachWeightData}
-        bodyFatData={coachBodyFatData}
-        nutritionData={coachNutritionData}
-        garminData={coachGarminData}
-        gearData={coachGearData}
-        checklistData={coachChecklistData}
-      />
 
       {/* MODE TOGGLE */}
       <div className="border-t border-border">

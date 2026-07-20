@@ -8,8 +8,8 @@ import {
   MessageSquare, Send, Type, Search,
 } from "lucide-react";
 import Fuse from "fuse.js";
-import { trpc } from "@/lib/trpc";
-import { useAuth } from "@/_core/hooks/useAuth";
+// trpc removed for portable build
+// auth removed for portable build
 import SwipeToDelete from "@/components/SwipeToDelete";
 import ConfirmDeleteDialog from "@/components/ConfirmDeleteDialog";
 import {
@@ -692,7 +692,8 @@ function RecommendationCard({ rec, onFeedback, existingFeedback }: {
    ██  Main NutritionTracker Component
    ══════════════════════════════════════════════════════ */
 export default function NutritionTracker({ embedded = false, onCalorieUpdate }: { embedded?: boolean; onCalorieUpdate?: (current: number, target: number) => void }) {
-  const { user, isAuthenticated } = useAuth();
+  const user = null;
+  const isAuthenticated = false;
   const [logs, setLogs] = useState<DailyLog[]>(loadLogs);
   const [feedback, setFeedback] = useState<RecommendationFeedback[]>(loadFeedback);
   const [presets, setPresets] = useState<PresetLists>(loadPresets);
@@ -785,21 +786,17 @@ export default function NutritionTracker({ embedded = false, onCalorieUpdate }: 
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   // tRPC mutations
-  const analyzeMutation = trpc.nutrition.analyzePhoto.useMutation();
-  const reAnalyzeMutation = trpc.nutrition.reAnalyze.useMutation();
-  const trendsMutation = trpc.nutrition.getTrends.useMutation();
-  const fillMacrosMutation = trpc.nutrition.fillMyMacros.useMutation();
-  const backupMutation = trpc.nutrition.backup.useMutation();
-  const mealPlanMutation = trpc.nutrition.planMeal.useMutation();
-  const snapPantryMutation = trpc.nutrition.snapPantry.useMutation();
-  const analyzeTextMutation = trpc.nutrition.analyzeText.useMutation();
+  const analyzeMutation = { mutate: () => {}, mutateAsync: async () => ({}), isLoading: false, isPending: false } as any;
+  const reAnalyzeMutation = { mutate: () => {}, mutateAsync: async () => ({}), isLoading: false, isPending: false } as any;
+  const trendsMutation = { mutate: () => {}, mutateAsync: async () => ({}), isLoading: false, isPending: false } as any;
+  const fillMacrosMutation = { mutate: () => {}, mutateAsync: async () => ({}), isLoading: false, isPending: false } as any;
+  const backupMutation = { mutate: () => {}, mutateAsync: async () => ({}), isLoading: false, isPending: false } as any;
+  const mealPlanMutation = { mutate: () => {}, mutateAsync: async () => ({}), isLoading: false, isPending: false } as any;
+  const snapPantryMutation = { mutate: () => {}, mutateAsync: async () => ({}), isLoading: false, isPending: false } as any;
+  const analyzeTextMutation = { mutate: () => {}, mutateAsync: async () => ({}), isLoading: false, isPending: false } as any;
 
   // Restore from server on mount if localStorage is empty and user is logged in
-  const restoreQuery = trpc.nutrition.restore.useQuery(undefined, {
-    enabled: isAuthenticated && logs.length === 0,
-    retry: false,
-    refetchOnWindowFocus: false,
-  });
+  const restoreQuery = { data: null } as any;
 
   useEffect(() => {
     if (restoreQuery.data && logs.length === 0) {

@@ -19,7 +19,7 @@ import {
   getCardioSessions, getHikeSessions, getYogaSessions,
 } from "@/lib/garmin-data";
 import { useUnits } from "@/contexts/UnitContext";
-import GarminUpload from "@/components/GarminUpload";
+
 
 // ── Colors ───────────────────────────────────────────────────
 const C = {
@@ -590,9 +590,7 @@ export default function TrainingAnalytics({ embedded = false }: { embedded?: boo
                 <CaloriesBurned />
               </MetricPanel>
 
-              <MetricPanel title="Upload FIT Files" icon={Activity} badge="sync new activities">
-                <GarminUpload />
-              </MetricPanel>
+
 
               <div className="text-[10px] font-mono text-[var(--muted-foreground)] text-center mt-4 italic">
                 Data source: Garmin Enduro 3 FIT exports · Zones: %HRR method (Max 196, Rest 56)

@@ -6,13 +6,11 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { UnitProvider } from "./contexts/UnitContext";
 import Home from "./pages/Home";
-import DataExport from "./pages/DataExport";
+
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"/"} component={Home} />
-      <Route path={"/export"} component={DataExport} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
