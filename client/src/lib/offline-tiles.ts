@@ -1,11 +1,21 @@
-// Offline Map Tile Caching for TMB area
-// Pre-downloads OpenTopoMap tiles for the TMB region so the map works offline.
-//
-// Strategy: Send tile URLs to the Service Worker via postMessage.
-// The SW fetches and caches them directly inside the worker context.
-// This avoids Safari/iOS issues with cache.put() from page JavaScript.
+/**
+ * Offline Map Tile Caching for TMB area
+ *
+ * Stores tiles as Blobs in IndexedDB for offline use.
+ * This approach avoids all Service Worker / Cache API issues on Safari/iOS.
+ * Based on the pattern used by leaflet.offline (github.com/allartk/leaflet.offline).
+ *
+ * When online: Leaflet loads tiles from the network as normal (zero interception).
+ * When offline: The custom TileLayer checks IndexedDB first and uses blob: URLs.
+ */
 
-const CACHE_NAME = "tmb-map-tiles-v1";
+import {
+  normalizeTileKey,
+  saveTile,
+  getTileCount as getStoredCount,
+  clearAllTiles,
+  hasTile,
+} from "./tile-store";
 
 // TMB bounding box (covers the entire trail + Mont Blanc)
 const BOUNDS = {
@@ -61,129 +71,100 @@ export function getTileCount(): number {
   return getTileList().length;
 }
 
-// Check if tiles are already cached
+// Check if tiles are already cached in IndexedDB
 export async function isCached(): Promise<boolean> {
   try {
-    const cache = await caches.open(CACHE_NAME);
-    const keys = await cache.keys();
-    const tileCount = getTileCount();
+    const storedCount = await getStoredCount();
+    const totalNeeded = getTileCount();
     // Consider cached if we have at least 80% of tiles
-    return keys.length >= tileCount * 0.8;
+    return storedCount >= totalNeeded * 0.8;
   } catch {
     return false;
   }
 }
 
-// Get cached tile count
+// Get cached tile count from IndexedDB
 export async function getCachedCount(): Promise<number> {
   try {
-    const cache = await caches.open(CACHE_NAME);
-    const keys = await cache.keys();
-    return keys.length;
+    return await getStoredCount();
   } catch {
     return 0;
   }
 }
 
-// Get the active service worker (controller or waiting)
-async function getServiceWorker(): Promise<ServiceWorker | null> {
-  if (!("serviceWorker" in navigator)) return null;
-
-  const reg = await navigator.serviceWorker.ready;
-
-  // Prefer the active controller
-  if (navigator.serviceWorker.controller) {
-    return navigator.serviceWorker.controller;
-  }
-
-  // Fall back to active worker from registration
-  if (reg.active) {
-    return reg.active;
-  }
-
-  return null;
-}
-
-// Download all tiles by sending them to the Service Worker for caching.
-// The SW does the actual fetch + cache.put inside the worker context,
-// which avoids Safari's restrictions on page-level cache writes.
+/**
+ * Download all tiles and store them in IndexedDB.
+ * Fetches tiles directly from page JavaScript and stores as Blobs.
+ * No Service Worker involvement — IndexedDB works perfectly on all browsers.
+ */
 export async function downloadTiles(
   onProgress: (downloaded: number, total: number) => void,
   signal?: AbortSignal
 ): Promise<void> {
   const tiles = getTileList();
   const total = tiles.length;
+  let downloaded = 0;
+  let errors = 0;
 
-  // Get the service worker
-  const sw = await getServiceWorker();
+  // Process in batches to avoid overwhelming the browser
+  const BATCH_SIZE = 6;
 
-  if (!sw) {
-    throw new Error("Service Worker not available. Please reload the page and try again.");
-  }
-
-  // Generate a unique batch ID for this download session
-  const batchId = `tiles-${Date.now()}`;
-
-  // Set up a promise that resolves when the SW reports completion
-  return new Promise<void>((resolve, reject) => {
-    let completed = false;
-
-    // Listen for progress/completion messages from the SW
-    const messageHandler = (event: MessageEvent) => {
-      const data = event.data;
-      if (!data || data.batchId !== batchId) return;
-
-      if (data.type === "CACHE_TILES_PROGRESS") {
-        onProgress(data.cached + data.errors, total);
-      }
-
-      if (data.type === "CACHE_TILES_COMPLETE") {
-        completed = true;
-        navigator.serviceWorker.removeEventListener("message", messageHandler);
-
-        // Allow up to 15% failures
-        if (data.errors > total * 0.15) {
-          reject(new Error(`Too many failed downloads: ${data.errors}/${total}. Cached: ${data.cached}/${total}`));
-        } else {
-          onProgress(total, total);
-          resolve();
-        }
-      }
-    };
-
-    navigator.serviceWorker.addEventListener("message", messageHandler);
-
-    // Handle abort
-    if (signal) {
-      signal.addEventListener("abort", () => {
-        if (!completed) {
-          navigator.serviceWorker.removeEventListener("message", messageHandler);
-          reject(new DOMException("Aborted", "AbortError"));
-        }
-      });
+  for (let i = 0; i < tiles.length; i += BATCH_SIZE) {
+    // Check for abort
+    if (signal?.aborted) {
+      throw new DOMException("Aborted", "AbortError");
     }
 
-    // Send ALL tiles to SW in a single message
-    // The SW processes them internally in batches of 8
-    sw.postMessage({
-      type: "CACHE_TILES",
-      urls: tiles,
-      batchId,
-    });
+    const batch = tiles.slice(i, i + BATCH_SIZE);
 
-    // Safety timeout — if SW never responds within 5 minutes, fail
-    setTimeout(() => {
-      if (!completed) {
-        navigator.serviceWorker.removeEventListener("message", messageHandler);
-        reject(new Error("Download timed out. The service worker did not respond."));
-      }
-    }, 5 * 60 * 1000);
-  });
+    await Promise.allSettled(
+      batch.map(async (url) => {
+        const key = normalizeTileKey(url);
+
+        try {
+          // Skip if already stored
+          const exists = await hasTile(key);
+          if (exists) {
+            downloaded++;
+            return;
+          }
+
+          // Fetch the tile as a blob
+          const response = await fetch(url);
+          if (!response.ok) {
+            errors++;
+            return;
+          }
+
+          const blob = await response.blob();
+          await saveTile(key, blob);
+          downloaded++;
+        } catch {
+          errors++;
+        }
+      })
+    );
+
+    onProgress(downloaded + errors, total);
+  }
+
+  // Allow up to 15% failures
+  if (errors > total * 0.15) {
+    throw new Error(`Too many failed downloads: ${errors}/${total}. Saved: ${downloaded}/${total}`);
+  }
+
+  onProgress(total, total);
 }
 
-// Clear cached tiles
+// Clear cached tiles from IndexedDB
 export async function clearTileCache(): Promise<void> {
-  await caches.delete(CACHE_NAME);
+  await clearAllTiles();
+  // Also clean up the old Cache API cache if it exists from previous versions
+  try {
+    await caches.delete("tmb-map-tiles-v1");
+  } catch {
+    // ignore
+  }
 }
 
 // Estimate cache size in MB

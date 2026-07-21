@@ -48,6 +48,7 @@
     "express": "^5.2.1",
     "framer-motion": "^12.23.22",
     "fuse.js": "^7.3.0",
+    "idb": "^8.0.3",
     "input-otp": "^1.4.2",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.453.0",

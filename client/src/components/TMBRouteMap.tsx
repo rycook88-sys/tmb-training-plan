@@ -9,6 +9,7 @@ import { TMB_ITINERARY } from "@/lib/data";
 import { FOOD_STOPS, DAY_MILES, getStopsForDay, type FoodStopGeo } from "@/lib/tmb-food-stops";
 import { WATER_SOURCES, PRIMARY_SOURCES, type WaterSource } from "@/lib/tmb-water-sources";
 import { OfflineMapManager } from "@/components/OfflineMapManager";
+import { createOfflineTileLayer } from "@/lib/TileLayerOffline";
 import AvatarCropper, { getAvatarUrl, onAvatarChange } from "@/components/AvatarCropper";
 import { watchPosition, clearWatch, haversineMeters, metersToMiles, type GpsPosition } from "@/lib/gps-tracker";
 import { useUnits } from "@/contexts/UnitContext";
@@ -452,7 +453,8 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
       });
 
       setTilesLoading(true);
-      const topoLayer = L.tileLayer(
+      const topoLayer = createOfflineTileLayer(
+        L,
         "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
         {
           maxZoom: 17,
@@ -619,7 +621,7 @@ export function TMBRouteMap({ highlightDay, onDayHover, onGpsUpdate }: { highlig
     tileRetryCount.current = 0;
 
     const newLayer = mapLayer === "topo"
-      ? L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+      ? createOfflineTileLayer(L, "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
           maxZoom: 17,
           attribution: '&copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
           errorTileUrl: '',
