@@ -2,7 +2,7 @@
 import { clientsClaim } from "workbox-core";
 import { precacheAndRoute, cleanupOutdatedCaches } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
-import { CacheFirst } from "workbox-strategies";
+import { CacheFirst, NetworkFirst } from "workbox-strategies";
 import { ExpirationPlugin } from "workbox-expiration";
 import { CacheableResponsePlugin } from "workbox-cacheable-response";
 
@@ -19,12 +19,16 @@ cleanupOutdatedCaches();
 precacheAndRoute(self.__WB_MANIFEST);
 
 // Runtime caching for OpenTopoMap tiles
+// Use NetworkFirst so tiles always load fresh when online (no flashing/stale tiles).
+// The cache is only used as fallback when offline — which is the whole point of the
+// bulk download feature.
 const TILE_CACHE_NAME = "tmb-map-tiles-v1";
 
 registerRoute(
   /^https:\/\/[abc]\.tile\.opentopomap\.org\/.*/i,
-  new CacheFirst({
+  new NetworkFirst({
     cacheName: TILE_CACHE_NAME,
+    networkTimeoutSeconds: 3, // Fall back to cache after 3s if offline/slow
     plugins: [
       new ExpirationPlugin({
         maxEntries: 1200,
