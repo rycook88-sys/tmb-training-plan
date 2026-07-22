@@ -9,9 +9,6 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      strategies: "injectManifest",
-      srcDir: "src",
-      filename: "sw.ts",
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico"],
       manifest: {
@@ -29,9 +26,24 @@ export default defineConfig({
           { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
         ],
       },
-      injectManifest: {
+      workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2,json,webp,jpg}"],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+            handler: "CacheFirst",
+            options: { cacheName: "google-fonts-cache", expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } },
+          },
+          {
+            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+            handler: "CacheFirst",
+            options: { cacheName: "gstatic-fonts-cache", expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } },
+          },
+        ],
       },
     }),
   ],
